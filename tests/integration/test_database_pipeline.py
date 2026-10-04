@@ -60,6 +60,10 @@ def _seed_synthetic_snapshot() -> None:
                     ingested_at=cutoff,
                 )
             )
+            # These rows are referenced by the bulk price insert below. Flush
+            # them first because the models intentionally do not expose ORM
+            # relationships that SQLAlchemy could use to infer insert order.
+            session.flush()
             price = 100.0
             for position, trade_date in enumerate(dates):
                 if position:
