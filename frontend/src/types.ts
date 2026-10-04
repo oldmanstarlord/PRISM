@@ -76,3 +76,15 @@ export interface MstResponse {
   }>;
   limitations: string[];
 }
+
+export interface PipelineStatus {
+  status: string;
+  current_stage: string | null;
+  failed_stage: string | null;
+  latest_market_date: string | null;
+  layer_1_date: string | null;
+  layer_2_date: string | null;
+  is_stale: boolean;
+  last_successful_pipeline_at: string | null;
+  latest_error: string | null;
+}

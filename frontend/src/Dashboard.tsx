@@ -7,7 +7,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 
 import { fetchJson } from "./api";
-import type { Horizon, RankingsResponse } from "./types";
+import type { Horizon, PipelineStatus, RankingsResponse } from "./types";
 
 const bandColor = { normal: "default", moderate: "warning", strong: "error", extreme: "error" } as const;
 
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [data, setData] = useState<RankingsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -36,6 +37,14 @@ export default function Dashboard() {
     return () => controller.abort();
   }, [horizon]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchJson<PipelineStatus>("/pipeline/status", controller.signal)
+      .then(setPipeline)
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f4f7f9", color: "#14212b" }}>
       <Box sx={{ bgcolor: "#102b3a", color: "white", py: 4 }}>
@@ -46,6 +55,11 @@ export default function Dashboard() {
       </Box>
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Stack spacing={3}>
+          {pipeline && <Alert severity={pipeline.is_stale || pipeline.status === "failed" ? "warning" : "success"}>
+            Pipeline: <strong>{pipeline.status}</strong>. Market data: {pipeline.latest_market_date ?? "unavailable"}; Layer 1: {pipeline.layer_1_date ?? "unavailable"}; Layer 2: {pipeline.layer_2_date ?? "unavailable"}.
+            {pipeline.failed_stage && ` Failed stage: ${pipeline.failed_stage}.`}
+            {pipeline.is_stale && " Displayed analysis is stale relative to stored market data."}
+          </Alert>}
           <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", gap: 2 }}>
             <Box>
               <Typography variant="h4" component="h2" sx={{ fontWeight: 650 }}>Sector divergence</Typography>

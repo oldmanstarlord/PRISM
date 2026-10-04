@@ -11,6 +11,8 @@ from backend.app.db.models import (
     MstEdge,
     MstNode,
     MstRun,
+    PipelineRun,
+    PriceDailyAdjusted,
     SectorDivergenceIssue,
     SectorDivergenceRun,
     SectorDivergenceScore,
@@ -44,6 +46,50 @@ def readiness() -> dict[str, str]:
             detail="Database unavailable",
         ) from exc
     return {"status": "ready", "database": "connected"}
+
+
+@router.get("/pipeline/status", tags=["operations"])
+def pipeline_status(session: DatabaseSession) -> dict[str, Any]:
+    """Expose publication status and freshness without treating weekends as stale."""
+    latest_pipeline = session.scalar(
+        select(PipelineRun)
+        .where(PipelineRun.workflow == "daily_analysis")
+        .order_by(desc(PipelineRun.started_at))
+        .limit(1)
+    )
+    last_success = session.scalar(
+        select(PipelineRun)
+        .where(
+            PipelineRun.workflow == "daily_analysis",
+            PipelineRun.status == "completed",
+        )
+        .order_by(desc(PipelineRun.completed_at))
+        .limit(1)
+    )
+    market_date = session.scalar(select(func.max(PriceDailyAdjusted.trade_date)))
+    layer_1 = session.scalar(latest_completed_run_query())
+    layer_2 = session.scalar(latest_completed_mst_query())
+    layer_1_date = layer_1.signal_date if layer_1 else None
+    layer_2_date = layer_2.window_end if layer_2 else None
+    is_stale = (
+        market_date is None
+        or layer_1_date != market_date
+        or layer_2_date != market_date
+    )
+    summary = latest_pipeline.quality_summary if latest_pipeline else {}
+    return {
+        "status": latest_pipeline.status if latest_pipeline else "not_run",
+        "current_stage": summary.get("stage"),
+        "failed_stage": (
+            summary.get("stage") if latest_pipeline and latest_pipeline.status == "failed" else None
+        ),
+        "latest_market_date": market_date,
+        "layer_1_date": layer_1_date,
+        "layer_2_date": layer_2_date,
+        "is_stale": is_stale,
+        "last_successful_pipeline_at": last_success.completed_at if last_success else None,
+        "latest_error": latest_pipeline.error_summary if latest_pipeline else None,
+    }
 
 
 def _latest_run(session: Session) -> SectorDivergenceRun:

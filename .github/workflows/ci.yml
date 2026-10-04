@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: prism
+          POSTGRES_USER: prism
+          POSTGRES_PASSWORD: prism
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prism -d prism"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PRISM_DATABASE_URL: postgresql+psycopg://prism:prism@localhost:5432/prism?sslmode=disable
+      PRISM_RUN_DB_INTEGRATION: "1"
+      UV_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-groups
+      - run: uv run ruff check backend jobs tests
+      - run: uv run mypy backend jobs
+      - run: uv run alembic upgrade head
+      - run: uv run pytest
+      - run: uv run alembic upgrade head --sql > migration.sql
+      - run: test -s migration.sql
+      - run: uv run python -m jobs.check_repository_policy
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: npm install --global pnpm@10.16.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build

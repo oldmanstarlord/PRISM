@@ -45,6 +45,9 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+markers = [
+  "integration: requires an explicitly configured PostgreSQL test database",
+]
 
 [tool.ruff]
 target-version = "py312"

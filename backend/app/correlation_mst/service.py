@@ -85,6 +85,7 @@ def persist_mst(
     lookback_start: date,
     data_cutoff: datetime,
     computed_at: datetime | None = None,
+    commit: bool = True,
 ) -> PersistedMst:
     inputs = load_inputs(session, window_end, lookback_start, data_cutoff)
     configuration = mst_configuration()
@@ -170,7 +171,10 @@ def persist_mst(
             for edge in calculation.edges
         ]
     )
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return PersistedMst(
         run.id, True, run.included_symbol_count, run.edge_count, len(calculation.exclusions)
     )

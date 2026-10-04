@@ -39,6 +39,10 @@ data/              Ignored local raw, processed and model artifacts
 11. In `frontend`, run `pnpm install` and `pnpm dev`. The dashboard reads the API from
     `VITE_API_URL`, defaulting to `http://localhost:8000/api/v1`.
 
+For routine operation, use `uv run python -m jobs.run_daily_pipeline` instead of invoking each
+stage separately. Setup, failure recovery and verification are documented in
+[OPERATIONS.md](OPERATIONS.md).
+
 Backend, frontend and jobs run as native local processes; PostgreSQL is managed by Supabase.
 
 The project is currently in Phase 0. See the status tracker before beginning work.

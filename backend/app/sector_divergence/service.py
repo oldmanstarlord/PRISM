@@ -187,6 +187,7 @@ def persist_calculation(
     lookback_start: date,
     data_cutoff: datetime,
     computed_at: datetime | None = None,
+    commit: bool = True,
 ) -> PersistedCalculation:
     """Calculate and atomically persist a run, returning an existing identical run if present."""
     inputs = load_inputs(session, signal_date, lookback_start, data_cutoff)
@@ -293,7 +294,10 @@ def persist_calculation(
             for item in calculation.input_exclusions
         ]
     )
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return PersistedCalculation(
         run.id,
         True,
