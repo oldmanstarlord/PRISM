@@ -1,0 +1,206 @@
+# PRISM Project Status
+
+This is the living implementation record for PRISM. It must be updated after every material code, architecture, dependency, data-source or phase-status change.
+
+## Current snapshot
+
+| Field | Value |
+|---|---|
+| Current phase | Phase 0 - Foundations |
+| Overall status | In progress |
+| Last updated | 2026-10-04 |
+| Requirements source | `PRISM_SRS.md` version 1.6 |
+| Initial universe | NIFTY 200 |
+| Active implementation focus | Activate and demonstrate the persisted Layer 2 MST pipeline |
+
+## Phase status
+
+| Phase | Name | Status | Exit evidence |
+|---|---|---|---|
+| 0 | Foundations | In progress | Pending |
+| 1 | Portfolio insight | Not started | Pending |
+| 2 | Text intelligence | Not started | Pending |
+| 3 | Attribution and forecasting | Not started | Pending |
+| 4 | Advanced research | Not started | Pending |
+
+## Phase 0 checklist
+
+- [x] Consolidated SRS created.
+- [x] Core technology stack selected.
+- [x] Initial NIFTY 200 universe selected.
+- [x] Direct component-oriented repository structure created.
+- [x] Python 3.12 environment provisioned.
+- [x] Python dependencies installed and locked.
+- [x] Frontend dependencies installed and locked.
+- [x] Supabase PostgreSQL authentication and connection verified.
+- [x] Initial Alembic migration created and applied.
+- [x] Current NIFTY 200 membership source integrated.
+- [x] Symbol/ISIN master implemented.
+- [x] `yfinance` ingestion adapter implemented.
+- [x] Data-quality checks implemented for duplicates, invalid/missing OHLCV, long gaps and extreme returns.
+- [x] Layer 1 mathematical and input contract approved and documented.
+- [x] Layer 1 point-in-time input preparation implemented and tested.
+- [x] Layer 1 deterministic calculation engine implemented and tested.
+- [x] Layer 1 persistence, calculation job, read API and results dashboard implemented locally.
+- [x] Layer 1 and Layer 2 formulas and interfaces designed and approved.
+- [x] Layer 1 and Layer 2 implementations tested and documented.
+- [ ] Reproducible Layer 1 and Layer 2 pipeline demonstrated.
+
+## Known blockers
+
+1. Historical NIFTY 200 membership data is not yet available; the official source provides the current composition.
+2. The additive Layer 2 migration and first persisted MST run require explicit authorization to mutate the configured shared Supabase database.
+
+## Verification status
+
+| Check | Result | Last run |
+|---|---|---|
+| Python environment | Python 3.12.13 provisioned by `uv` | 2026-09-29 |
+| Python dependency lock | 143 packages resolved; native scheduler stack active | 2026-09-29 |
+| Ruff | Passed | 2026-09-29 |
+| mypy strict mode | Passed, 17 source files | 2026-09-30 |
+| pytest | Passed, 7 tests | 2026-09-30 |
+| ESLint | Passed | 2026-09-29 |
+| Vitest | Passed, 1 test | 2026-09-29 |
+| TypeScript/Vite production build | Passed | 2026-09-29 |
+| Supabase encrypted connection | Passed | 2026-09-30 |
+| Alembic migration | `d8031fcf7da5` at head | 2026-09-30 |
+| Phase 0 schema | 13 of 13 expected tables present | 2026-09-30 |
+| FastAPI readiness endpoint | HTTP 200, database connected | 2026-09-30 |
+| Official NIFTY 200 snapshot | 200 validated rows imported | 2026-09-30 |
+| Universe importer idempotency | Second run created and updated zero records | 2026-09-30 |
+| Market-data tests | Ruff passed; strict mypy passed for 23 source files; pytest passed 13 tests | 2026-10-01 |
+| Daily raw-price coverage | 503,226 rows across 200 securities, 2015-01-01 through 2026-10-01 | 2026-10-01 |
+| Adjusted-price coverage | 591,176 versioned rows across 200 securities | 2026-10-01 |
+| Corporate actions | 2,864 dividend and split records | 2026-10-01 |
+| Stored OHLCV validity audit | Zero invalid rows | 2026-10-01 |
+| Pipeline-run recovery | Zero market-data runs left incorrectly running | 2026-10-01 |
+| Layer 1 engine tests | Ruff passed; strict mypy passed for 26 source files; pytest passed 25 tests | 2026-10-02 |
+| Layer 1 real-data input check | 110 dates; 186 eligible securities; 13 industries; 14 explicit small-industry exclusions; zero input issues | 2026-10-02 |
+| Layer 1 real-data calculation | 556 finite scores: 186 one-day, 186 five-day and 184 twenty-day; two explicit insufficient-horizon issues | 2026-10-02 |
+| Layer 1 persistence verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
+| Backend verification | Ruff passed; strict mypy passed for 33 source files; pytest passed 34 tests | 2026-10-04 |
+| Frontend verification | ESLint passed; 2 Vitest tests passed; TypeScript/Vite production build passed | 2026-10-04 |
+| Company-detail API check | BAJAJ-AUTO returned three scores, 13 exact peers and 61 comparison points | 2026-10-04 |
+| Persisted Layer 1 run | 556 scores, 14 exclusions and 2 calculation issues available through the API | 2026-10-04 |
+| Layer 2 engine tests | Determinism, tie-breaking, no-look-ahead, missing-data exclusion and topology invariants passed | 2026-10-04 |
+| Layer 2 real-data calculation | 199 nodes; 198 edges; connected and acyclic; VAML explicitly excluded; 2.171 second calculation | 2026-10-04 |
+| Layer 2 migration verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
+
+## Update protocol
+
+After every material update:
+
+1. Update the current snapshot and relevant checklist.
+2. Add a dated entry to the change log.
+3. Record verification commands and results.
+4. Record new blockers or decisions.
+5. Change a phase to complete only when its SRS exit criteria are satisfied.
+
+## Change log
+
+### 2026-09-29 - Repository bootstrap
+
+- Created the backend, frontend, jobs, tests and data structure.
+- Added dependency manifests for the decided project stack.
+- Added baseline local-process configuration for the backend and frontend.
+- Added baseline FastAPI and React application entry points.
+- Installed and locked the Python and frontend dependencies.
+- Verified backend linting, strict typing and unit tests.
+- Verified frontend linting, unit tests and production build.
+
+### 2026-09-29 - Native development workflow adopted
+
+- Confirmed that development will use native Python, Node and PostgreSQL processes.
+- Selected APScheduler and Tenacity for native scheduling and retry behaviour.
+- Kept PostgreSQL as the selected database while the hosting approach was still under review.
+
+### 2026-09-30 - Supabase database selected
+
+- Selected Supabase-hosted PostgreSQL instead of a locally installed database.
+- Added SSL-required PostgreSQL URL normalization for SQLAlchemy and Psycopg.
+- Added Alembic configuration and initial Phase 0 SQLAlchemy models.
+- Verified that the Supabase session-pooler network endpoint is reachable.
+- Added safe automatic URL encoding for reserved database-password characters.
+- Applied the initial migration and verified all expected tables.
+- Seeded the `NIFTY 200` universe identity without inventing constituent history.
+- Added and verified the FastAPI database-readiness endpoint.
+
+### 2026-09-30 - Repository structure simplified
+
+- Removed phase-named source folders and redundant phase documents.
+- Grouped code directly by implemented components: API, core configuration, database and jobs.
+- Grouped tests by the component they verify.
+- Removed empty placeholder packages; future folders will be created only when their code exists.
+
+### 2026-09-30 - Layer baseline corrected
+
+- Corrected the earlier assumption that Layer 1 and Layer 2 already existed.
+- Recorded both quantitative layers as new PRISM implementations to be designed and validated.
+
+### 2026-09-30 - NIFTY 200 security master imported
+
+- Added an official Nifty Indices CSV client and strict five-column parser.
+- Added row-count, symbol uniqueness, ISIN uniqueness and ISIN-format validation.
+- Added idempotent security, NSE alias and versioned membership synchronization.
+- Archived the retrieved current snapshot under ignored raw data storage.
+- Imported 200 securities, aliases and active memberships into Supabase.
+- Confirmed a second import creates no duplicate records.
+
+### 2026-10-01 - Daily market-data foundation completed
+
+- Added the replaceable Yahoo Finance adapter for unadjusted and adjusted daily OHLCV data.
+- Added incremental seven-day overlap updates, bounded concurrent downloads and sequential transactional database writes.
+- Preserved provider corrections as new raw and adjusted revisions instead of silently overwriting history.
+- Added dividend and stock-split ingestion with idempotent corporate-action persistence.
+- Added deterministic checks for duplicate dates, missing/non-finite values, invalid OHLC relationships, negative volume, long observation gaps and extreme adjusted returns.
+- Added per-symbol failure isolation, exponential retries for transient provider/database failures, raw CSV snapshots and targeted symbol recovery.
+- Loaded and audited all 200 current NIFTY 200 securities from 2015-01-01 through 2026-10-01.
+- Marked two interrupted initial runs accurately and completed the single failed symbol through targeted recovery.
+
+### 2026-10-02 - Layer 1 contract and inputs completed
+
+- Approved and documented the purely mathematical `sector-divergence-v1` contract.
+- Fixed the official Nifty `Industry` field as the version 1 group classification and prohibited ML, AI and learned weights from Layer 1.
+- Defined leave-one-out median benchmarks, trailing 60-day OLS, 45 paired observations, and separate 1-day, 5-day and 20-day standardized residual outputs.
+- Added point-in-time membership and adjusted-price revision selection using an explicit data cutoff.
+- Added deterministic price/provenance panels without forward filling, backward filling or zero substitution.
+- Added explicit exclusions for missing classifications, insufficient price history and undersized industry groups.
+- Enforced the 2026-09-30 membership-observation boundary so earlier results cannot be presented as point-in-time NIFTY 200 history.
+- Verified the real data produces 186 eligible securities across 13 industries; 14 securities are explicitly excluded because their industry groups contain fewer than five eligible members.
+- Implemented rolling leave-one-out industry benchmarks, trailing OLS alpha/beta, residual volatility and dynamically point-in-time residuals.
+- Implemented separate 1-day, 5-day and 20-day standardized scores, fixed interpretation bands and deterministic empirical percentiles.
+- Added hand-calculated OLS, multi-day residual, no-look-ahead, missing-data, degenerate-variance and percentile tests.
+- Ran the engine against the real panel and produced 556 finite scores for 186 securities with two explicit 20-day availability issues.
+
+### 2026-10-04 - Layer 1 result surface implemented
+
+- Added additive persistence tables for reproducible calculation runs, horizon-specific scores and explicit issues/exclusions.
+- Added deterministic configuration and point-in-time input fingerprints so an identical calculation reuses its completed run.
+- Added a runnable calculation job with stable latest-snapshot defaults and explicit date/cutoff overrides.
+- Added versioned API endpoints for latest-run metadata, 1/5/20-day magnitude rankings and limitations.
+- Replaced the frontend placeholder with a responsive Layer 1 dashboard showing rankings, interpretation bands, coverage and freshness.
+- Verified the migration by rendering transactional PostgreSQL DDL offline.
+- Did not apply the migration or write results to Supabase because external database mutation was not approved in the execution environment.
+
+### 2026-10-04 - Company peer-comparison detail implemented
+
+- Added a company-detail API computed from the persisted run's exact point-in-time input envelope.
+- Added an indexed stock-versus-peer chart using the same leave-one-out median benchmark as Layer 1.
+- Exposed all three horizon scores, the direction relative to peers, the exact peer set and method limitations.
+- Made ranking direction explicit and linked every ranked company to its detail route.
+- Verified the live BAJAJ-AUTO response contains three horizon scores, 13 peers and 61 chart points through 2026-10-01.
+- Confirmed the Layer 1 migration and first persisted 556-score run were applied successfully by the user.
+- Corrected an ambiguous presentation that compared 1/5/20-day residual scores with a fixed 60-observation chart.
+- Company charts now follow the selected score horizon, show actual stock and benchmark returns, and distinguish raw performance from the alpha/beta-adjusted residual score.
+
+### 2026-10-04 - Layer 2 correlation MST implemented locally
+
+- Approved and documented the deterministic `correlation-mst-v1` mathematical and input contract.
+- Implemented 120-day adjusted-close log returns, minimum 100-pair Pearson correlations and Mantegna correlation distance.
+- Implemented deterministic invalid-pair exclusions plus Kruskal's algorithm with Union-Find and canonical tie-breaking.
+- Added hard validation for connectivity, acyclicity and exactly `N-1` edges.
+- Extended the placeholder schema with run cutoffs, configuration/input fingerprints, stored nodes, pair counts and validation status.
+- Added an idempotent calculation job, latest-MST API and interactive Cytoscape network view with explicit non-causality limitations.
+- Verified read-only against real stored data: 199 eligible nodes, 198 edges, one explicit insufficient-history exclusion, connected and acyclic.
+- Did not apply the additive migration or persist the real run because external Supabase mutation requires explicit user authorization.

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Project | PRISM - Portfolio Risk & Intelligence System for Markets |
-| Document version | 1.1 (consolidated working SRS) |
-| Date | 2026-09-29 |
+| Document version | 1.6 (consolidated working SRS) |
+| Date | 2026-10-02 |
 | Status | Approved project direction; open items are explicitly marked TBD |
 | Initial universe | NIFTY 200 |
 | Primary market | Indian listed equities, initially NSE |
@@ -19,7 +19,7 @@ If another document conflicts with this one, this document takes precedence unle
 
 ### 0.1 Rules for contributors and AI assistants
 
-1. Layer 1 and Layer 2 are frozen. Their existing calculations and outputs must not be redesigned. New components consume their outputs through documented interfaces.
+1. Layer 1 and Layer 2 are new components to be designed, implemented and validated by this project. Their approved formulas and interfaces must be versioned once established.
 2. Do not describe PRISM as a reliable stock-price prediction system. Its primary targets are portfolio risk, volatility, market regimes, diversification, attribution and explanation.
 3. Price-direction modelling is experimental and must never appear as a headline capability.
 4. No feature, model or backtest may use information that was unavailable at the calculation time.
@@ -31,7 +31,7 @@ If another document conflicts with this one, this document takes precedence unle
 
 ### 0.2 Product summary
 
-PRISM is an explainable portfolio-risk and market-intelligence platform for Indian equities. It combines an existing sector-divergence signal and minimum-spanning-tree representation with point-in-time market data, company filings and news analysis, return attribution, risk forecasting, diversification analysis, shock simulation, stock dossiers, alerts and a validation framework. Users interact with the system through a React dashboard backed by a FastAPI service and PostgreSQL.
+PRISM is an explainable portfolio-risk and market-intelligence platform for Indian equities. It combines deterministic sector-divergence and minimum-spanning-tree components to be built within PRISM with point-in-time market data, company filings and news analysis, return attribution, risk forecasting, diversification analysis, shock simulation, stock dossiers, alerts and a validation framework. Users interact with the system through a React dashboard backed by a FastAPI service and PostgreSQL.
 
 ---
 
@@ -63,7 +63,7 @@ PRISM must help an investor, analyst or evaluator answer:
 - NIFTY 200 equities, with architecture capable of later NIFTY 500 expansion.
 - Daily OHLCV and corporate-action data.
 - Portfolio-level and stock-level risk measurements.
-- Existing Layer 1 sector divergence and Layer 2 MST integration.
+- Layer 1 sector-divergence and Layer 2 MST design, implementation and validation.
 - Corporate filings, announcements and news intelligence.
 - Return attribution, volatility forecasts, regimes and anomaly detection.
 - Diversification analysis, graph-based shock simulation and stock dossiers.
@@ -111,14 +111,14 @@ Yahoo Finance prototype data | NSE/BSE metadata and filings | RBI/macro | news
                                   |
                                   v
                     Python ingestion pipelines
-                          (Prefect workflows)
+                  (APScheduler and Tenacity)
                                   |
                                   v
                            PostgreSQL
                       point-in-time data store
                      /            |             \
                     v             v              v
-          Layer 1 frozen   Layer 2 frozen   Layer 3 text
+           Layer 1 new      Layer 2 new      Layer 3 text
           divergence       correlation MST  intelligence
                     \             |              /
                      \            v             /
@@ -141,8 +141,8 @@ Cross-cutting: validation, lineage, audit, security and data-quality controls
 | Layer | Name | Status |
 |---|---|---|
 | 0 | Data ingestion and storage | New |
-| 1 | Sector divergence signal | Existing and frozen |
-| 2 | Correlation minimum spanning tree | Existing and frozen |
+| 1 | Sector divergence signal | New |
+| 2 | Correlation minimum spanning tree | New |
 | 3 | Text intelligence | New |
 | 4 | Attribution and risk forecasting | New |
 | 5 | Insight features | New |
@@ -151,7 +151,7 @@ Cross-cutting: validation, lineage, audit, security and data-quality controls
 
 ### 3.2 Temporal heterogeneous graph extension
 
-Layer 4 may construct a separate temporal heterogeneous graph for advanced risk research. This graph does not replace or modify Layer 2. Instead, the frozen MST is included as one versioned stock-to-stock relationship type alongside sector, macroeconomic, filing, event and news relationships.
+Layer 4 may construct a separate temporal heterogeneous graph for advanced risk research. The approved Layer 2 MST is included as one versioned stock-to-stock relationship type alongside sector, macroeconomic, filing, event and news relationships.
 
 The heterogeneous graph is an advanced Phase 4 component. Simpler relational, tabular and homogeneous-graph baselines must be implemented first.
 
@@ -164,7 +164,7 @@ The heterogeneous graph is an advanced Phase 4 component. Simpler relational, ta
 | Area | Decision |
 |---|---|
 | Primary language | Python 3.12 |
-| Database | PostgreSQL |
+| Database | Supabase-hosted PostgreSQL |
 | Backend API | FastAPI |
 | API validation | Pydantic |
 | Frontend | React with TypeScript |
@@ -189,7 +189,8 @@ The heterogeneous graph is an advanced Phase 4 component. Simpler relational, ta
 | Deep learning | PyTorch |
 | Heterogeneous graph learning | PyTorch Geometric |
 | NLP models | Hugging Face Transformers |
-| Workflow orchestration | Prefect |
+| Native scheduling | APScheduler |
+| Retry and backoff policy | Tenacity |
 | Prototype price source client | `yfinance` |
 
 Tools are introduced only in the phase that needs them. Phase 0 must not install advanced ML dependencies merely because they appear in the final stack.
@@ -213,9 +214,9 @@ Tools are introduced only in the phase that needs them. Phase 0 must not install
 
 | Purpose | Tool or policy |
 |---|---|
-| Local services | Docker Compose |
-| Containers | Docker |
-| Reverse proxy and HTTPS | Caddy |
+| Local services | Native Python and Node processes |
+| Database runtime | Managed PostgreSQL on Supabase |
+| Public reverse proxy and HTTPS | Deferred until hosted deployment design |
 | Source control and hosting | Git and GitHub |
 | Continuous integration | GitHub Actions |
 | Python tests | pytest |
@@ -228,7 +229,7 @@ Tools are introduced only in the phase that needs them. Phase 0 must not install
 
 ### 4.5 Initial deployment and authentication
 
-The first release is a local, single-user deployment. It does not require user accounts. Portfolio data remains local and the API is not publicly exposed.
+The first release is a single-user application with a locally run FastAPI backend and React frontend. It does not require application user accounts. Structured project and portfolio data is stored in the owner's Supabase project, accessed only through FastAPI, and database credentials are never exposed to the React application.
 
 Before public or multi-user deployment, PRISM must add authenticated accounts, secure HTTP-only sessions, Argon2 password hashing or an approved identity provider, portfolio ownership checks, HTTPS and a documented deletion procedure.
 
@@ -263,25 +264,184 @@ PRISM's first product universe is the **NIFTY 200**. Small subsets may be used d
 
 ---
 
-## 6. Existing frozen baseline
+## 6. Core quantitative layers to be built
 
 ### 6.1 Shared foundation
 
-The existing system computes a variance-covariance matrix of asset returns. Layer 1 and Layer 2 build on the existing implementation of this foundation.
+PRISM must calculate a versioned variance-covariance and correlation foundation from validated adjusted returns. Layer 1 and Layer 2 will be built on this foundation.
 
 ### 6.2 Layer 1: sector divergence
 
-Layer 1 reports how a stock's behaviour diverges from its sector. Its formula and behaviour must remain unchanged.
+Layer 1 reports how differently a stock behaves from the other NIFTY 200 securities in
+its official Nifty Indices `Industry` group. Version 1 is entirely deterministic. It must not
+use machine learning, artificial intelligence, learned weights or model-generated scores.
+
+#### 6.2.1 Classification and eligible universe
+
+- The version 1 grouping field is the official `Industry` value supplied in the archived
+  NIFTY 200 constituent CSV. Interfaces may display this as the sector benchmark but must
+  retain the source field name and must not imply that a separate sector taxonomy was used.
+- Membership and industry are selected as of the signal date.
+- A group requires at least five otherwise eligible securities, including the target.
+- The target is always removed from its own benchmark, leaving at least four peers.
+- A date without enough contemporaneous peer returns produces no score; values are never
+  forward-filled, backward-filled or replaced with zero.
+- PRISM first observed versioned NIFTY 200 membership on 2026-09-30. Results for earlier
+  dates cannot be described as point-in-time NIFTY 200 results. Any permitted research
+  reconstruction must be labelled `reconstructed_current_universe` and excluded from
+  headline backtest claims.
+
+#### 6.2.2 Prices and returns
+
+For security `i` on trading date `t`, version 1 uses the latest eligible adjusted-close
+revision available by the calculation's data cutoff and calculates the daily log return:
+
+```text
+r(i,t) = ln(P(i,t) / P(i,t-1))
+```
+
+Prices must be finite and strictly positive. A return requires two consecutive observations
+for that security; PRISM does not manufacture a return across an absent observation. At least
+45 valid paired return observations are required in the 60-trading-day estimation window.
+
+#### 6.2.3 Leave-one-out industry benchmark
+
+The benchmark for target `i` is the median of the contemporaneous returns of the other
+eligible securities in industry group `g(i)`:
+
+```text
+r(g,-i,t) = median({r(j,t) : j in g(i), j != i})
+```
+
+The median is fixed for version 1 because it is transparent and less sensitive than the mean
+to a single extreme constituent. No capitalization weights or learned weights are used.
+
+#### 6.2.4 Rolling alpha, beta and residual
+
+For signal date `t`, alpha, beta and residual volatility are estimated from the preceding 60
+trading dates, excluding `t`, using only dates on which both the target and its leave-one-out
+benchmark have valid returns:
+
+```text
+beta(i,t)  = Cov(r(i), r(g,-i)) / Var(r(g,-i))
+alpha(i,t) = mean(r(i)) - beta(i,t) * mean(r(g,-i))
+expected(i,t) = alpha(i,t) + beta(i,t) * r(g,-i,t)
+epsilon(i,t)  = r(i,t) - expected(i,t)
+```
+
+The covariance and variance use the sample convention (`ddof = 1`). If benchmark variance is
+zero or fewer than 45 paired observations exist, the result is unavailable with an explicit
+reason. To prevent floating-point noise from turning a mathematically degenerate regression
+into an extreme score, benchmark variance or residual volatility less than or equal to
+`1e-15` is treated as zero. The calculation must not use observations after `t` or fit on the
+signal-date return.
+
+#### 6.2.5 Standardized divergence horizons
+
+The primary outputs remain separate rather than being hidden in a composite score:
+
+```text
+Z(i,t,h) = sum(epsilon(i,t-k), k=0..h-1) / (sigma_epsilon(i,t) * sqrt(h))
+h in {1, 5, 20}
+```
+
+Each daily residual in a multi-day horizon must be produced using parameters available for
+that residual's date. `sigma_epsilon(i,t)` is the sample standard deviation of the residuals
+from the same trailing estimation window. Zero residual volatility produces no standardized
+score. Version 1 publishes `z_1d`, `z_5d` and `z_20d`; it does not publish a weighted composite.
+
+The fixed descriptive bands are:
+
+| Absolute score | Label |
+|---:|---|
+| `< 1` | Normal |
+| `>= 1 and < 2` | Moderate |
+| `>= 2 and < 3` | Strong |
+| `>= 3` | Extreme |
+
+The sign indicates unusual outperformance or underperformance. These labels are descriptive,
+not probability claims, because equity residuals need not be normally distributed.
+
+#### 6.2.6 Ranking, determinism and version
+
+- Percentiles are calculated separately for each signal date, industry and horizon using the
+  weak empirical cumulative distribution: `100 * count(score <= target) / N`. Equal values
+  therefore receive the same upper-rank percentile deterministically.
+- Stable ordering is by trading date, industry, symbol and ISIN where a tie remains.
+- Identical source revisions, cutoff, membership snapshot and configuration must produce
+  identical results.
+- The approved formula identifier is `sector-divergence-v1`.
+- Every output must retain the signal date, industry, horizon, raw residual, standardized
+  value, alpha, beta, residual volatility, observations used, lookback bounds, data cutoff,
+  membership source, adjustment method/revision and computation time.
 
 ### 6.3 Layer 2: correlation MST
 
-Layer 2 constructs a minimum spanning tree from stock co-movement using the existing Kruskal and Union-Find implementation. Its formula and behaviour must remain unchanged.
+Layer 2 uses the approved deterministic `correlation-mst-v1` contract.
 
-### 6.4 Mandatory contract discovery
+#### 6.3.1 Point-in-time universe and prices
 
-The following are implementation facts that must be extracted from the existing code before Phase 0 is complete:
+- The universe and NSE symbols are those valid on the window end and observed by the data cutoff.
+- Prices are the latest positive finite adjusted closes whose computation time is no later than
+  the explicit data cutoff.
+- Each selected price retains its adjustment method/revision and computation timestamp.
+- Historical membership before PRISM's first official observation must not be inferred.
 
-- Entry points, functions and classes.
+#### 6.3.2 Returns and window
+
+For adjusted close `P(i,t)`, the daily return is:
+
+```text
+r(i,t) = ln(P(i,t) / P(i,t-1))
+```
+
+The calculation uses at most the latest 121 aligned price dates through the window end, producing
+120 daily returns. A return is unavailable unless both adjacent prices exist. Prices and returns
+are never forward-filled, backward-filled or replaced with zero. Layer 2 is refreshed after a
+validated daily close, not from incomplete intraday data.
+
+#### 6.3.3 Eligibility and missing data
+
+- A security initially requires at least 100 finite returns in the 120-return window.
+- Every included pair requires at least 100 paired finite returns and non-degenerate return
+  variance greater than `1e-15` for both members on those paired dates.
+- If the initially eligible set is not a complete valid correlation graph, PRISM iteratively
+  excludes the security participating in the greatest number of invalid pairs. Ties are resolved
+  by ascending symbol. Each exclusion and reason is retained.
+- The run fails rather than publishing a partial tree if fewer than two securities remain or the
+  eligible graph cannot produce a connected tree.
+
+#### 6.3.4 Correlation and distance
+
+Each eligible pair uses Pearson sample correlation on its paired finite daily log returns. Values
+are clamped to `[-1, 1]` only to remove floating-point overflow at the mathematical boundary. The
+Mantegna distance is:
+
+```text
+d(i,j) = sqrt(2 * (1 - rho(i,j)))
+```
+
+This maps perfect positive correlation to `0`, zero correlation to `sqrt(2)` and perfect negative
+correlation to `2`. Correlation and MST edges describe co-movement, not causality.
+
+#### 6.3.5 MST algorithm and determinism
+
+- Candidate pairs use canonical ascending symbol order `(symbol_a, symbol_b)`.
+- Candidate edges are sorted by `(distance, symbol_a, symbol_b)`.
+- Kruskal's algorithm with Union-Find selects an edge only when it joins two components.
+- Edge rank is the one-based selection order.
+- A valid run must be connected, acyclic and contain exactly `N-1` edges for `N` included nodes.
+- Re-running an identical versioned input fingerprint and configuration reuses the completed run.
+
+The reference implementation target is `O(N^2*T + N^2 log N)` time and `O(N^2)` candidate-edge
+memory for `N <= 200` and `T = 120`; actual daily runtime must be measured on the development
+machine.
+
+### 6.4 Mandatory design decisions
+
+The following decisions must be approved and documented before the quantitative layers are complete:
+
+- Public entry points and interfaces.
 - Required input fields, types, shapes and ordering.
 - Return calculation and adjustment policy.
 - Lookback window and update frequency.
@@ -290,28 +450,32 @@ The following are implementation facts that must be extracted from the existing 
 - Correlation method and correlation-to-distance transformation.
 - MST tie-breaking and determinism.
 - Output fields, shapes and error behaviour.
-- Runtime and memory characteristics.
+- Runtime and memory targets.
 
-These items are **TBD pending inspection** and must not be guessed or altered.
+The Layer 1 and Layer 2 version 1 choices above are approved for implementation. Layer 2 edge
+stability across consecutive windows remains a Phase 1 requirement rather than a Phase 0 input to
+the first valid tree.
 
 ### 6.5 Target Layer 1 interface envelope
 
-The adapter around the frozen implementation should, without changing its result, expose at least:
+The Layer 1 implementation must expose at least:
 
 ```text
-symbol, date, sector_id, divergence_value,
-lookback_start, lookback_end, observations_used,
-status, implementation_version, computed_at
+symbol, date, industry, horizon, residual_value, divergence_value,
+alpha, beta, residual_volatility, industry_percentile,
+lookback_start, lookback_end, observations_used, data_cutoff,
+membership_source, adjustment_version, status,
+implementation_version, computed_at
 ```
 
 ### 6.6 Target Layer 2 interface envelope
 
-The adapter around the frozen implementation should expose edge records:
+The Layer 2 implementation must expose edge records:
 
 ```text
 run_id, window_start, window_end, universe_version,
-symbol_a, symbol_b, correlation_if_available,
-distance, edge_rank, implementation_version, computed_at
+symbol_a, symbol_b, correlation, paired_observations,
+distance, edge_rank, implementation_version, computed_at, data_cutoff
 ```
 
 It should also expose run metadata including requested symbols, included symbols, exclusions with reasons, edge count and connectivity status. For an eligible connected universe of `N` nodes, validation must confirm `N-1` edges and no cycles.
@@ -326,7 +490,7 @@ It should also expose run metadata including requested symbols, included symbols
 |---|---|---|---|
 | Daily OHLCV | `yfinance` | NSE/BSE or later licensed provider | Decided for prototype |
 | Dividends and splits | `yfinance` | NSE/BSE corporate actions | Decided for prototype |
-| NIFTY 200 membership | Official index/exchange publications | Archived snapshots | Source integration TBD |
+| NIFTY 200 membership | Official Nifty Indices constituent CSV | Archived PRISM snapshots | Current snapshot integrated; historical source TBD |
 | Symbol and ISIN master | NSE/BSE metadata | Controlled manual correction | Source integration TBD |
 | Sector and industry | Official index/exchange classification | Versioned mapping | Source integration TBD |
 | Filings and announcements | NSE/BSE official pages | None initially | Phase 2 |
@@ -396,7 +560,7 @@ Structured records and metadata reside in PostgreSQL. Large raw filings, PDFs an
 - `validation_result`
 - `audit_event`
 
-The physical PostgreSQL schema is defined after the frozen-layer contract audit and must be managed through Alembic migrations.
+The physical PostgreSQL schema is managed through reviewed Alembic migrations.
 
 ### 7.6 Data-quality policy
 
@@ -435,13 +599,13 @@ Priority: **M** = Must, **S** = Should, **C** = Could.
 | FR-D8 | Ingest index levels, USD/INR, crude oil, rates and institutional-flow series. | S | 3 |
 | FR-D9 | Make source adapters replaceable without changing downstream layer contracts. | M | 0 |
 
-### 8.2 Frozen layers
+### 8.2 Core quantitative layers
 
 | ID | Requirement | Pri | Phase |
 |---|---|---|---|
-| FR-L1 | Produce sector-divergence outputs exactly as the existing Layer 1 implementation does. | M | 0 |
-| FR-L2 | Produce MST outputs exactly as the existing Layer 2 implementation does. | M | 0 |
-| FR-L2D | Outside Layer 2, calculate consecutive-window edge persistence and expose an MST stability measure. | S | 1 |
+| FR-L1 | Design, implement and validate a sector-divergence measure with documented returns, sector benchmark, lookback, missing-data rules and thresholds. | M | 0 |
+| FR-L2 | Design, implement and validate a correlation-distance MST using Kruskal's algorithm and Union-Find with deterministic tie-breaking. | M | 0 |
+| FR-L2D | Calculate consecutive-window edge persistence and expose an MST stability measure. | S | 1 |
 
 ### 8.3 Core portfolio risk
 
@@ -477,7 +641,7 @@ Priority: **M** = Must, **S** = Should, **C** = Could.
 | FR-F3 | Forecast stock and portfolio volatility, comparing ML challengers with EWMA and GARCH-family baselines. | M | 3 |
 | FR-F4 | Identify documented market regimes from volatility and average correlation. | S | 3 |
 | FR-F5 | Detect unusual volume, price gaps and decoupling from Layer 2 neighbours. | S | 3 |
-| FR-F6 | Construct a temporal heterogeneous graph of stocks, sectors, macro variables, filings, events and news, with the frozen Layer 2 MST represented as one stock-to-stock relation. Evaluate it for risk, volatility and spillover forecasting. | C | 4 |
+| FR-F6 | Construct a temporal heterogeneous graph of stocks, sectors, macro variables, filings, events and news, with the approved Layer 2 MST represented as one stock-to-stock relation. Evaluate it for risk, volatility and spillover forecasting. | C | 4 |
 | FR-F6A | Record every graph node and edge with its type, source, event or validity time, ingestion time, construction method and graph-snapshot version. | M | 4 |
 | FR-F6B | Compare heterogeneous models against tabular, relational non-neural, non-graph and homogeneous stock-graph baselines. | M | 4 |
 | FR-F6C | Report relation ablations that remove MST, sector, macro, filing and news relations individually. | M | 4 |
@@ -502,7 +666,7 @@ Initial directed relation types are:
 
 | Source type | Relation | Target type | Construction |
 |---|---|---|---|
-| Stock | `mst_connected_to` | Stock | Frozen Layer 2 output for the applicable window |
+| Stock | `mst_connected_to` | Stock | Versioned Layer 2 output for the applicable window |
 | Stock | `correlated_with` | Stock | Training-window relationship using documented thresholds |
 | Stock | `belongs_to` | Sector | Versioned classification effective at snapshot time |
 | Filing or event | `issued_by` | Stock | Exchange metadata or controlled entity linking |
@@ -648,7 +812,7 @@ Complex challengers are retained only when they demonstrate material out-of-samp
 | NFR-5 | Precomputed dashboard views should respond within a few seconds under expected local use. |
 | NFR-6 | Baseline operation uses free or open-source software and legally permitted data. |
 | NFR-7 | Data sources are used within their terms and restricted data is not redistributed. |
-| NFR-8 | Portfolio data and secrets remain local in the initial deployment. |
+| NFR-8 | Portfolio data is stored in the configured Supabase project; credentials remain only in backend environment configuration and are never exposed to the frontend. |
 | NFR-9 | Unit, integration, data-quality and contract tests run in CI. |
 | NFR-10 | Database changes use reviewed Alembic migrations. |
 | NFR-11 | Credentials are never committed and sensitive values are redacted from logs. |
@@ -704,7 +868,7 @@ Backup and restore procedures must be tested before any hosted deployment. The l
 
 | Phase | Goal | Included work | Exit criteria |
 |---|---|---|---|
-| 0 - Foundations | Reliable NIFTY 200 data and reproducible calculations | Core repository; PostgreSQL; migrations; `yfinance` adapter; security master; versioned membership; data quality; frozen-layer contract audit; Layer 1/2 adapters; validation skeleton | Clean versioned daily store; reproducible runs; documented frozen contracts; Layers 1/2 execute without logic changes; quality report and baseline test utilities work |
+| 0 - Foundations | Reliable NIFTY 200 data and reproducible calculations | Core repository; PostgreSQL; migrations; `yfinance` adapter; security master; versioned membership; data quality; Layer 1/2 design and implementation; validation skeleton | Clean versioned daily store; reproducible runs; approved Layer 1/2 formulas and interfaces; tested divergence and MST outputs; quality report and baseline test utilities work |
 | 1 - Portfolio insight | Useful product without advanced ML | Portfolio input; core risk metrics; MST views; diversification; shock simulator; audit; explanations; freshness and disclaimer | User can load a portfolio and receive risk, clustering, diversification and shock results with assumptions and reasons |
 | 2 - Text intelligence | Explain company background | NSE/BSE filings; news source; FinBERT; event classification; evidence; dossier | Text is linked, scored and evaluated on labelled Indian examples; dossier merges time-aligned events and prices |
 | 3 - Attribution and forecasting | Explain moves and forecast risk | Macro data; attribution; volatility baselines/challengers; regimes; anomalies; alerts; watchlists and digest | Attribution covers eligible stocks; forecasts are compared out of sample; alerts and digests expose reasons |
@@ -724,9 +888,9 @@ Phase 0 is complete only when all applicable statements are true:
 - [ ] Corporate actions and adjustment provenance are retained.
 - [ ] Quality checks detect duplicates, gaps, invalid OHLC relationships and suspicious moves.
 - [ ] Failed or partial ingestion cannot replace the last-known-good dataset.
-- [ ] Existing Layer 1 and Layer 2 code has been inspected.
-- [ ] Frozen-layer inputs, outputs, formulas, windows and missing-data rules are documented.
-- [ ] Adapters integrate both frozen layers without changing their logic.
+- [ ] Layer 1 and Layer 2 formulas, windows and missing-data rules are approved.
+- [ ] Layer 1 and Layer 2 implementations and interfaces are documented and tested.
+- [ ] The covariance and correlation foundation is reproducible from a versioned price snapshot.
 - [ ] Valid Layer 2 runs are connected, acyclic and contain `N-1` edges.
 - [ ] Re-running the same snapshot and configuration reproduces the same outputs.
 - [ ] Walk-forward validation utilities prohibit shuffled evaluation.
@@ -741,8 +905,8 @@ Phase 0 is complete only when all applicable statements are true:
 
 | ID | Decision | Status |
 |---|---|---|
-| D1 | Layer 1 and Layer 2 remain unchanged and are consumed through adapters. | Decided |
-| D2 | New layers may use statistical learning, ML and AI subject to validation. | Decided |
+| D1 | Layer 1 and Layer 2 will be designed and implemented within PRISM; their interfaces become stable only after approval and validation. | Decided |
+| D2 | Layer 1 and Layer 2 are deterministic mathematical components; later layers may use statistical learning, ML and AI subject to validation. | Decided |
 | D3 | FinBERT is the baseline financial sentiment model. | Decided |
 | D4 | PRISM focuses on risk and explanation; price direction is experimental. | Decided |
 | D5 | PostgreSQL is the primary structured database. | Decided |
@@ -750,14 +914,18 @@ Phase 0 is complete only when all applicable statements are true:
 | D7 | FastAPI and Pydantic provide the application API and validation. | Decided |
 | D8 | React, TypeScript and Vite provide the frontend. | Decided |
 | D9 | SQLAlchemy, Psycopg and Alembic provide persistence and migrations. | Decided |
-| D10 | Prefect orchestrates scheduled data and model workflows. | Decided |
+| D10 | APScheduler and Tenacity provide native scheduling, retries and backoff for data and model workflows. | Decided |
 | D11 | NIFTY 200 is the initial product universe and is versioned by effective date. | Decided |
 | D12 | Daily data is the initial frequency. | Decided |
 | D13 | `yfinance` supplies prototype OHLCV and actions under the controls in Section 7.2. | Decided |
 | D14 | NSE/BSE are verification and official filing/metadata sources, subject to access terms. | Decided |
 | D15 | The initial application is local and single-user. | Decided |
 | D16 | Advanced dependencies are introduced only in the phase that requires them. | Decided |
-| D17 | Phase 4 will evaluate a temporal heterogeneous graph while preserving the frozen MST as one relation type; it will not replace Layer 2. | Decided |
+| D17 | Phase 4 will evaluate a temporal heterogeneous graph using the approved MST as one versioned relation type. | Decided |
+| D18 | Supabase provides the managed PostgreSQL database; FastAPI connects through an SSL-required PostgreSQL connection and React never receives database credentials. | Decided |
+| D19 | The official Nifty Indices constituent CSV supplies current NIFTY 200 membership; PRISM archives each imported snapshot and does not claim pre-observation history from it. | Decided |
+| D20 | Layer 1 uses the deterministic `sector-divergence-v1` contract in Section 6.2: official Industry groups, leave-one-out median benchmarks, 60-day trailing OLS, at least 45 paired observations, and separate 1/5/20-day standardized residual outputs. | Decided |
+| D21 | Layer 2 uses the deterministic `correlation-mst-v1` contract in Section 6.3: 120 adjusted-close log returns, at least 100 paired observations, Pearson correlation, Mantegna distance and deterministic Kruskal/Union-Find tie-breaking. | Decided |
 
 ---
 
@@ -765,7 +933,6 @@ Phase 0 is complete only when all applicable statements are true:
 
 | ID | Question or discovery | Blocking phase |
 |---|---|---|
-| OQ-1 | What are the exact existing Layer 1 and Layer 2 contracts and formulas? | 0 |
 | OQ-2 | Which official source and archival method will provide historical NIFTY 200 membership? | 0 |
 | OQ-3 | What warning and rejection thresholds govern data-quality checks? | 0 |
 | OQ-4 | What are the portfolio weighting, cash, dividend and rebalancing rules? | 1 |
@@ -834,7 +1001,7 @@ Every implementation task must reference at least one requirement ID. A requirem
 - **Point-in-time:** retaining what was available and when, so historical computations use only knowable information.
 - **Purged validation:** evaluation that removes training samples overlapping test-label periods.
 - **Regime:** a market state such as calm, trending or stressed.
-- **Sector divergence:** the existing Layer 1 measure of separation from sector behaviour.
+- **Sector divergence:** a versioned Layer 1 measure of separation from sector behaviour, to be defined and validated in Phase 0.
 - **Survivorship bias:** distortion caused by testing only securities that remain present today.
 - **Temporal graph:** graph whose nodes, edges or features change over time and are evaluated at explicit timestamps.
 - **VaR:** value at risk, an estimate of a loss threshold at a specified confidence and horizon.
@@ -853,7 +1020,7 @@ Every implementation task must reference at least one requirement ID. A requirem
 7. Hu, Z., Dong, Y., Wang, K. and Sun, Y. (2020). *Heterogeneous Graph Transformer.* arXiv:2003.01332.
 8. Schlichtkrull, M. et al. (2017). *Modeling Relational Data with Graph Convolutional Networks.* arXiv:1703.06103.
 9. Rossi, E. et al. (2020). *Temporal Graph Networks for Deep Learning on Dynamic Graphs.* arXiv:2006.10637.
-10. Official `yfinance`, FastAPI, React, Vite, PostgreSQL, Prefect, PyTorch Geometric and Hugging Face documentation.
+10. Official `yfinance`, FastAPI, React, Vite, PostgreSQL, APScheduler, PyTorch Geometric and Hugging Face documentation.
 
 ---
 
