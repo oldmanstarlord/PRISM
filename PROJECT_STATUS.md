@@ -11,7 +11,7 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Last updated | 2026-10-05 |
 | Requirements source | `PRISM_SRS.md` version 1.6 |
 | Initial universe | NIFTY 200 |
-| Active implementation focus | Authenticated private portfolio input and dated holdings snapshots |
+| Active implementation focus | Presentation-safe browser-only portfolio insights using existing Layer 1 and Layer 2 results |
 
 ## Phase status
 
@@ -49,6 +49,8 @@ This is the living implementation record for PRISM. It must be updated after eve
 ## Known limitations
 
 1. Historical NIFTY 200 membership data is not yet available; the official source provides the current composition.
+2. The presentation portfolio is session-only: it performs no authentication, persistence or shared Supabase writes.
+3. The shared Supabase database has an independently developed portfolio schema/revision that must be reconciled before the authenticated portfolio migration can be deployed safely.
 
 ## Verification status
 
@@ -79,7 +81,7 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Layer 1 real-data calculation | 556 finite scores: 186 one-day, 186 five-day and 184 twenty-day; two explicit insufficient-horizon issues | 2026-10-02 |
 | Layer 1 persistence verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
 | Backend verification | Ruff passed; strict mypy passed for 42 source files; GitHub CI passed all backend tests including the PostgreSQL integration test | 2026-10-05 |
-| Frontend verification | ESLint passed; 2 Vitest tests passed; TypeScript/Vite production build passed | 2026-10-04 |
+| Frontend verification | ESLint passed; 7 Vitest tests passed across 4 files; TypeScript/Vite production build passed | 2026-10-05 |
 | Company-detail API check | BAJAJ-AUTO returned three scores, 13 exact peers and 61 comparison points | 2026-10-04 |
 | Persisted Layer 1 run | 556 scores, 14 exclusions and 2 calculation issues available through the API | 2026-10-04 |
 | Layer 2 engine tests | Determinism, tie-breaking, no-look-ahead, missing-data exclusion and topology invariants passed | 2026-10-04 |
@@ -229,3 +231,13 @@ After every material update:
 - Added an authenticated frontend route for sign-in, account creation, CSV preview, confirmation, persistence and reload.
 - Added authentication, model, normalization, CSV and isolated PostgreSQL ownership integration tests.
 - Kept the shared Supabase migration unapplied pending CI and explicit database-deployment approval.
+
+### 2026-10-05 - No-login portfolio presentation demo implemented
+
+- Added a browser-only portfolio route with a prepared diversified sample and `symbol,weight` CSV input.
+- Validated holdings against the symbols in the latest persisted NIFTY 200 MST and required weights to total 100%.
+- Combined real persisted 20-day divergence results with holding weights, industry allocation and company-detail links.
+- Highlighted unusually moving holdings, concentrated positions, concentrated industries and high-correlation direct MST links.
+- Added held-to-held MST connection reporting using the real Layer 2 edge correlations.
+- Kept all portfolio input in memory for the current browser session; no login, database migration or portfolio persistence is required for the presentation.
+- Verified ESLint, 7 Vitest tests across 4 files and the TypeScript/Vite production build.

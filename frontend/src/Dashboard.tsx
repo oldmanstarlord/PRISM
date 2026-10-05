@@ -66,18 +66,18 @@ export default function Dashboard() {
               <Typography color="text.secondary">Select a company to inspect its exact peer comparison.</Typography>
             </Box>
             <Stack direction="row" sx={{ gap: 1, alignItems: "center" }}>
-            <Button component={Link} to="/portfolios" variant="outlined">My portfolios</Button>
-            <Button component={Link} to="/mst" variant="contained">Explore correlation MST</Button>
-            <FormControl size="small" sx={{ minWidth: 170 }}>
-              <InputLabel id="horizon-label">Horizon</InputLabel>
-              <Select labelId="horizon-label" label="Horizon" value={horizon} onChange={(event) => {
-                setLoading(true); setError(null); setHorizon(event.target.value as Horizon);
-              }}>
-                <MenuItem value={1}>1 trading day</MenuItem>
-                <MenuItem value={5}>5 trading days</MenuItem>
-                <MenuItem value={20}>20 trading days</MenuItem>
-              </Select>
-            </FormControl>
+              <Button component={Link} to="/portfolio-demo" variant="outlined">Portfolio demo</Button>
+              <Button component={Link} to="/mst" variant="contained">Explore correlation MST</Button>
+              <FormControl size="small" sx={{ minWidth: 170 }}>
+                <InputLabel id="horizon-label">Horizon</InputLabel>
+                <Select labelId="horizon-label" label="Horizon" value={horizon} onChange={(event) => {
+                  setLoading(true); setError(null); setHorizon(event.target.value as Horizon);
+                }}>
+                  <MenuItem value={1}>1 trading day</MenuItem>
+                  <MenuItem value={5}>5 trading days</MenuItem>
+                  <MenuItem value={20}>20 trading days</MenuItem>
+                </Select>
+              </FormControl>
             </Stack>
           </Stack>
           {error && <Alert severity="warning">Results are not available ({error}).</Alert>}
