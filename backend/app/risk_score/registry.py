@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from backend.app.db.models import ScoreComponentDefinition
 from backend.app.risk_score.components.avg_traded_value import AvgTradedValueComponent
 from backend.app.risk_score.components.beta_to_benchmark import BetaToBenchmarkComponent
+from backend.app.risk_score.components.events import EventRiskPressureComponent
 from backend.app.risk_score.components.ewma_volatility import EwmaVolatilityComponent
 from backend.app.risk_score.components.fundamentals import (
     FundCashflowQualityComponent,
@@ -20,8 +21,16 @@ from backend.app.risk_score.components.fundamentals import (
     FundLeverageComponent,
     FundProfitTrendComponent,
 )
+from backend.app.risk_score.components.governance import (
+    GovInsiderActivityComponent,
+    GovInstitutionalFlowComponent,
+    GovPromoterHoldingChangeComponent,
+    GovPromoterPledgeComponent,
+)
+from backend.app.risk_score.components.macro import MacroExposureComponent
 from backend.app.risk_score.components.max_drawdown_1y import MaxDrawdown1yComponent
 from backend.app.risk_score.components.mst_centrality import MstCentralityComponent
+from backend.app.risk_score.components.news_policy import NewsPolicyPressureComponent
 from backend.app.risk_score.components.sector_divergence import SectorDivergenceComponent
 from backend.app.risk_score.components.tail_loss import TailLossComponent
 from backend.app.risk_score.components.zero_volume_days import ZeroVolumeDaysComponent
@@ -368,9 +377,7 @@ STEP_7_COMPONENT_DEFINITIONS: dict[str, RegisteredComponentDefinition] = {
         component_id="fund_coverage",
         dimension="fundamentals",
         name="Solvency & Interest Coverage",
-        description=(
-            "Operating profit to interest expense coverage ratio (lower is riskier)."
-        ),
+        description=("Operating profit to interest expense coverage ratio (lower is riskier)."),
         direction="lower_is_riskier",
         scope="industry",
         min_group_size=5,
@@ -400,8 +407,7 @@ STEP_7_COMPONENT_DEFINITIONS: dict[str, RegisteredComponentDefinition] = {
         dimension="fundamentals",
         name="Cash Flow Quality (CFO / PAT)",
         description=(
-            "Operating cash flow to net profit ratio over trailing 12 months "
-            "(lower is riskier)."
+            "Operating cash flow to net profit ratio over trailing 12 months (lower is riskier)."
         ),
         direction="lower_is_riskier",
         scope="industry",
@@ -409,6 +415,134 @@ STEP_7_COMPONENT_DEFINITIONS: dict[str, RegisteredComponentDefinition] = {
         weight=1.0,
         active=True,
         introduced_in_step="Step 7",
+    ),
+}
+
+# Active Step 8 governance component definitions
+STEP_8_COMPONENT_DEFINITIONS: dict[str, RegisteredComponentDefinition] = {
+    "gov_promoter_pledge": RegisteredComponentDefinition(
+        id=None,
+        component_id="gov_promoter_pledge",
+        dimension="governance",
+        name="Promoter Pledge Risk",
+        description=(
+            "Promoter shares pledged as % of promoter holding (level + 2-quarter trend). "
+            "Higher pledge levels and rising pledge trends are riskier."
+        ),
+        direction="higher_is_riskier",
+        scope="universe",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 8",
+    ),
+    "gov_promoter_holding_change": RegisteredComponentDefinition(
+        id=None,
+        component_id="gov_promoter_holding_change",
+        dimension="governance",
+        name="Promoter Holding Change",
+        description=(
+            "Change in promoter group shareholding % over last 2 reported quarters. "
+            "A declining promoter stake signals reduced confidence (higher is riskier)."
+        ),
+        direction="higher_is_riskier",
+        scope="universe",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 8",
+    ),
+    "gov_institutional_flow": RegisteredComponentDefinition(
+        id=None,
+        component_id="gov_institutional_flow",
+        dimension="governance",
+        name="Institutional Flow (FII + DII)",
+        description=(
+            "Combined FII + DII holding % change over last 2 reported quarters. "
+            "Net institutional outflow (negative change) is riskier."
+        ),
+        direction="higher_is_riskier",
+        scope="universe",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 8",
+    ),
+    "gov_insider_activity": RegisteredComponentDefinition(
+        id=None,
+        component_id="gov_insider_activity",
+        dimension="governance",
+        name="Net Insider Selling Activity",
+        description=(
+            "Net insider selling value relative to market cap over rolling window. "
+            "Higher net sell ratio is riskier."
+        ),
+        direction="higher_is_riskier",
+        scope="universe",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 8",
+    ),
+}
+
+# Active Step 9 macro component definitions
+STEP_9_COMPONENT_DEFINITIONS: dict[str, RegisteredComponentDefinition] = {
+    "macro_exposure": RegisteredComponentDefinition(
+        id=None,
+        component_id="macro_exposure",
+        dimension="macro",
+        name="Macroeconomic Regime & Sector Sensitivity",
+        description=(
+            "Evaluates stock vulnerability to macro shocks (Crude, FX, Rates, Volatility, Flows) "
+            "transmitted through sector sensitivities, scaled by market regime state."
+        ),
+        direction="higher_is_riskier",
+        scope="universe",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 9",
+    ),
+}
+
+# Active Step 10 event risk component definitions
+STEP_10_COMPONENT_DEFINITIONS: dict[str, RegisteredComponentDefinition] = {
+    "event_risk_pressure": RegisteredComponentDefinition(
+        id=None,
+        component_id="event_risk_pressure",
+        dimension="events",
+        name="Event Risk Pressure",
+        description=(
+            "Recency-decayed pressure from exchange corporate announcements, "
+            "weighted by event type, parsed severity, and sentiment direction."
+        ),
+        direction="higher_is_riskier",
+        scope="universe",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 10",
+    ),
+}
+
+# Active Step 11 news & policy component definitions
+STEP_11_COMPONENT_DEFINITIONS: dict[str, RegisteredComponentDefinition] = {
+    "news_policy_pressure": RegisteredComponentDefinition(
+        id=None,
+        component_id="news_policy_pressure",
+        dimension="macro",
+        name="News & Policy Headwind Pressure",
+        description=(
+            "Recency-decayed severity of matched regulatory and policy headwinds for the "
+            "stock's industry, mapped with deterministic economic rationales."
+        ),
+        direction="higher_is_riskier",
+        scope="universe",
+        min_group_size=5,
+        weight=0.05,
+        active=True,
+        introduced_in_step="Step 11",
     ),
 }
 
@@ -425,6 +559,17 @@ BUILTIN_COMPONENT_CLASSES: dict[str, type] = {
     "fund_coverage": FundCoverageComponent,
     "fund_profit_trend": FundProfitTrendComponent,
     "fund_cashflow_quality": FundCashflowQualityComponent,
+    # Step 8: Governance components
+    "gov_promoter_pledge": GovPromoterPledgeComponent,
+    "gov_promoter_holding_change": GovPromoterHoldingChangeComponent,
+    "gov_institutional_flow": GovInstitutionalFlowComponent,
+    "gov_insider_activity": GovInsiderActivityComponent,
+    # Step 9: Macro components
+    "macro_exposure": MacroExposureComponent,
+    # Step 10: Event components
+    "event_risk_pressure": EventRiskPressureComponent,
+    # Step 11: News & Policy components
+    "news_policy_pressure": NewsPolicyPressureComponent,
 }
 
 
@@ -487,7 +632,15 @@ class ComponentRegistry:
         return None
 
     def get_definition(self, component_id: str) -> RegisteredComponentDefinition | None:
-        return self._definitions.get(component_id) or STEP_5_COMPONENT_DEFINITIONS.get(component_id)
+        return (
+            self._definitions.get(component_id)
+            or STEP_5_COMPONENT_DEFINITIONS.get(component_id)
+            or STEP_7_COMPONENT_DEFINITIONS.get(component_id)
+            or STEP_8_COMPONENT_DEFINITIONS.get(component_id)
+            or STEP_9_COMPONENT_DEFINITIONS.get(component_id)
+            or STEP_10_COMPONENT_DEFINITIONS.get(component_id)
+            or STEP_11_COMPONENT_DEFINITIONS.get(component_id)
+        )
 
     def get_handler(self, component_id: str) -> Any | None:
         return self._handlers.get(component_id)

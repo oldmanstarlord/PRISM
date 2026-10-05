@@ -7,7 +7,9 @@ Create Date: 2026-10-05 20:00:00.000000
 
 from __future__ import annotations
 
+import hashlib
 import json
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -149,12 +151,12 @@ def upgrade() -> None:
         "model_config",
         sa.column("id", postgresql.UUID(as_uuid=True)),
         sa.column("config_key", sa.Text()),
-        sa.column("version", sa.Integer()),
+        sa.column("version", sa.String()),
         sa.column("status", sa.Text()),
-        sa.column("configuration", sa.Text()),
-        sa.column("checksum", sa.Text()),
-        sa.column("description", sa.Text()),
-        sa.column("created_by", sa.Text()),
+        sa.column("configuration", postgresql.JSONB()),
+        sa.column("configuration_hash", sa.String()),
+        sa.column("created_at", sa.DateTime(timezone=True)),
+        sa.column("updated_at", sa.DateTime(timezone=True)),
     )
 
     fundamental_config_payload = {
@@ -183,15 +185,16 @@ def upgrade() -> None:
             {
                 "id": uuid4(),
                 "config_key": "fundamental_analysis",
-                "version": 1,
+                "version": "1.0.0",
                 "status": "approved",
-                "configuration": json.dumps(fundamental_config_payload, sort_keys=True),
-                "checksum": "step7_fundamentals_v1",
-                "description": (
-                    "Fundamental analysis configuration: reporting lags, "
-                    "peer group profiles, and validation rules."
-                ),
-                "created_by": "step7_migration",
+                "configuration": fundamental_config_payload,
+                "configuration_hash": hashlib.sha256(
+                    json.dumps(
+                        fundamental_config_payload, sort_keys=True, separators=(",", ":")
+                    ).encode("utf-8")
+                ).hexdigest(),
+                "created_at": datetime.now(UTC),
+                "updated_at": datetime.now(UTC),
             },
         ],
     )

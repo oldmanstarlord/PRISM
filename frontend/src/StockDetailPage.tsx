@@ -21,11 +21,15 @@ import ShowChartIcon from "@mui/icons-material/ShowChart";
 import ShieldIcon from "@mui/icons-material/Shield";
 
 import { useApi } from "./api";
-import type { BreakdownItem, StockRiskEnvelope } from "./types";
+import type { BreakdownItem, StockEventsResponse, StockRiskEnvelope } from "./types";
 import { BreakdownBars } from "./components/BreakdownBars";
 import { ExplainPanel } from "./components/ExplainPanel";
 import { FreshnessBadge } from "./components/FreshnessBadge";
 import { FundamentalsPanel } from "./components/FundamentalsPanel";
+import { GovernancePanel } from "./components/GovernancePanel";
+import { MacroPanel } from "./components/MacroPanel";
+import { NewsPolicyPanel } from "./components/NewsPolicyPanel";
+import { Timeline } from "./components/Timeline";
 
 export default function StockDetailPage() {
   const { symbol = "" } = useParams<{ symbol: string }>();
@@ -43,6 +47,10 @@ export default function StockDetailPage() {
       data_coverage: number;
     }>
   >(`/stocks/${encodeURIComponent(upperSymbol)}/risk/history?limit=10`);
+
+  const { data: stockEvents } = useApi<StockEventsResponse>(
+    `/stocks/${encodeURIComponent(upperSymbol)}/events`
+  );
 
   // Transform generic components array from API into BreakdownItems (D2, D5)
   const breakdownItems: BreakdownItem[] = useMemo(() => {
@@ -296,6 +304,24 @@ export default function StockDetailPage() {
 
       {/* Fundamentals Panel: Quarterly table, TTM metrics, and peer percentiles (Step 7) */}
       <FundamentalsPanel symbol={upperSymbol} />
+
+      {/* Governance Panel: Shareholding pattern, pledge trend, insider trades (Step 8) */}
+      <GovernancePanel symbol={upperSymbol} />
+
+      {/* Macroeconomic Sensitivity Panel (Step 9) */}
+      <MacroPanel symbol={upperSymbol} />
+
+      {/* Corporate Announcements & Events Timeline (Step 10, Dimension: Events) */}
+      {stockEvents?.events && stockEvents.events.length > 0 && (
+        <Timeline
+          events={stockEvents.events}
+          symbol={upperSymbol}
+          title="Corporate Announcements & Explainable Events (Dimension: Events)"
+        />
+      )}
+
+      {/* Policy Press Releases & Sector Headwinds (Step 11, Dimension: Macro/Events) */}
+      <NewsPolicyPanel symbol={upperSymbol} />
 
       {/* History Trajectory Card */}
       {history.length > 1 && (

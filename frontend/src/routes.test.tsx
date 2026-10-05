@@ -13,6 +13,10 @@ vi.mock("cytoscape", () => ({
   })),
 }));
 
+vi.mock("react-plotly.js", () => ({
+  default: () => <div data-testid="mock-plotly-chart">Plotly Chart</div>,
+}));
+
 const mockMeta = {
   platform: "PRISM",
   authority: "PRISM_SRS.md",
@@ -173,6 +177,79 @@ beforeEach(() => {
           json: async () => [],
         });
       }
+      if (url.includes("/macro/regime/latest")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            as_of: "2024-03-28",
+            regime: "stressed",
+            features: {
+              realised_vol_percentile: 92.4,
+              correlation_percentile: 85.0,
+              india_vix: 24.5,
+              regime_multiplier: 1.5,
+              hysteresis_applied: true,
+            },
+            config_version: "v1.0.0",
+          }),
+        });
+      }
+      if (url.includes("/macro/series/crude_oil")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            series: {
+              series_key: "crude_oil",
+              name: "Brent Crude Oil",
+              source: "Yahoo Finance",
+              frequency: "daily",
+              unit: "USD/bbl",
+              license_note: "Open",
+              is_active: true,
+            },
+            observations: [],
+            total_observations: 0,
+            latest_observation: null,
+          }),
+        });
+      }
+      if (url.includes("/macro/series")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            {
+              series_key: "crude_oil",
+              name: "Brent Crude Oil",
+              source: "Yahoo Finance",
+              frequency: "daily",
+              unit: "USD/bbl",
+              license_note: "Open",
+              is_active: true,
+            },
+          ],
+        });
+      }
+      if (url.includes("/macro/sensitivities")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        });
+      }
+      if (url.includes("/stocks/TEST/macro")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            symbol: "TEST",
+            industry: "Oil & Gas",
+            regime: "stressed",
+            regime_multiplier: 1.5,
+            macro_score: 5.0,
+            sensitivities: [],
+            recent_shocks: {},
+            limitations: [],
+          }),
+        });
+      }
       return Promise.resolve({
         ok: true,
         json: async () => ({}),
@@ -211,6 +288,7 @@ describe("AppRoutes across all views", () => {
     { path: "/mst", expectedTitle: /correlation minimum spanning tree/i },
     { path: "/portfolio", expectedTitle: /portfolio risk & holdings/i },
     { path: "/stocks", expectedTitle: /stock risk explorer/i },
+    { path: "/macro", expectedTitle: /macroeconomic series & sector sensitivity/i },
     { path: "/shock", expectedTitle: /shock & scenario simulation/i },
     { path: "/validation", expectedTitle: /walk-forward & purged validation/i },
     { path: "/data-health", expectedTitle: /data health & quality surveillance/i },

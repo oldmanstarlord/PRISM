@@ -10,7 +10,7 @@ Components:
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, cast
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import select

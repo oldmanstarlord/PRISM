@@ -5,7 +5,7 @@ from typing import cast
 from uuid import UUID
 
 import numpy as np
-import pandas as pd  # type: ignore[import-untyped]
+import pandas as pd
 from sqlalchemy import select
 
 from backend.app.db.models import (

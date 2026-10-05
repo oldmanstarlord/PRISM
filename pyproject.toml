@@ -63,6 +63,30 @@ python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 
+# Layer 1 and Layer 2 files are approved and must not be edited.
+# Their `# type: ignore[import-untyped]` comments were written before pandas/numpy
+# shipped inline stubs; suppressing warn_unused_ignores for these modules only.
+[[tool.mypy.overrides]]
+module = [
+  "backend.app.sector_divergence.inputs",
+  "backend.app.sector_divergence.calculator",
+  "backend.app.correlation_mst.inputs",
+]
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = [
+  "pandas.*",
+  "pandas",
+  "yfinance.*",
+  "yfinance",
+  "sklearn.*",
+  "statsmodels.*",
+  "scipy.*",
+  "scipy",
+]
+ignore_missing_imports = true
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -10,7 +10,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import numpy as np
-import pandas as pd  # type: ignore[import-untyped]
+import pandas as pd
 from fastapi import HTTPException
 from fastapi import status as http_status
 from sqlalchemy import func, select

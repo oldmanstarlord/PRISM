@@ -30,9 +30,23 @@ from backend.app.db.models import (
     SecurityShareCount,
 )
 from backend.app.db.session import engine, get_session
+from backend.app.events.schemas import RecentEventsResponse, StockEventsResponse
 from backend.app.fundamentals.service import get_stock_fundamentals
+from backend.app.macro.schemas import (
+    MacroSeriesDefinitionOut,
+    MacroSeriesDetailOut,
+    MarketRegimeOut,
+    SectorMacroSensitivityOut,
+    StockMacroExposureOut,
+)
 from backend.app.mst_diagnostics.config import load_mst_diagnostics_config
 from backend.app.mst_diagnostics.stability import calculate_stability_grade
+from backend.app.policy.schemas import (
+    PolicyRuleOut,
+    PolicyRuleUpdate,
+    RecentPolicyEventsResponse,
+    StockNewsResponse,
+)
 from backend.app.portfolio import service as portfolio_service
 from backend.app.portfolio.schemas import (
     DiversificationResponse,
@@ -1032,3 +1046,321 @@ def get_stock_fundamentals_endpoint(
             detail=f"Security with symbol '{symbol}' not found",
         )
     return data
+
+
+# ---------------------------------------------------------------------------
+# Step 8: Governance Signals (shareholding pattern, insider trades)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/stocks/{symbol}/governance", tags=["stocks", "governance"])
+def get_stock_governance(
+    symbol: str,
+    session: DatabaseSession,
+) -> dict[str, Any]:
+    """Retrieve point-in-time governance signals for a stock.
+
+    Returns SEBI Reg 31 shareholding pattern (pledge trend, promoter/FII/DII table)
+    and SEBI PIT Reg 7(2) / SAST insider trade disclosures within a rolling window.
+
+    All data is descriptive. No look-ahead. published_at is the actual SEBI
+    filing date from the exchange record — never estimated.
+
+    Limitations:
+    - Shareholding data from SEBI Reg 31 quarterly filings (21-day filing lag).
+    - Insider data from SEBI PIT Reg 7(2) / SAST Reg 29/31 CSV import.
+    - Source: CSV import adapter; live exchange API requires ToS agreement.
+    - MST/correlation is never presented as causal.
+    """
+    from backend.app.core.model_config import load_model_config
+    from backend.app.db.models import SecurityAlias
+    from backend.app.governance.config import GovernanceAnalysisConfig
+    from backend.app.governance.service import get_governance_signals
+
+    # Load config from DB (falls back to class defaults if not yet migrated)
+    try:
+        cfg_envelope = load_model_config(session, "governance_analysis", approved_only=False)
+        gov_config = GovernanceAnalysisConfig(**cfg_envelope.configuration)
+    except Exception:
+        gov_config = GovernanceAnalysisConfig()
+
+    norm_symbol = symbol.strip().upper()
+
+    # Fetch latest market cap for insider ratio computation
+    market_cap_inr: float | None = None
+    alias_row = session.scalars(
+        select(SecurityAlias).where(SecurityAlias.symbol == norm_symbol)
+    ).first()
+    if alias_row is not None:
+        latest_stat = session.scalar(
+            select(SecurityMarketStat)
+            .where(SecurityMarketStat.security_id == alias_row.security_id)
+            .order_by(SecurityMarketStat.trade_date.desc())
+            .limit(1)
+        )
+        if latest_stat is not None and latest_stat.market_cap is not None:
+            market_cap_inr = float(latest_stat.market_cap)
+
+    data = get_governance_signals(
+        session=session,
+        symbol=norm_symbol,
+        config=gov_config,
+        market_cap_inr=market_cap_inr,
+    )
+    if data is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Security with symbol '{symbol}' not found",
+        )
+    return data
+
+
+# -----------------------------------------------------------------------------
+# Macroeconomic Regime & Sector Sensitivity Endpoints (Step 9)
+# -----------------------------------------------------------------------------
+
+
+@router.get(
+    "/macro/regime/latest",
+    response_model=MarketRegimeOut,
+    tags=["macro"],
+    summary="Get latest point-in-time market regime",
+)
+def read_latest_market_regime(
+    session: DatabaseSession,
+    as_of: date | None = None,
+) -> MarketRegimeOut:
+    """Retrieve the latest point-in-time rule-based market regime state."""
+    from backend.app.macro.service import get_latest_market_regime
+
+    return get_latest_market_regime(session, as_of=as_of)
+
+
+@router.get(
+    "/macro/series",
+    response_model=list[MacroSeriesDefinitionOut],
+    tags=["macro"],
+    summary="List all registered macroeconomic series",
+)
+def read_macro_series_list(
+    session: DatabaseSession,
+) -> list[MacroSeriesDefinitionOut]:
+    """List all registered macroeconomic and market series definitions."""
+    from backend.app.macro.service import list_macro_series
+
+    return list_macro_series(session)
+
+
+@router.get(
+    "/macro/series/{key}",
+    response_model=MacroSeriesDetailOut,
+    tags=["macro"],
+    summary="Get macroeconomic series observations",
+)
+def read_macro_series_detail(
+    key: str,
+    session: DatabaseSession,
+    as_of: date | None = None,
+    limit: int = Query(500, ge=1, le=2000),
+) -> MacroSeriesDetailOut:
+    """Retrieve detailed time series observations for a specific macro key."""
+    from backend.app.macro.service import get_macro_series_detail
+
+    detail = get_macro_series_detail(session, series_key=key.lower(), as_of=as_of, limit=limit)
+    if not detail:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Macro series with key '{key}' not found",
+        )
+    return detail
+
+
+@router.get(
+    "/macro/sensitivities",
+    response_model=list[SectorMacroSensitivityOut],
+    tags=["macro"],
+    summary="Get all sector macroeconomic sensitivities",
+)
+def read_all_macro_sensitivities(
+    session: DatabaseSession,
+    industry: str | None = None,
+    series_key: str | None = None,
+    as_of: date | None = None,
+) -> list[SectorMacroSensitivityOut]:
+    """Retrieve all latest sector sensitivities across all industries and macro series."""
+    from backend.app.macro.service import get_all_sector_sensitivities
+
+    return get_all_sector_sensitivities(
+        session,
+        industry=industry,
+        series_key=series_key,
+        as_of=as_of,
+    )
+
+
+@router.get(
+    "/industries/{industry}/macro-sensitivity",
+    response_model=list[SectorMacroSensitivityOut],
+    tags=["macro"],
+    summary="Get sector macroeconomic sensitivities",
+)
+def read_industry_macro_sensitivity(
+    industry: str,
+    session: DatabaseSession,
+    as_of: date | None = None,
+) -> list[SectorMacroSensitivityOut]:
+    """Retrieve rolling OLS regression sensitivities for a sector across macro series."""
+    from backend.app.macro.service import get_industry_macro_sensitivities
+
+    return get_industry_macro_sensitivities(session, industry=industry, as_of=as_of)
+
+
+@router.get(
+    "/stocks/{symbol}/macro",
+    response_model=StockMacroExposureOut,
+    tags=["macro"],
+    summary="Get stock macro exposure profile",
+)
+def read_stock_macro_profile(
+    symbol: str,
+    session: DatabaseSession,
+    as_of: date | None = None,
+) -> StockMacroExposureOut:
+    """Retrieve full macro exposure profile for a specific stock."""
+    from backend.app.macro.service import get_stock_macro_profile
+
+    profile = get_stock_macro_profile(session, symbol=symbol.strip().upper(), as_of=as_of)
+    if not profile:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Stock with symbol '{symbol}' not found",
+        )
+    return profile
+
+
+# --- Step 10: Corporate Announcements & Explainable Events ---
+
+
+@router.get(
+    "/stocks/{symbol}/events",
+    response_model=StockEventsResponse,
+    tags=["events"],
+    summary="Get corporate announcements and explainable events timeline for a stock",
+)
+def read_stock_events(
+    symbol: str,
+    session: DatabaseSession,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> StockEventsResponse:
+    """Retrieve chronologically ordered corporate announcements and NLP sentiment signals."""
+    from backend.app.events.service import get_stock_events
+
+    res = get_stock_events(session, symbol=symbol, limit=limit)
+    if not res:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Stock with symbol '{symbol}' not found or has no registered entity",
+        )
+    return res
+
+
+@router.get(
+    "/events/recent",
+    response_model=RecentEventsResponse,
+    tags=["events"],
+    summary="Get recent corporate announcements feed across stocks",
+)
+def read_recent_events(
+    session: DatabaseSession,
+    event_type: Annotated[str | None, Query(description="Filter by event type")] = None,
+    min_importance: Annotated[
+        float | None, Query(ge=1.0, le=10.0, description="Minimum importance score")
+    ] = None,
+    since_date: Annotated[
+        date | None, Query(description="Filter events effective on or after date")
+    ] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> RecentEventsResponse:
+    """Retrieve recent corporate announcements and explainable events feed with optional filters."""
+    from backend.app.events.service import get_recent_events
+
+    return get_recent_events(
+        session,
+        event_type=event_type,
+        min_importance=min_importance,
+        since_date=since_date,
+        limit=limit,
+    )
+
+
+# --- Step 11: Timestamped News & Policy Rules ---
+
+
+@router.get(
+    "/stocks/{symbol}/news",
+    response_model=StockNewsResponse,
+    tags=["policy"],
+    summary="Get news and policy events dossier for a stock",
+)
+def read_stock_news(
+    symbol: str,
+    session: DatabaseSession,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> StockNewsResponse:
+    """Retrieve news announcements and matched policy headwinds/tailwinds for a stock's industry."""
+    from backend.app.policy.service import get_stock_news
+
+    return get_stock_news(session, symbol=symbol, limit=limit)
+
+
+@router.get(
+    "/policy/rules",
+    response_model=list[PolicyRuleOut],
+    tags=["policy"],
+    summary="List policy-to-sector rules",
+)
+def read_policy_rules(
+    session: DatabaseSession,
+    active_only: Annotated[bool, Query(description="Filter active rules only")] = False,
+    category: Annotated[str | None, Query(description="Filter by match category")] = None,
+) -> list[PolicyRuleOut]:
+    """Retrieve editable policy rules with version, reviewer, and economic rationale."""
+    from backend.app.policy.service import list_policy_rules
+
+    return list_policy_rules(session, active_only=active_only, category=category)
+
+
+@router.get(
+    "/policy/events/recent",
+    response_model=RecentPolicyEventsResponse,
+    tags=["policy"],
+    summary="Get recent policy events across industries",
+)
+def read_recent_policy_events(
+    session: DatabaseSession,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    industry: Annotated[str | None, Query(description="Filter by affected industry")] = None,
+) -> RecentPolicyEventsResponse:
+    """Retrieve recent policy and regulatory events with economic evidence and rationales."""
+    from backend.app.policy.service import list_recent_policy_events
+
+    return list_recent_policy_events(session, limit=limit, industry=industry)
+
+
+@router.put(
+    "/policy/rules/{key}",
+    response_model=PolicyRuleOut,
+    tags=["policy"],
+    summary="Update or create a policy rule version (requires reviewer and rationale)",
+)
+def update_policy_rule_endpoint(
+    key: str,
+    update: PolicyRuleUpdate,
+    session: DatabaseSession,
+) -> PolicyRuleOut:
+    """Create a new version of a policy rule enforcing reviewer and written
+    economic rationale (D1).
+    """
+    from backend.app.policy.service import update_policy_rule
+
+    return update_policy_rule(session, key=key, update=update)

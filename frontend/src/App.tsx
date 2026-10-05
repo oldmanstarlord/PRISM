@@ -13,7 +13,9 @@ const MstPage = lazy(() => import("./MstPage"));
 const PortfolioPage = lazy(() => import("./PortfolioPage"));
 const StocksPage = lazy(() => import("./StocksPage"));
 const StockDetailPage = lazy(() => import("./StockDetailPage"));
+const MacroPage = lazy(() => import("./MacroPage"));
 const ShockPage = lazy(() => import("./ShockPage"));
+const PolicyRulesPage = lazy(() => import("./PolicyRulesPage"));
 
 function LoadingFallback() {
   return (
@@ -63,10 +65,26 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/macro"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <MacroPage />
+            </Suspense>
+          }
+        />
+        <Route
           path="/shock"
           element={
             <Suspense fallback={<LoadingFallback />}>
               <ShockPage />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/policy-rules"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PolicyRulesPage />
             </Suspense>
           }
         />

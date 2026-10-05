@@ -4,8 +4,8 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-import pandas as pd  # type: ignore[import-untyped]
-import yfinance as yf  # type: ignore[import-untyped]
+import pandas as pd
+import yfinance as yf
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from backend.app.market_data.types import DailyPrice

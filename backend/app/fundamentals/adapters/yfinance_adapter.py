@@ -8,8 +8,8 @@ import time
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-import pandas as pd  # type: ignore[import-untyped]
-import yfinance as yf  # type: ignore[import-untyped]
+import pandas as pd
+import yfinance as yf
 
 from backend.app.fundamentals.adapters.base import ParsedDocument, ParsedPeriod, ResultAdapter
 

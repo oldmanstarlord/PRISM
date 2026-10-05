@@ -13,6 +13,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision: str = "e5f6a7b8c905"
 down_revision: str | None = "d4e5f6a7b804"
@@ -200,7 +201,7 @@ def upgrade() -> None:
         sa.column("config_key", sa.String()),
         sa.column("version", sa.String()),
         sa.column("status", sa.String()),
-        sa.column("configuration", sa.Text()),
+        sa.column("configuration", postgresql.JSONB()),
         sa.column("configuration_hash", sa.String()),
         sa.column("created_at", sa.DateTime(timezone=True)),
         sa.column("updated_at", sa.DateTime(timezone=True)),
@@ -214,7 +215,7 @@ def upgrade() -> None:
                 "config_key": "risk_engine_parameters",
                 "version": "1.0.0",
                 "status": "approved",
-                "configuration": serialized_cfg,
+                "configuration": params_payload,
                 "configuration_hash": cfg_hash,
                 "created_at": now,
                 "updated_at": now,

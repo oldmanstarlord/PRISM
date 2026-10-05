@@ -63,8 +63,6 @@ class CsvResultAdapter(ResultAdapter):
                     )
                     method = "estimated"
 
-
-
                 extra_raw = row.get("extra")
                 extra: dict[str, Any] = {}
                 if extra_raw:

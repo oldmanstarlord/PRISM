@@ -988,3 +988,384 @@ class FundamentalMetric(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ShareholdingPattern(Base):
+    """Quarterly SEBI Reg 31 shareholding disclosures (promoter/FII/DII/public)."""
+
+    __tablename__ = "shareholding_pattern"
+    __table_args__ = (
+        UniqueConstraint(
+            "security_id",
+            "quarter_end",
+            "version",
+            name="uq_shareholding_pattern_version",
+        ),
+        CheckConstraint(
+            "(promoter_pct IS NULL OR (promoter_pct >= 0 AND promoter_pct <= 100))",
+            name="ck_shareholding_promoter_pct",
+        ),
+        CheckConstraint(
+            "(fii_pct IS NULL OR (fii_pct >= 0 AND fii_pct <= 100))",
+            name="ck_shareholding_fii_pct",
+        ),
+        Index(
+            "ix_shareholding_pattern_security_quarter",
+            "security_id",
+            "quarter_end",
+            "published_at",
+        ),
+        Index(
+            "ix_shareholding_pattern_content_hash",
+            "content_hash",
+            unique=True,
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    quarter_end: Mapped[date] = mapped_column(Date, nullable=False)
+    promoter_pct: Mapped[float | None] = mapped_column(Float)
+    promoter_pledged_pct_of_promoter: Mapped[float | None] = mapped_column(Float)
+    fii_pct: Mapped[float | None] = mapped_column(Float)
+    dii_pct: Mapped[float | None] = mapped_column(Float)
+    public_pct: Mapped[float | None] = mapped_column(Float)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_document_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("source_document.id", ondelete="SET NULL"), nullable=True
+    )
+    source: Mapped[str] = mapped_column(
+        String(120), nullable=False, default="CSV_IMPORT", server_default="CSV_IMPORT"
+    )
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class InsiderTrade(Base):
+    """SEBI PIT Regulation 7(2) and SAST Regulation 29/31 insider trade disclosures."""
+
+    __tablename__ = "insider_trade"
+    __table_args__ = (
+        UniqueConstraint("content_hash", name="uq_insider_trade_content_hash"),
+        Index("ix_insider_trade_security_date", "security_id", "txn_date", "published_at"),
+        Index("ix_insider_trade_published", "security_id", "published_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    person_category: Mapped[str] = mapped_column(String(120), nullable=False)
+    txn_type: Mapped[str] = mapped_column(String(40), nullable=False)  # buy|sell|pledge|revoke
+    quantity: Mapped[int | None] = mapped_column(BigInteger)
+    value: Mapped[float | None] = mapped_column(Float)  # INR
+    txn_date: Mapped[date] = mapped_column(Date, nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source_document_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("source_document.id", ondelete="SET NULL"), nullable=True
+    )
+    source: Mapped[str] = mapped_column(
+        String(120), nullable=False, default="CSV_IMPORT", server_default="CSV_IMPORT"
+    )
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class MacroSeriesDefinition(TimestampMixin, Base):
+    """Catalog of registered macroeconomic and market-wide series."""
+
+    __tablename__ = "macro_series_definition"
+
+    series_key: Mapped[str] = mapped_column(String(50), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source: Mapped[str] = mapped_column(String(120), nullable=False)
+    frequency: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="DAILY", server_default="DAILY"
+    )
+    unit: Mapped[str] = mapped_column(String(50), nullable=False)
+    license_note: Mapped[str] = mapped_column(Text, nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
+
+
+class MacroObservation(Base):
+    """Point-in-time observations of macroeconomic series."""
+
+    __tablename__ = "macro_observation"
+    __table_args__ = (
+        UniqueConstraint("series_key", "obs_date", "version", name="uq_macro_observation_version"),
+        Index("ix_macro_obs_query", "series_key", "obs_date", "published_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    series_key: Mapped[str] = mapped_column(
+        ForeignKey("macro_series_definition.series_key", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    obs_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    value: Mapped[float] = mapped_column(Float, nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class MarketRegime(Base):
+    """Point-in-time rule-based market regime state."""
+
+    __tablename__ = "market_regime"
+    __table_args__ = (
+        UniqueConstraint("as_of", "config_version", name="uq_market_regime_as_of_version"),
+        Index("ix_market_regime_as_of", "as_of"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    as_of: Mapped[date] = mapped_column(Date, nullable=False)
+    regime: Mapped[str] = mapped_column(String(20), nullable=False)  # calm | trending | stressed
+    features: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    config_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SectorMacroSensitivity(Base):
+    """Rolling point-in-time regression sensitivity of industry return to macro changes."""
+
+    __tablename__ = "sector_macro_sensitivity"
+    __table_args__ = (
+        UniqueConstraint(
+            "industry",
+            "series_key",
+            "window_end",
+            "config_version",
+            name="uq_sector_macro_sensitivity",
+        ),
+        Index("ix_sector_macro_lookup", "industry", "series_key", "window_end"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    industry: Mapped[str] = mapped_column(String(160), nullable=False, index=True)
+    series_key: Mapped[str] = mapped_column(
+        ForeignKey("macro_series_definition.series_key", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    window_end: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    beta: Mapped[float] = mapped_column(Float, nullable=False)
+    t_stat: Mapped[float] = mapped_column(Float, nullable=False)
+    n_obs: Mapped[int] = mapped_column(Integer, nullable=False)
+    p_value: Mapped[float] = mapped_column(Float, nullable=False)
+    is_significant: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    config_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+# ---------------------------------------------------------------------------
+# Step 10: Event Intelligence & Text Scoring Models (D1, D3, D4)
+# ---------------------------------------------------------------------------
+
+
+class EventRule(Base):
+    """Rule-based mapping from exchange announcement category to canonical event type (D1)."""
+
+    __tablename__ = "event_rule"
+
+    rule_key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    source_category: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    risk_relevant: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    direction: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # "negative" | "positive" | "neutral"
+    version: Mapped[str] = mapped_column(String(20), default="v1.0.0", nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class EventItem(Base):
+    """Normalized point-in-time company announcement linked to security and trade date (D4)."""
+
+    __tablename__ = "event_item"
+    __table_args__ = (
+        Index("ix_event_item_sec_pub", "security_id", "published_at"),
+        Index("ix_event_item_effective", "security_id", "effective_trading_date"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    source_document_id: Mapped[UUID] = mapped_column(
+        ForeignKey("source_document.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE"), nullable=False
+    )
+    headline: Mapped[str] = mapped_column(String(500), nullable=False)
+    body: Mapped[str | None] = mapped_column(Text)
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    event_type_method: Mapped[str] = mapped_column(
+        String(20), default="rule", nullable=False
+    )  # "rule" | "model"
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    effective_trading_date: Mapped[date] = mapped_column(Date, nullable=False)
+    importance: Mapped[float] = mapped_column(Float, nullable=False)
+    importance_components: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class TextScore(Base):
+    """Text-level sentiment and evidence scoring record (FinBERT / rule-based) for an event item."""
+
+    __tablename__ = "text_score"
+    __table_args__ = (Index("ix_text_score_item_model", "item_id", "model_name", "model_version"),)
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("event_item.id", ondelete="CASCADE"), nullable=False
+    )
+    model_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    model_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    sentiment: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # "positive" | "negative" | "neutral"
+    p_pos: Mapped[float] = mapped_column(Float, nullable=False)
+    p_neg: Mapped[float] = mapped_column(Float, nullable=False)
+    p_neu: Mapped[float] = mapped_column(Float, nullable=False)
+    event_type: Mapped[str | None] = mapped_column(String(50))
+    importance: Mapped[float | None] = mapped_column(Float)
+    evidence_span: Mapped[str | None] = mapped_column(Text)
+    scored_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+# --- Step 11: Timestamped News Items & Explainable Policy-to-Sector Rules ---
+
+
+class NewsItem(Base):
+    """Timestamped public news or regulatory press release item (point-in-time, D4)."""
+
+    __tablename__ = "news_item"
+    __table_args__ = (
+        Index("ix_news_item_published", "published_at"),
+        Index("ix_news_item_source", "source"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    source: Mapped[str] = mapped_column(String(80), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    headline: Mapped[str] = mapped_column(String(500), nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class NewsSecurityLink(Base):
+    """Entity linking connecting a news item to a specific listed security."""
+
+    __tablename__ = "news_security_link"
+    __table_args__ = (
+        Index("ix_news_sec_link_sec", "security_id"),
+        Index("ix_news_sec_link_item", "news_item_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    news_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("news_item.id", ondelete="CASCADE"), nullable=False
+    )
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE"), nullable=False
+    )
+    method: Mapped[str] = mapped_column(String(30), nullable=False)  # "symbol" | "isin" | "name"
+    confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PolicyRule(Base):
+    """Editable, versioned policy-to-sector transmission rule (D1)."""
+
+    __tablename__ = "policy_rule"
+    __table_args__ = (
+        Index("ix_policy_rule_key_version", "rule_key", "version"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    rule_key: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+    match_keywords: Mapped[list[object]] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False
+    )
+    match_category: Mapped[str] = mapped_column(String(100), nullable=False)
+    affected_industries: Mapped[list[object]] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False
+    )
+    direction: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # "headwind" | "tailwind" | "ambiguous"
+    severity: Mapped[float] = mapped_column(Float, nullable=False)  # 1.0 to 10.0
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    reviewer: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[str] = mapped_column(String(20), default="1.0.0", nullable=False)
+    active: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class PolicyEvent(Base):
+    """Deterministic match between a timestamped news item and a policy rule (D3, D4)."""
+
+    __tablename__ = "policy_event"
+    __table_args__ = (
+        Index("ix_policy_event_industry_matched", "affected_industry", "matched_at"),
+        Index("ix_policy_event_news", "news_item_id"),
+        Index("ix_policy_event_rule", "rule_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    news_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("news_item.id", ondelete="CASCADE"), nullable=False
+    )
+    rule_id: Mapped[UUID] = mapped_column(
+        ForeignKey("policy_rule.id", ondelete="CASCADE"), nullable=False
+    )
+    matched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    affected_industry: Mapped[str] = mapped_column(String(100), nullable=False)
+    severity: Mapped[float] = mapped_column(Float, nullable=False)
+    evidence: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+

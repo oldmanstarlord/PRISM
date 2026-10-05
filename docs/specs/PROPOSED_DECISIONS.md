@@ -294,3 +294,186 @@ Allows smooth future migration to multi-tenant user authentication without break
 3. **Mandatory Disclaimer Banner:** All stress shock simulation outputs, whether API responses or UI screens, prominently display:
    > *"Scenario estimate, not a prediction. Hypothetical stress scenarios model historical co-movement and statistical sensitivities. They do not constitute forward price forecasts, guarantees, or investment advice."*
 4. **Permitted Shock Bounds:** Exogenous shocks are strictly bounded in $[-50\%, +50\%]$ to prevent unrealistic mathematical extrapolations of linear models.
+
+---
+
+## Proposed decisions from Step 9 (2026-10-05)
+
+### PD-15 — Macroeconomic Series Selection & Source Ingestion Strategy (SRS OQ-10)
+
+**Proposed by:** Step 9 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending user review)
+
+**Statement:**
+Resolving SRS Open Question OQ-10, five macroeconomic and market-wide series are approved for production ingestion and dynamic sector risk mapping:
+1. **Brent Crude Oil (`crude_oil`):** Primary adapter via Yahoo Finance `BZ=F`, daily USD/barrel. Fallback via `data/macro/crude_oil.csv`. Licensing: Public market quote / non-redistributed research data. Publication lag: $T+0$ post-London close.
+2. **USD/INR Exchange Rate (`usd_inr`):** Primary adapter via Yahoo Finance `INR=X` / RBI reference rate, daily INR per USD. Fallback via `data/macro/usd_inr.csv`. Licensing: Public open exchange rate. Publication lag: $T+0$ at 13:30 IST.
+3. **India 10-Year Benchmark Yield (`in_10y_yield`):** Primary adapter via CCIL/FIMMDA / Yahoo Finance `^IN10YT=RR`, daily annualized yield percent. Fallback via `data/macro/in_10y_yield.csv`. Licensing: Public benchmark sovereign yield curve. Publication lag: $T+0$ post-17:00 IST.
+4. **India VIX (`india_vix`):** Primary adapter via Yahoo Finance `^INDIAVIX` / NSE India daily indices, implied volatility index level. Fallback via `data/macro/india_vix.csv`. Licensing: NSE public market index. Publication lag: $T+0$ post-market.
+5. **FII / DII Net Institutional Flows (`fii_dii_net_flows`):** Ingested via exchange daily summary reports and fallback `data/macro/fii_dii_net_flows.csv`, daily net institutional flow in INR crores. Licensing: NSE/BSE daily trade bulletin. Publication lag: $T+0$ post-market.
+
+All series are ingested through the `MacroSeriesAdapter` protocol into immutable, append-only `macro_observation` tables with strict point-in-time auditing (`obs_date`, `value`, `published_at`, `ingested_at`, `version`).
+
+---
+
+### PD-16 — Rule-Based Market Regime Classification & Hysteresis State Machine (FR-F4)
+
+**Proposed by:** Step 9 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending user review)
+
+**Statement:**
+1. **Classification Inputs:**
+   - Market Realised Volatility Percentile ($P_{\text{vol}}$): 21-day rolling annualized volatility of equal-weighted market returns ranked against trailing 252-day history.
+   - Average Pairwise Correlation Percentile ($P_{\text{corr}}$): Median pairwise return correlation of top universe assets ranked against trailing 252-day history.
+   - India VIX Level: Daily index close (where available).
+2. **Deterministic Classification Rules:**
+   - `stressed`: $P_{\text{vol}} \ge 80.0$ OR $P_{\text{corr}} \ge 80.0$ OR $\text{VIX} \ge 24.0$. Regime Risk Multiplier: $1.50\times$.
+   - `trending`: (Not stressed) AND ($P_{\text{vol}} \ge 50.0$ OR $P_{\text{corr}} \ge 50.0$ OR $\text{VIX} \ge 18.0$). Regime Risk Multiplier: $1.25\times$.
+   - `calm`: $P_{\text{vol}} < 50.0$ AND $P_{\text{corr}} < 50.0$ AND $\text{VIX} < 18.0$. Regime Risk Multiplier: $1.00\times$.
+3. **Exit Hysteresis State Machine:**
+   To prevent rapid regime oscillation (whipsawing), a market classified as `stressed` cannot transition to `trending` or `calm` unless all regime indicators remain below the exit thresholds ($P_{\text{vol}} < 75.0$, $P_{\text{corr}} < 75.0$, $\text{VIX} < 22.0$) for at least **5 consecutive trading days**.
+4. **Point-in-Time Transparency:**
+   Each state is logged to `market_regime` with exact feature payloads, timestamps, and config versions.
+
+---
+
+### PD-17 — Sector Rolling Macro Sensitivity & Statistical Insignificance Filter
+
+**Proposed by:** Step 9 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending user review)
+
+**Statement:**
+1. **Rolling OLS Sensitivity:** For each of the 18 Layer 1 industry groups, equal-weighted daily returns are regressed over a 63-day rolling window on daily deltas of each macro series:
+   $$r_{\text{ind}, t} = \alpha + \beta_s \cdot \Delta m_{s, t} + \epsilon_t$$
+2. **Insignificance Policy (No Forced Exposure):**
+   Only sensitivities achieving two-tailed statistical significance at the 5% level ($|t| \ge 1.96$, $p \le 0.05$) with sufficient sample size ($N \ge 30$) are marked significant (`is_significant = true`).
+3. **Macro Component Formula:**
+   For any stock $i$ in industry $k$, its raw macro risk contribution is formulated as:
+   $$\text{macro\_exposure}_i = \left(\sum_{s=1}^5 |\beta_{k, s} \cdot \mathbf{1}_{\text{significant}}| \times |z_s|\right) \times M_{\text{regime}}$$
+   where $z_s = \frac{\Delta_{21, s}}{\sigma_{252, s} \cdot \sqrt{21}}$ is the standardized 21-day move of factor $s$, and $M_{\text{regime}}$ is the active regime multiplier. Insignificant sensitivities are assigned zero weight, strictly preventing spurious factor risk allocations.
+4. **Descriptive Non-Causal Mandate:**
+   Macro sensitivities reflect statistical historical co-movement and are never framed or presented as causal drivers or forward price predictions.
+
+---
+
+## Proposed decisions from Step 10 (2026-10-05)
+
+### PD-18 — Canonical Announcement Classification & Security Linking Priority (D1, D4)
+
+**Proposed by:** Step 10 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending user review)
+
+**Statement:**
+1. **Dynamic Event Rules Engine:**
+   Corporate announcements are classified into canonical event types (`regulatory_action`, `debt_rating`, `results`, `management_change`, `promoter_insider`, `ma_order`, `dividend`, `other`) and flagged for risk relevance and direction (`positive`, `negative`, `neutral`) using versioned database rows in `event_rule` (seeded from config, editable without code redeployment).
+2. **Security Linking Hierarchy:**
+   - Priority 1: Exact ISIN match (`isin_exact`). Highest confidence.
+   - Priority 2: Exact exchange ticker symbol match (`symbol_exact`) via `security_alias`.
+   - Priority 3: Legal entity name matching (`name_fallback`), stripped of standard corporate suffixes ("Limited", "Ltd", "Inc", "Corp"), flagged explicitly as a fallback.
+   - Unmatched announcements are logged and excluded from scoring without failing the pipeline.
+3. **Point-in-Time Trading Calendar Rollover:**
+   Announcements published strictly after exchange market close (15:30 IST) or on non-trading days/weekends are assigned an `effective_trading_date` equal to the next valid session in `trading_calendar` (D4).
+
+---
+
+### PD-19 — Resolution of OQ-9: Explainable Event Importance Scoring Formula (D1, D3)
+
+**Proposed by:** Step 10 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending user review)
+
+**Statement:**
+1. **Importance Formula:**
+   $$\text{importance} = \min\left(10.0, \max\left(1.0, \text{base\_weight} \times \text{magnitude\_multiplier}\right)\right)$$
+2. **Base Categorical Weights:**
+   - `regulatory_action`: 10.0
+   - `debt_rating`: 8.5
+   - `results`: 8.0
+   - `management_change`: 7.0
+   - `promoter_insider`: 6.5
+   - `ma_order`: 5.0
+   - `dividend`: 3.0
+   - `other`: 2.0
+3. **Magnitude & Severity Multipliers:**
+   - Debt Default: $2.0\times$
+   - Auditor Resignation: $1.5\times$
+   - Regulatory Monetary Penalty / Warning: $1.5\times$
+   - Credit Downgrade: $1.4\times$
+   - CEO / CFO Resignation: $1.3\times$
+   - Standard Filing: $1.0\times$
+4. **Envelope Transparency (D3):**
+   Every scored item stores `importance_components` detailing base weight, magnitude multiplier, parsed rationale, linking method, and rule key.
+
+---
+
+### PD-20 — Recency-Decayed Event Risk Pressure Component & Switchable FinBERT (D1, D2)
+
+**Proposed by:** Step 10 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending user review)
+
+**Statement:**
+1. **Event Risk Pressure Component (`event_risk_pressure`):**
+   - Belongs to dimension `events` with a 10% weight in `prism-risk-score-v1`.
+   - Computes recency-decayed pressure over trailing 90 days with a 14-day exponential half-life:
+     $$w_i = 2^{-\Delta t_i / 14}$$
+   - Gross negative pressure sums decayed importance of negative risk-relevant announcements:
+     $$\text{GrossNeg} = \sum_{\text{neg}} \text{importance}_i \cdot 2^{-\Delta t_i / 14}$$
+   - Positive announcements provide mitigation capped at 30% of gross negative pressure:
+     $$\text{NetPressure} = \max\left(0, \text{GrossNeg} - \min\left(\text{PosMitigation}, 0.30 \times \text{GrossNeg}\right)\right)$$
+2. **Switchable FinBERT Sequence Inference:**
+   - Pinned revision: `ProsusAI/finbert` at `90eb618b0f7ca7067d2feae4d588523ee734c5db`.
+   - Disabled by default via `model_config` (`finbert_enabled: false`) until explicitly approved by the user.
+   - When disabled, uses a fast, deterministic, zero-dependency financial dictionary scorer with evidence sentence extraction.
+   - Evaluation tooling and template created in `data/labelled/` and `backend/app/events/eval_finbert.py` for evaluating Indian market announcements.
+3. **Descriptive Non-Causal Mandate & Disclaimer:**
+   Event signals reflect descriptive corporate risk pressure. All frontend views and API envelopes prominently display: *"Markets may have already priced this in. PRISM event signals are descriptive risk indicators and not investment advice or price forecasts."*
+
+---
+
+## Proposed decisions from Step 11 (2026-10-05)
+
+### PD-21 — Regulatory Press Releases Feed Strategy & Headline-Only Guardrail (FR-D9, OQ-7)
+
+**Proposed by:** Step 11 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending user review)
+
+**Statement:**
+1. **Primary Regulatory Feed Adapters:**
+   - Reserve Bank of India (RBI): `https://www.rbi.org.in/pressreleases_rss.xml` (Monetary, Banking)
+   - Securities and Exchange Board of India (SEBI): `https://www.sebi.gov.in/sebirss.xml` (Capital Markets)
+   - Press Information Bureau (PIB): `https://pib.gov.in/rss/RssFinance.xml` (Macro, Trade, Infrastructure)
+   - Resilient Fallback: `data/news/news.json` for deterministic offline verification and CI.
+2. **Storage and Redistribution Boundary:**
+   - Stored attributes are strictly restricted to `headline`, `url`, `source`, `published_at`, `ingested_at`, and `content_hash` (SHA-256).
+   - Full article body text, editorial comments, or vendor wire text are strictly excluded from database models and API payloads.
+3. **Idempotent Ingestion:**
+   - Ingestion jobs enforce deduplication by `content_hash` across polling executions.
+
+---
+
+### PD-22 — Deterministic Policy-to-Sector Rules & Recency-Decayed Policy Risk Pressure (D1, D2, D3)
+
+**Proposed by:** Step 11 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending user review)
+
+**Statement:**
+1. **Explainable Deterministic Matching:**
+   - Policy-to-sector rules (`policy_rule`) map regulatory headlines to the 18 Layer 1 industries via keyword tokens and policy categories.
+   - Every rule requires an explicit, audited economic transmission rationale and reviewer name (`NOT NULL`).
+   - Every match records point-in-time evidence (`matched_keywords`, `headline`, `published_at`) in `policy_event`.
+2. **Dynamic Risk Score Component (`news_policy_pressure`):**
+   - Belongs to dimension `macro` with a default weight of 5% in `prism-risk-score-v1` (configurable via `model_config`).
+   - Computes recency-decayed headwind pressure with a 14-day exponential half-life ($2^{-\Delta t / 14}$) over a 60-day window.
+   - Policy tailwinds provide mitigation capped at 30% of gross headwind pressure:
+     $$\text{NetPressure} = \max\left(0, \text{GrossHeadwind} - \min\left(\text{GrossTailwind}, 0.30 \times \text{GrossHeadwind}\right)\right)$$
+3. **Immutable Rule Versioning:**
+   - Modifying a policy rule via `PUT /policy/rules/{key}` creates a new active version row, supersedes the previous version, and preserves the complete audit trail.
+
+

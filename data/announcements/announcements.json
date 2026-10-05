@@ -1,0 +1,90 @@
+[
+  {
+    "symbol": "RELIANCE",
+    "isin": "INE002A01018",
+    "company_name": "Reliance Industries Limited",
+    "headline": "SEBI issues administrative warning regarding disclosure timing for retail subsidiary stake sale",
+    "body": "The Securities and Exchange Board of India (SEBI) has issued an administrative warning letter dated March 25, 2024 to Reliance Industries Limited regarding minor procedural delay in disclosure of definitive agreements for strategic investment in its retail venture. The company noted that no monetary penalty was levied.",
+    "source_category": "SEBI Orders / Show Cause",
+    "published_at": "2024-03-25T16:45:00+05:30",
+    "source_doc_id": "NSE_ANN_RELIANCE_20240325_01",
+    "url": "https://www.nseindia.com/corporate-announcements/reliance-sebi-warning"
+  },
+  {
+    "symbol": "INFY",
+    "isin": "INE009A01021",
+    "company_name": "Infosys Limited",
+    "headline": "Resignation of Chief Financial Officer Nilanjan Roy; Jayesh Sanghrajka appointed CFO",
+    "body": "Infosys Limited today announced that Nilanjan Roy has resigned from the position of Chief Financial Officer effective March 31, 2024 to pursue personal aspirations outside the company. The Board of Directors has unanimously approved the appointment of Jayesh Sanghrajka as CFO.",
+    "source_category": "Resignation of Director / KMP / Auditor",
+    "published_at": "2024-03-22T18:15:00+05:30",
+    "source_doc_id": "NSE_ANN_INFY_20240322_01",
+    "url": "https://www.nseindia.com/corporate-announcements/infy-cfo-resignation"
+  },
+  {
+    "symbol": "TCS",
+    "isin": "INE467B01029",
+    "company_name": "Tata Consultancy Services Limited",
+    "headline": "TCS bags mega 15-year contract valued at over 1 billion USD from UK workplace pension scheme NEST",
+    "body": "Tata Consultancy Services has expanded its long-standing strategic partnership with National Employment Savings Trust (NEST), the UK's largest workplace pension scheme, signing a deal valued at 840 million GBP (approx. 1.05 billion USD) to digitally transform administration services.",
+    "source_category": "Award of Order / New Project",
+    "published_at": "2024-03-20T11:30:00+05:30",
+    "source_doc_id": "NSE_ANN_TCS_20240320_01",
+    "url": "https://www.nseindia.com/corporate-announcements/tcs-order-win"
+  },
+  {
+    "symbol": "HDFCBANK",
+    "isin": "INE040A01034",
+    "company_name": "HDFC Bank Limited",
+    "headline": "CRISIL reaffirms AAA/Stable rating on Tier-II bond issuances following annual surveillance review",
+    "body": "CRISIL Ratings has reaffirmed its 'CRISIL AAA/Stable' rating on the Tier-II Bonds (under Basel III) and Certificate of Deposits of HDFC Bank Limited, noting the bank's dominant market position, robust capital adequacy ratio, and healthy asset quality profile.",
+    "source_category": "Credit Rating Action",
+    "published_at": "2024-03-18T14:00:00+05:30",
+    "source_doc_id": "NSE_ANN_HDFCBANK_20240318_01",
+    "url": "https://www.nseindia.com/corporate-announcements/hdfcbank-rating-reaffirm"
+  },
+  {
+    "symbol": "TATAMOTORS",
+    "isin": "INE155A01022",
+    "company_name": "Tata Motors Limited",
+    "headline": "Board approves scheme of demerger of commercial vehicles and passenger vehicles into two separate listed entities",
+    "body": "The Board of Directors of Tata Motors Limited has approved a composite scheme of arrangement for demerging the company's business into two separate listed companies: one housing the Commercial Vehicles business and related investments, and the second housing the Passenger Vehicles, EV, and JLR businesses.",
+    "source_category": "Mergers, Acquisitions and Restructuring",
+    "published_at": "2024-03-15T19:00:00+05:30",
+    "source_doc_id": "NSE_ANN_TATAMOTORS_20240315_01",
+    "url": "https://www.nseindia.com/corporate-announcements/tatamotors-demerger"
+  },
+  {
+    "symbol": "ADANIENT",
+    "isin": "INE423A01024",
+    "company_name": "Adani Enterprises Limited",
+    "headline": "Statutory auditor S.R. Batliboi & Co. completes audit of financial results; clarifies regulatory queries",
+    "body": "Adani Enterprises Limited clarifies that statutory auditors have issued unmodified audit opinions on financial results for the quarter and nine months ended December 31, 2023, and confirmed compliance with accounting standards.",
+    "source_category": "General Compliance Announcement",
+    "published_at": "2024-03-12T17:45:00+05:30",
+    "source_doc_id": "NSE_ANN_ADANIENT_20240312_01",
+    "url": "https://www.nseindia.com/corporate-announcements/adanient-compliance"
+  },
+  {
+    "symbol": "ITC",
+    "isin": "INE154A01025",
+    "company_name": "ITC Limited",
+    "headline": "Declaration of Interim Dividend of Rs 6.25 per ordinary share of Re 1 each for FY24",
+    "body": "The Board of Directors of ITC Limited at its meeting held today declared an interim dividend of Rs 6.25 per share for the financial year ending March 31, 2024. The record date for determining eligible members is February 15, 2024.",
+    "source_category": "Dividend / Buyback Declaration",
+    "published_at": "2024-03-08T13:15:00+05:30",
+    "source_doc_id": "NSE_ANN_ITC_20240308_01",
+    "url": "https://www.nseindia.com/corporate-announcements/itc-dividend"
+  },
+  {
+    "symbol": "ICICIBANK",
+    "isin": "INE090A01021",
+    "company_name": "ICICI Bank Limited",
+    "headline": "RBI imposes monetary penalty of Rs 12.19 Crore for non-compliance with prudential norms",
+    "body": "The Reserve Bank of India by an order dated March 5, 2024 has imposed a monetary penalty of Rs 12.19 Crore on ICICI Bank Limited for non-compliance with directions issued by RBI on 'Loans and Advances - Statutorily and Other Restrictions'. The bank has taken corrective operational actions.",
+    "source_category": "Regulatory Action / Penalties",
+    "published_at": "2024-03-05T17:10:00+05:30",
+    "source_doc_id": "NSE_ANN_ICICIBANK_20240305_01",
+    "url": "https://www.nseindia.com/corporate-announcements/icicibank-rbi-penalty"
+  }
+]

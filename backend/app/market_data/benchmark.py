@@ -10,8 +10,8 @@ from decimal import Decimal, InvalidOperation
 from typing import Protocol, runtime_checkable
 from zoneinfo import ZoneInfo
 
-import pandas as pd  # type: ignore[import-untyped]
-import yfinance as yf  # type: ignore[import-untyped]
+import pandas as pd
+import yfinance as yf
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from tenacity import retry, stop_after_attempt, wait_exponential

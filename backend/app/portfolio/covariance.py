@@ -8,8 +8,8 @@ from pathlib import Path
 from uuid import UUID
 
 import numpy as np
-import pandas as pd  # type: ignore[import-untyped]
-from sklearn.covariance import LedoitWolf  # type: ignore[import-untyped]
+import pandas as pd
+from sklearn.covariance import LedoitWolf
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

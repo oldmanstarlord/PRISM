@@ -513,4 +513,261 @@ export interface StockFundamentalsResponse {
   source_note: string;
 }
 
+export interface GovernancePledgeInfo {
+  quarter_end: string | null;
+  pledge_level_pct: number | null;
+  pledge_change_pct: number | null;
+  n_quarters_available: number;
+  status: string;
+  limitations: string[];
+}
+
+export interface GovernancePromoterInfo {
+  promoter_pct: number | null;
+  promoter_change_pct: number | null;
+  status: string;
+}
+
+export interface GovernanceInstitutionalInfo {
+  quarter_end: string | null;
+  fii_pct: number | null;
+  dii_pct: number | null;
+  combined_pct: number | null;
+  institutional_change_pct: number | null;
+  n_quarters_available: number;
+  status: string;
+  limitations: string[];
+}
+
+export interface GovernanceInsiderInfo {
+  window_days: number;
+  window_start: string;
+  window_end: string;
+  buy_value_inr: number;
+  sell_value_inr: number;
+  net_sell_value_inr: number;
+  trade_count: number;
+  insider_sell_ratio: number | null;
+  status: string;
+  limitations: string[];
+}
+
+export interface ShareholdingTableRow {
+  quarter_end: string;
+  promoter_pct: number | null;
+  promoter_pledged_pct_of_promoter: number | null;
+  fii_pct: number | null;
+  dii_pct: number | null;
+  public_pct: number | null;
+  published_at: string;
+  source: string;
+}
+
+export interface InsiderTradeItem {
+  person_category: string;
+  txn_type: string;
+  quantity: number | null;
+  value_inr: number | null;
+  txn_date: string;
+  published_at: string;
+  source: string;
+}
+
+export interface StockGovernanceResponse {
+  symbol: string;
+  security_id: string;
+  as_of: string;
+  pledge: GovernancePledgeInfo;
+  promoter_holding: GovernancePromoterInfo;
+  institutional_flow: GovernanceInstitutionalInfo;
+  insider_activity: GovernanceInsiderInfo;
+  holding_table: ShareholdingTableRow[];
+  recent_insider_trades: InsiderTradeItem[];
+  limitations: string[];
+  method_version: string;
+  config_key: string;
+}
+
+// ---------------------------------------------------------------------------
+// Step 9: Macro Series, Market Regime, & Sector Sensitivity Types (D1, D3, D5)
+// ---------------------------------------------------------------------------
+
+export interface MacroSeriesDefinition {
+  series_key: string;
+  name: string;
+  source: string;
+  frequency: string;
+  unit: string;
+  license_note: string;
+  is_active: boolean;
+}
+
+export interface MacroObservation {
+  obs_date: string;
+  value: number;
+  published_at: string;
+  version: number;
+}
+
+export interface MacroSeriesDetail {
+  series: MacroSeriesDefinition;
+  observations: MacroObservation[];
+  total_observations: number;
+  latest_observation: MacroObservation | null;
+}
+
+export interface MarketRegimeResponse {
+  as_of: string;
+  regime: "calm" | "trending" | "stressed";
+  features: {
+    realised_vol_percentile?: number;
+    correlation_percentile?: number;
+    india_vix?: number;
+    regime_multiplier?: number;
+    hysteresis_applied?: boolean;
+    raw_classification?: string;
+    thresholds?: Record<string, number>;
+  };
+  config_version: string;
+  computed_at?: string;
+}
+
+export interface SectorMacroSensitivity {
+  industry: string;
+  series_key: string;
+  series_name?: string | null;
+  window_end: string;
+  beta: number;
+  t_stat: number;
+  n_obs: number;
+  p_value: number;
+  is_significant: boolean;
+  config_version: string;
+}
+
+export interface StockMacroExposure {
+  symbol: string;
+  industry: string;
+  regime: string;
+  regime_multiplier: number;
+  macro_score: number | null;
+  sensitivities: SectorMacroSensitivity[];
+  recent_shocks: Record<
+    string,
+    {
+      move_21d: number;
+      z_score: number;
+      vol_252d: number;
+      latest_val: number;
+    }
+  >;
+  limitations: string[];
+}
+
+export interface EventItem {
+  id: string;
+  source_document_id?: string | null;
+  security_id: string;
+  symbol?: string | null;
+  company_name?: string | null;
+  event_type: string;
+  event_type_method: string;
+  published_at: string;
+  effective_trading_date: string;
+  importance: number;
+  importance_components: Record<string, unknown>;
+  headline?: string | null;
+  source_url?: string | null;
+  sentiment?: "positive" | "negative" | "neutral" | string | null;
+  p_pos?: number | null;
+  p_neg?: number | null;
+  p_neu?: number | null;
+  evidence_span?: string | null;
+  scored_at?: string | null;
+  model_name?: string | null;
+  model_version?: string | null;
+}
+
+export interface StockEventsResponse {
+  symbol: string;
+  company_name: string;
+  total_events: number;
+  events: EventItem[];
+  disclaimer: string;
+}
+
+export interface RecentEventsResponse {
+  total: number;
+  events: EventItem[];
+  disclaimer: string;
+}
+
+export interface NewsItem {
+  id: string;
+  source: string;
+  published_at: string;
+  ingested_at: string;
+  headline: string;
+  url: string;
+  content_hash: string;
+}
+
+export interface PolicyRule {
+  id: string;
+  rule_key: string;
+  description: string;
+  match_keywords: string[];
+  match_category: string | null;
+  affected_industries: string[];
+  direction: "headwind" | "tailwind" | "ambiguous" | string;
+  severity: number;
+  rationale: string;
+  reviewer: string;
+  version: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PolicyEvent {
+  id: string;
+  news_item_id: string;
+  rule_id: string;
+  matched_at: string;
+  affected_industry: string;
+  severity: number;
+  evidence: Record<string, unknown>;
+  headline?: string | null;
+  source?: string | null;
+  url?: string | null;
+  published_at?: string | null;
+  rule_key?: string | null;
+  rule_description?: string | null;
+  direction?: "headwind" | "tailwind" | "ambiguous" | string | null;
+  rationale?: string | null;
+}
+
+export interface StockNewsItem {
+  news_item: NewsItem;
+  matched_events: PolicyEvent[];
+  relevance_reason: string;
+}
+
+export interface StockNewsResponse {
+  symbol: string;
+  company_name: string;
+  industry: string | null;
+  items: StockNewsItem[];
+  macro_pressure_points: number | null;
+  disclaimer: string;
+}
+
+export interface RecentPolicyEventsResponse {
+  events: PolicyEvent[];
+  total_count: number;
+  disclaimer: string;
+}
+
+
+
 

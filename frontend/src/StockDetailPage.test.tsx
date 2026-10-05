@@ -1,12 +1,15 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import StockDetailPage from "./StockDetailPage";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("StockDetailPage", () => {
   it("renders risk gauges, ExplainPanel, and unknown components dynamically without errors (D2, D5)", async () => {
@@ -43,6 +46,72 @@ describe("StockDetailPage", () => {
               metrics: [],
               limitations: [],
               source_note: "Official exchange financial results",
+            }),
+          });
+        }
+        if (url.includes("/governance")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              symbol: "INFY",
+              security_id: "sec-infy-123",
+              as_of: "2026-01-15",
+              pledge: {
+                quarter_end: "2025-12-31",
+                pledge_level_pct: 0.0,
+                pledge_change_pct: 0.0,
+                n_quarters_available: 4,
+                status: "ok",
+                limitations: [],
+              },
+              promoter_holding: {
+                promoter_pct: 14.8,
+                promoter_change_pct: 0.0,
+                status: "ok",
+              },
+              institutional_flow: {
+                quarter_end: "2025-12-31",
+                fii_pct: 34.2,
+                dii_pct: 35.1,
+                combined_pct: 69.3,
+                institutional_change_pct: 0.5,
+                n_quarters_available: 4,
+                status: "ok",
+                limitations: [],
+              },
+              insider_activity: {
+                window_days: 180,
+                window_start: "2025-07-19",
+                window_end: "2026-01-15",
+                buy_value_inr: 0,
+                sell_value_inr: 0,
+                net_sell_value_inr: 0,
+                trade_count: 0,
+                insider_sell_ratio: 0.0,
+                status: "ok",
+                limitations: [],
+              },
+              holding_table: [],
+              recent_insider_trades: [],
+              limitations: [],
+              method_version: "governance_analysis_v1",
+              config_key: "governance_analysis",
+            }),
+          });
+        }
+
+        if (url.includes("/macro")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              symbol: "INFY",
+              industry: "Information Technology",
+              regime: "calm",
+              regime_multiplier: 1.0,
+              macro_score: 1.25,
+              sensitivities: [],
+              recent_shocks: {},
+              limitations: [],
             }),
           });
         }
@@ -231,6 +300,56 @@ describe("StockDetailPage", () => {
             }),
           });
         }
+        if (url.includes("/governance")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              symbol: "TCS",
+              security_id: "sec-tcs-123",
+              as_of: "2026-01-15",
+              pledge: {
+                quarter_end: "2025-12-31",
+                pledge_level_pct: 0.0,
+                pledge_change_pct: 0.0,
+                n_quarters_available: 4,
+                status: "ok",
+                limitations: [],
+              },
+              promoter_holding: {
+                promoter_pct: 72.3,
+                promoter_change_pct: 0.0,
+                status: "ok",
+              },
+              institutional_flow: {
+                quarter_end: "2025-12-31",
+                fii_pct: 12.5,
+                dii_pct: 9.8,
+                combined_pct: 22.3,
+                institutional_change_pct: 0.2,
+                n_quarters_available: 4,
+                status: "ok",
+                limitations: [],
+              },
+              insider_activity: {
+                window_days: 180,
+                window_start: "2025-07-19",
+                window_end: "2026-01-15",
+                buy_value_inr: 0,
+                sell_value_inr: 0,
+                net_sell_value_inr: 0,
+                trade_count: 0,
+                insider_sell_ratio: 0.0,
+                status: "ok",
+                limitations: [],
+              },
+              holding_table: [],
+              recent_insider_trades: [],
+              limitations: [],
+              method_version: "governance_analysis_v1",
+              config_key: "governance_analysis",
+            }),
+          });
+        }
 
         // Return envelope with Step 7 fundamental components
         return Promise.resolve({
@@ -312,10 +431,187 @@ describe("StockDetailPage", () => {
     expect(screen.getByText("Solvency & Interest Coverage")).toBeInTheDocument();
     expect(screen.getAllByText(/Cash Flow Quality/i).length).toBeGreaterThan(0);
 
-    // Verify FundamentalsPanel rendered
-    expect(screen.getByText(/Fundamental Risk Analysis & Financial Disclosures/i)).toBeInTheDocument();
+    // Verify FundamentalsPanel rendered (separate async fetch — use findByText to await panel data)
+    expect(await screen.findByText("Yahoo Unofficial")).toBeInTheDocument();
     expect(screen.getByText("2025-12-31")).toBeInTheDocument();
-    expect(screen.getByText("Yahoo Unofficial")).toBeInTheDocument();
     expect(screen.getByText("25th pct")).toBeInTheDocument();
   });
+
+  it("automatically renders Step 8 GovernancePanel and picks up governance components (D2, D5, Step 8)", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/risk/history")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [],
+          });
+        }
+        if (url.includes("/fundamentals")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              symbol: "RELIANCE",
+              company_name: "Reliance Industries Ltd.",
+              industry: "Energy",
+              as_of: "2026-01-15",
+              periods: [],
+              metrics: [],
+              limitations: [],
+              source_note: "Exchange results",
+            }),
+          });
+        }
+        if (url.includes("/governance")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              symbol: "RELIANCE",
+              security_id: "sec-rel-123",
+              as_of: "2026-01-15",
+              pledge: {
+                quarter_end: "2025-12-31",
+                pledge_level_pct: 0.0,
+                pledge_change_pct: 0.0,
+                n_quarters_available: 4,
+                status: "ok",
+                limitations: [],
+              },
+              promoter_holding: {
+                promoter_pct: 50.3,
+                promoter_change_pct: 0.1,
+                status: "ok",
+              },
+              institutional_flow: {
+                quarter_end: "2025-12-31",
+                fii_pct: 22.1,
+                dii_pct: 16.4,
+                combined_pct: 38.5,
+                institutional_change_pct: 1.2,
+                n_quarters_available: 4,
+                status: "ok",
+                limitations: [],
+              },
+              insider_activity: {
+                window_days: 180,
+                window_start: "2025-07-19",
+                window_end: "2026-01-15",
+                buy_value_inr: 25000000.0,
+                sell_value_inr: 50000000.0,
+                net_sell_value_inr: 25000000.0,
+                trade_count: 8,
+                insider_sell_ratio: 0.0001,
+                status: "ok",
+                limitations: [],
+              },
+              holding_table: [
+                {
+                  quarter_end: "2025-12-31",
+                  promoter_pct: 50.3,
+                  promoter_pledged_pct_of_promoter: 0.0,
+                  fii_pct: 22.1,
+                  dii_pct: 16.4,
+                  public_pct: 11.2,
+                  published_at: "2026-01-14T10:00:00Z",
+                  source: "CSV_IMPORT",
+                },
+              ],
+              recent_insider_trades: [
+                {
+                  person_category: "Promoter Group",
+                  txn_type: "BUY",
+                  quantity: 50000,
+                  value_inr: 25000000.0,
+                  txn_date: "2025-12-01",
+                  published_at: "2025-12-03T09:00:00Z",
+                  source: "CSV_IMPORT",
+                },
+              ],
+              limitations: [
+                "Governance signals are descriptive and do not predict future price movements.",
+              ],
+              method_version: "governance_analysis_v1",
+              config_key: "governance_analysis",
+            }),
+          });
+        }
+
+        // Return envelope with Step 8 governance components
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            subject: "stock:RELIANCE",
+            symbol: "RELIANCE",
+            company_name: "Reliance Industries Ltd.",
+            industry: "Energy",
+            effective_time: "2026-01-15",
+            method_version: "risk-scorer-1.0.0",
+            total_score: 38.5,
+            confidence: { score: 88.0 },
+            data_coverage: 0.92,
+            dimension_scores: {
+              market: { score: 40.0, weight: 25.0 },
+              governance: { score: 25.0, weight: 15.0 },
+            },
+            components: [
+              {
+                component_id: "gov_promoter_pledge",
+                name: "Promoter Pledge Risk",
+                dimension: "governance",
+                direction: "higher_is_riskier",
+                raw_value: 0.0,
+                percentile_rank: 15.0,
+                points: 15.0,
+                status: "ok",
+                data_as_of: "2025-12-31",
+                data_age_days: 15,
+                evidence_ref: {},
+              },
+              {
+                component_id: "gov_insider_activity",
+                name: "Net Insider Selling Activity",
+                dimension: "governance",
+                direction: "higher_is_riskier",
+                raw_value: 0.0001,
+                percentile_rank: 30.0,
+                points: 30.0,
+                status: "ok",
+                data_as_of: "2026-01-15",
+                data_age_days: 0,
+                evidence_ref: {},
+              },
+            ],
+            limitations: [],
+            computed_at: "2026-01-15T18:00:00Z",
+          }),
+        });
+      })
+    );
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={["/stocks/RELIANCE"]}>
+          <Routes>
+            <Route path="/stocks/:symbol" element={<StockDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    // Verify governance components dynamically rendered in breakdown (D2, D5)
+    expect(await screen.findByText("Promoter Pledge Risk")).toBeInTheDocument();
+    expect(screen.getByText("Net Insider Selling Activity")).toBeInTheDocument();
+
+    // Verify GovernancePanel rendered
+    expect(await screen.findByText("Governance & Ownership Signals")).toBeInTheDocument();
+    expect(screen.getByText("Promoter Group Holding")).toBeInTheDocument();
+    expect(screen.getAllByText("50.30%").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Institutional Holding (FII+DII)")).toBeInTheDocument();
+    expect(screen.getByText("Promoter Group")).toBeInTheDocument();
+  });
 });
+
