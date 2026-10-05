@@ -9,6 +9,20 @@ export async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T
   return (await response.json()) as T;
 }
 
+export async function postJson<T>(path: string, body: unknown, signal: AbortSignal): Promise<T> {
+  const response = await fetch(`${apiBase}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => null);
+    throw new Error(errorMessage(payload, response.status));
+  }
+  return (await response.json()) as T;
+}
+
 function errorMessage(payload: unknown, status: number) {
   if (payload && typeof payload === "object" && "detail" in payload) {
     const detail = (payload as { detail: unknown }).detail;

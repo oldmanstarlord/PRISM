@@ -38,7 +38,7 @@ export function parseDemoPortfolioCsv(content: string): DemoPortfolioRow[] {
 
 export function validateDemoPortfolio(
   rows: DemoPortfolioRow[],
-  eligibleSymbols: Set<string>,
+  eligibleSymbols?: Set<string>,
 ): DemoValidation {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -52,12 +52,14 @@ export function validateDemoPortfolio(
   }
   if (aggregated.size < rows.length) warnings.push("Duplicate symbols were combined");
   if (!aggregated.size) errors.push("At least one holding is required");
-  const unsupported = [...aggregated.keys()].filter((symbol) => !eligibleSymbols.has(symbol));
+  const unsupported = eligibleSymbols
+    ? [...aggregated.keys()].filter((symbol) => !eligibleSymbols.has(symbol))
+    : [];
   if (unsupported.length) errors.push(`Not in the current MST universe: ${unsupported.sort().join(", ")}`);
   const total = [...aggregated.values()].reduce((sum, value) => sum + value, 0);
   if (Math.abs(total - 100) > 0.01) errors.push(`Weights must total 100%; received ${total.toFixed(2)}%`);
   const holdings = [...aggregated.entries()]
-    .filter(([symbol]) => eligibleSymbols.has(symbol))
+    .filter(([symbol]) => !eligibleSymbols || eligibleSymbols.has(symbol))
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([symbol, weightPercent]) => ({ symbol, weight: weightPercent / 100 }));
   return { valid: errors.length === 0, holdings, errors, warnings };

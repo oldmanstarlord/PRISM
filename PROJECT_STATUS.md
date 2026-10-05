@@ -11,7 +11,7 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Last updated | 2026-10-05 |
 | Requirements source | `PRISM_SRS.md` version 1.6 |
 | Initial universe | NIFTY 200 |
-| Active implementation focus | Presentation-safe browser-only portfolio insights using existing Layer 1 and Layer 2 results |
+| Active implementation focus | Session-only portfolio performance, risk, diversification, MST diagnostics and stress testing |
 
 ## Phase status
 
@@ -45,6 +45,20 @@ This is the living implementation record for PRISM. It must be updated after eve
 - [x] Layer 1 and Layer 2 formulas and interfaces designed and approved.
 - [x] Layer 1 and Layer 2 implementations tested and documented.
 - [x] Reproducible Layer 1 and Layer 2 pipeline demonstrated.
+
+## Phase 1 checklist
+
+- [x] Weighted sample and CSV portfolio input without login.
+- [x] Point-in-time historical performance, volatility, downside volatility and drawdown.
+- [x] Holding-level covariance/Euler risk contribution.
+- [x] Holding and industry HHI plus effective exposures.
+- [x] Risk-entropy and correlation-eigenvalue effective bets.
+- [x] Direct and indirect MST paths, bridge stocks and correlation-defined clusters.
+- [x] Selected-holding and selected-industry stress scenarios with visible assumptions.
+- [x] Current 20-day divergence annotations and company-detail links.
+- [x] Downloadable JSON report and print-to-PDF presentation view.
+- [ ] Reconcile the independently developed shared-database portfolio schema before persistence.
+- [ ] Add audit persistence and MST stability confidence required for full Phase 1 closure.
 
 ## Known limitations
 
@@ -81,7 +95,9 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Layer 1 real-data calculation | 556 finite scores: 186 one-day, 186 five-day and 184 twenty-day; two explicit insufficient-horizon issues | 2026-10-02 |
 | Layer 1 persistence verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
 | Backend verification | Ruff passed; strict mypy passed for 42 source files; GitHub CI passed all backend tests including the PostgreSQL integration test | 2026-10-05 |
-| Frontend verification | ESLint passed; 7 Vitest tests passed across 4 files; TypeScript/Vite production build passed | 2026-10-05 |
+| Frontend verification | ESLint passed; 7 Vitest tests passed across 4 files; TypeScript/Vite production build passed | 2026-10-06 |
+| Portfolio analytics verification | Ruff passed; strict mypy passed across 52 source files; 48 tests passed and 2 approved database integration tests skipped | 2026-10-06 |
+| Portfolio browser rehearsal | Prepared sample, performance, risk, MST, stress and JSON download passed in headless Chrome with zero console errors | 2026-10-06 |
 | Company-detail API check | BAJAJ-AUTO returned three scores, 13 exact peers and 61 comparison points | 2026-10-04 |
 | Persisted Layer 1 run | 556 scores, 14 exclusions and 2 calculation issues available through the API | 2026-10-04 |
 | Layer 2 engine tests | Determinism, tie-breaking, no-look-ahead, missing-data exclusion and topology invariants passed | 2026-10-04 |
@@ -241,3 +257,16 @@ After every material update:
 - Added held-to-held MST connection reporting using the real Layer 2 edge correlations.
 - Kept all portfolio input in memory for the current browser session; no login, database migration or portfolio persistence is required for the presentation.
 - Verified ESLint, 7 Vitest tests across 4 files and the TypeScript/Vite production build.
+
+### 2026-10-06 - Portfolio risk and explainability implemented
+
+- Added the read-only `portfolio-analytics-v1` API without new tables, migrations, authentication or database writes.
+- Added point-in-time 250-day portfolio performance, annualized return and volatility, downside volatility and maximum drawdown using complete common adjusted-price dates without imputation.
+- Added annual covariance and Euler holding-risk contribution, holding/industry HHI and effective exposure measures.
+- Added risk-contribution entropy and correlation-eigenvalue effective-bet estimates.
+- Added direct holding MST edges, every unique holding-to-holding path, held and non-held bridge stocks, and transparent correlation-floor clusters.
+- Added regression-beta selected-stock stress and parallel selected-industry stress with explicit assumptions and limitations.
+- Added a responsive performance/drawdown chart, risk and concentration panels, MST diagnostics, interactive stress controls, JSON export and print-to-PDF layout.
+- Added a favicon so the presentation page loads without the previous browser-console 404.
+- Verified the real prepared sample with 250 returns, 15 holding paths, 3 direct edges, 11 bridge stocks and 3 clusters through 2026-10-01.
+- Completed a browser rehearsal of sample analysis, stress calculation and report download with zero console errors.

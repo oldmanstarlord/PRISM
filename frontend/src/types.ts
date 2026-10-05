@@ -89,6 +89,100 @@ export interface PipelineStatus {
   latest_error: string | null;
 }
 
+export interface PortfolioPerformancePoint {
+  trade_date: string;
+  portfolio_index: number;
+  drawdown: number;
+}
+
+export interface PortfolioHoldingAnalytics {
+  symbol: string;
+  industry: string;
+  weight: number;
+  annualized_volatility: number;
+  marginal_risk: number;
+  risk_contribution: number;
+  divergence_20d: number | null;
+  divergence_band: Interpretation | null;
+}
+
+export interface PortfolioStressInput {
+  kind: "stock" | "industry";
+  target: string;
+  shock_percent: number;
+}
+
+export interface PortfolioAnalysisResponse {
+  envelope: {
+    as_of: string;
+    lookback_start: string;
+    data_cutoff: string;
+    requested_observations: number;
+    observations_used: number;
+    return_frequency: string;
+    annualisation_factor: number;
+    weighting_assumption: string;
+    missing_data_rule: string;
+    implementation_version: string;
+  };
+  performance: {
+    total_return: number;
+    annualized_return: number;
+    annualized_volatility: number;
+    downside_volatility: number;
+    max_drawdown: number;
+    points: PortfolioPerformancePoint[];
+  };
+  holdings: PortfolioHoldingAnalytics[];
+  concentration: {
+    holding_hhi: number;
+    effective_holdings: number;
+    largest_holding_symbol: string;
+    largest_holding_weight: number;
+    industry_hhi: number;
+    effective_industries: number;
+    industry_weights: Array<{ industry: string; weight: number }>;
+  };
+  diversification: {
+    effective_bets_risk: number;
+    effective_bets_correlation: number;
+    interpretation: string;
+  };
+  mst: {
+    run_id: string;
+    as_of: string;
+    cluster_correlation_floor: number;
+    direct_edges: Array<{
+      symbol_a: string; symbol_b: string; correlation: number; distance: number;
+    }>;
+    holding_paths: Array<{
+      symbol_a: string; symbol_b: string; hops: number; average_correlation: number;
+      weakest_correlation: number; positive_path_product: number; path: string[];
+    }>;
+    bridge_stocks: Array<{ symbol: string; path_pair_count: number; is_holding: boolean }>;
+    clusters: Array<{
+      cluster_id: string; weight: number; holding_symbols: string[]; full_node_count: number;
+    }>;
+    cluster_hhi: number;
+    effective_clusters: number;
+  };
+  stress: null | {
+    kind: "stock" | "industry";
+    target: string;
+    shock_percent: number;
+    method: string;
+    portfolio_impact_percent: number;
+    results: Array<{
+      symbol: string; sensitivity: number; estimated_return_percent: number;
+      portfolio_contribution_percent: number;
+    }>;
+    assumptions: string[];
+    disclaimer: string;
+  };
+  findings: string[];
+  limitations: string[];
+}
+
 export type PortfolioInputMode = "quantities" | "weights";
 
 export interface PortfolioInputRow {
