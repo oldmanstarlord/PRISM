@@ -30,16 +30,20 @@ from backend.app.db.models import (
     SecurityShareCount,
 )
 from backend.app.db.session import engine, get_session
+from backend.app.fundamentals.service import get_stock_fundamentals
 from backend.app.mst_diagnostics.config import load_mst_diagnostics_config
 from backend.app.mst_diagnostics.stability import calculate_stability_grade
 from backend.app.portfolio import service as portfolio_service
 from backend.app.portfolio.schemas import (
+    DiversificationResponse,
     PortfolioCreate,
     PortfolioImportResult,
     PortfolioOut,
     PortfolioRiskRunOut,
     RiskRunRequest,
     RowValidationError,
+    ShockRequest,
+    ShockScenarioResponse,
 )
 from backend.app.risk_score.registry import registry
 from backend.app.risk_score.service import (
@@ -918,6 +922,53 @@ def get_latest_portfolio_risk(
     return portfolio_service.get_latest_risk_run(session, portfolio_id=portfolio_id)
 
 
+@router.post(
+    "/portfolios/{portfolio_id}/diversification",
+    response_model=DiversificationResponse,
+    tags=["portfolio"],
+)
+def get_or_run_portfolio_diversification(
+    portfolio_id: UUID,
+    session: DatabaseSession,
+) -> DiversificationResponse:
+    """Retrieve or compute diversification analysis (ENB, cluster findings, suggestions)."""
+    return portfolio_service.get_or_run_portfolio_diversification(
+        session, portfolio_id=portfolio_id
+    )
+
+
+@router.post(
+    "/portfolios/{portfolio_id}/shocks",
+    response_model=ShockScenarioResponse,
+    tags=["portfolio"],
+)
+def run_shock_simulation(
+    portfolio_id: UUID,
+    payload: ShockRequest,
+    session: DatabaseSession,
+) -> ShockScenarioResponse:
+    """Simulate shock propagation across portfolio holdings (regression beta or MST decay)."""
+    return portfolio_service.run_shock_simulation(
+        session, portfolio_id=portfolio_id, payload=payload
+    )
+
+
+@router.get(
+    "/portfolios/{portfolio_id}/shocks/{scenario_id}",
+    response_model=ShockScenarioResponse,
+    tags=["portfolio"],
+)
+def get_shock_scenario(
+    portfolio_id: UUID,
+    scenario_id: UUID,
+    session: DatabaseSession,
+) -> ShockScenarioResponse:
+    """Retrieve a previously calculated shock scenario and holding impact results."""
+    return portfolio_service.get_shock_scenario(
+        session, portfolio_id=portfolio_id, scenario_id=scenario_id
+    )
+
+
 # ---------------------------------------------------------------------------
 # Step 5: Multi-Dimensional Stock Risk Scores (D2, D3, D5)
 # ---------------------------------------------------------------------------
@@ -966,3 +1017,18 @@ def get_stock_risk_history_endpoint(
 ) -> list[dict[str, Any]]:
     """Retrieve historical time-series risk score trajectory for a stock."""
     return get_stock_risk_history(session=session, symbol=symbol, limit=limit)
+
+
+@router.get("/stocks/{symbol}/fundamentals", tags=["stocks", "fundamentals"])
+def get_stock_fundamentals_endpoint(
+    symbol: str,
+    session: DatabaseSession,
+) -> dict[str, Any]:
+    """Retrieve quarterly financial periods, derived TTM ratios, and peer percentiles."""
+    data = get_stock_fundamentals(session=session, symbol=symbol)
+    if data is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Security with symbol '{symbol}' not found",
+        )
+    return data

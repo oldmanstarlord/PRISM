@@ -401,3 +401,116 @@ export interface StockRiskEnvelope extends ResultEnvelope {
   components: StockRiskComponent[];
 }
 
+export interface CandidateSuggestion {
+  security_id: string;
+  symbol: string;
+  name: string;
+  industry: string;
+  average_correlation: number;
+  adv_20: number | null;
+  confidence: number | null;
+  rationale: string;
+}
+
+export interface ConcentrationFinding {
+  severity: "high" | "medium" | "info";
+  cluster_id: string;
+  weight: number;
+  holding_count: number;
+  total_holdings: number;
+  message: string;
+  members: string[];
+}
+
+export interface DiversificationResponse {
+  id: string;
+  portfolio_risk_run_id: string;
+  enb_eigen: number;
+  enb_risk_entropy: number;
+  enb_default: number;
+  enb_default_type: string;
+  cluster_weights: Record<string, number>;
+  findings: {
+    concentration_findings?: ConcentrationFinding[];
+    candidate_suggestions?: CandidateSuggestion[];
+  };
+  config_fingerprint: string;
+  computed_at: string;
+}
+
+export interface ShockRequest {
+  symbol: string;
+  shock_pct: number;
+  method?: "regression_beta" | "mst_path_decay";
+}
+
+export interface ShockResultItem {
+  symbol: string;
+  security_id: string | null;
+  weight: number;
+  estimated_impact_pct: number;
+  contribution_pct: number;
+  method_detail: {
+    symbol?: string;
+    sensitivity?: number;
+    sensitivity_type?: string;
+  };
+}
+
+export interface ShockScenarioResponse {
+  id: string;
+  portfolio_id: string;
+  shocked_security_id: string | null;
+  shocked_symbol: string;
+  shock_pct: number;
+  method_version: string;
+  portfolio_impact_pct: number;
+  banner: string;
+  assumptions: string[];
+  results: ShockResultItem[];
+  created_at: string;
+}
+
+export interface FundamentalPeriodItem {
+  id: string;
+  period_end: string;
+  period_type: string;
+  basis: string;
+  published_at: string;
+  published_at_method: string;
+  version: number;
+  revenue: number | null;
+  operating_profit: number | null;
+  pat: number | null;
+  interest_expense: number | null;
+  total_debt: number | null;
+  total_equity: number | null;
+  total_assets: number | null;
+  cash_from_operations: number | null;
+  extra?: Record<string, unknown> | null;
+}
+
+export interface FundamentalMetricItem {
+  metric_key: string;
+  value: number | null;
+  peer_percentile: number | null;
+  peer_group: string;
+  status: string;
+  details?: Record<string, unknown> | null;
+  data_age_days?: number | null;
+}
+
+export interface StockFundamentalsResponse {
+  symbol: string;
+  company_name: string;
+  industry: string;
+  sector?: string | null;
+  as_of: string;
+  data_age_days?: number | null;
+  periods: FundamentalPeriodItem[];
+  metrics: FundamentalMetricItem[];
+  limitations: string[];
+  source_note: string;
+}
+
+

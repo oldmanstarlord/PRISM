@@ -9,16 +9,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.correlation_mst.inputs import MstInputs
-from backend.app.db.models import BenchmarkDefinition, BenchmarkSeries
+from backend.app.db.models import BenchmarkSeries
 
 
 def extract_benchmark_returns(
     session: Session | None,
     raw_returns: pd.DataFrame,
     trade_dates: list[date],
-    benchmark_name: str = "NIFTY 200",
+    benchmark_id: str = "NIFTY_200",
+    benchmark_name: str | None = None,
 ) -> pd.Series:
-    """Extract point-in-time benchmark log returns.
+    """Extract point-in-time benchmark log returns using stable benchmark_id (FR-D8).
 
     Falls back to equal-weighted universe return if benchmark is unavailable.
     """
@@ -26,25 +27,24 @@ def extract_benchmark_returns(
 
     if session is not None and len(trade_dates) > 1:
         try:
-            bench_id = session.scalar(
-                select(BenchmarkDefinition.id).where(BenchmarkDefinition.name == benchmark_name)
+            target_id = benchmark_id or (
+                "NIFTY_200" if benchmark_name in ("NIFTY 200", "NIFTY_200") else str(benchmark_name)
             )
-            if bench_id is not None:
-                rows = session.scalars(
-                    select(BenchmarkSeries)
-                    .where(
-                        BenchmarkSeries.benchmark_id == bench_id,
-                        BenchmarkSeries.trade_date.in_(trade_dates),
-                    )
-                    .order_by(BenchmarkSeries.trade_date)
-                ).all()
-                if len(rows) >= len(trade_dates) * 0.8:
-                    prices = pd.Series(
-                        {row.trade_date: float(row.close) for row in rows},
-                        name="benchmark",
-                    ).sort_index()
-                    log_rets = np.log(prices / prices.shift(1)).dropna()
-                    bench_returns = log_rets.reindex(raw_returns.index)
+            rows = session.scalars(
+                select(BenchmarkSeries)
+                .where(
+                    BenchmarkSeries.benchmark_id == target_id,
+                    BenchmarkSeries.trade_date.in_(trade_dates),
+                )
+                .order_by(BenchmarkSeries.trade_date)
+            ).all()
+            if len(rows) >= len(trade_dates) * 0.8:
+                prices = pd.Series(
+                    {row.trade_date: float(row.close) for row in rows},
+                    name="benchmark",
+                ).sort_index()
+                log_rets = np.log(prices / prices.shift(1)).dropna()
+                bench_returns = log_rets.reindex(raw_returns.index)
         except Exception:
             bench_returns = None
 
@@ -104,7 +104,8 @@ def compute_ols_residuals(
 def build_residual_inputs(
     raw_inputs: MstInputs,
     session: Session | None = None,
-    benchmark_name: str = "NIFTY 200",
+    benchmark_id: str = "NIFTY_200",
+    benchmark_name: str | None = None,
 ) -> tuple[MstInputs, dict[str, Any]]:
     """Build a residual MstInputs panel where the market benchmark return has been removed."""
     closes = raw_inputs.adjusted_closes
@@ -116,7 +117,11 @@ def build_residual_inputs(
 
     # Extract benchmark returns
     bench_returns = extract_benchmark_returns(
-        session, raw_returns, trade_dates, benchmark_name=benchmark_name
+        session,
+        raw_returns,
+        trade_dates,
+        benchmark_id=benchmark_id,
+        benchmark_name=benchmark_name,
     )
 
     residual_returns_df = pd.DataFrame(index=raw_returns.index, columns=symbols, dtype=float)

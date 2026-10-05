@@ -1,9 +1,8 @@
 """Point-in-time data loaders and mathematical helpers for risk components (D4)."""
 
 from datetime import date, timedelta
-from uuid import UUID
-
 from typing import cast
+from uuid import UUID
 
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
@@ -47,10 +46,7 @@ def get_adjusted_prices_map(
     for r in rows:
         series_map[r.security_id][r.trade_date] = float(r.adjusted_close)
 
-    result = {
-        s_id: pd.Series(dates_dict).sort_index()
-        for s_id, dates_dict in series_map.items()
-    }
+    result = {s_id: pd.Series(dates_dict).sort_index() for s_id, dates_dict in series_map.items()}
     context.cache[cache_key] = result
     return result
 
@@ -102,27 +98,27 @@ def get_raw_prices_map(
 
 def get_benchmark_returns(
     context: RiskContext,
-    benchmark_name: str = "NIFTY 200",
+    benchmark_id: str = "NIFTY_200",
     lookback_days: int = 365,
 ) -> pd.Series:
     """Retrieve point-in-time benchmark log returns series."""
-    cache_key = f"benchmark_returns_{benchmark_name}_{lookback_days}"
+    cache_key = f"benchmark_returns_{benchmark_id}_{lookback_days}"
     if cache_key in context.cache:
         return context.cache[cache_key]
 
     session = context.session
     min_date = context.as_of - timedelta(days=int(lookback_days * 1.6))
 
-    bench_id = session.scalar(
-        select(BenchmarkDefinition.id).where(BenchmarkDefinition.name == benchmark_name)
+    bench_def = session.scalar(
+        select(BenchmarkDefinition).where(BenchmarkDefinition.benchmark_id == benchmark_id)
     )
 
     series = pd.Series(dtype=float)
-    if bench_id is not None:
+    if bench_def is not None:
         rows = session.scalars(
             select(BenchmarkSeries)
             .where(
-                BenchmarkSeries.benchmark_id == bench_id,
+                BenchmarkSeries.benchmark_id == benchmark_id,
                 BenchmarkSeries.trade_date <= context.as_of,
                 BenchmarkSeries.trade_date >= min_date,
                 BenchmarkSeries.ingested_at <= context.data_cutoff,
@@ -130,9 +126,7 @@ def get_benchmark_returns(
             .order_by(BenchmarkSeries.trade_date)
         ).all()
         if rows:
-            prices = pd.Series(
-                {r.trade_date: float(r.close) for r in rows}
-            ).sort_index()
+            prices = pd.Series({r.trade_date: float(r.close) for r in rows}).sort_index()
             series = np.log(prices / prices.shift(1)).dropna()
 
     context.cache[cache_key] = series

@@ -27,11 +27,12 @@ import {
 } from "@mui/material";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { z } from "zod";
-import { useApi, apiBase } from "./api";
+import { useApi, apiBase, postJson } from "./api";
 import { ExplainPanel } from "./components/ExplainPanel";
 import { FreshnessBadge } from "./components/FreshnessBadge";
 import { DrawdownChart, RiskContributionChart } from "./components/PortfolioCharts";
 import type {
+  DiversificationResponse,
   Portfolio,
   PortfolioRiskRun,
   PortfolioImportResult,
@@ -62,7 +63,10 @@ export default function PortfolioPage() {
   const [actionWarning, setActionWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [riskData, setRiskData] = useState<PortfolioRiskRun | null>(null);
+  const [divData, setDivData] = useState<DiversificationResponse | null>(null);
+  const [isLoadingDiv, setIsLoadingDiv] = useState<boolean>(false);
   const [forceRerun, setForceRerun] = useState<boolean>(false);
+
 
   // Load existing portfolios
   const {
@@ -108,11 +112,25 @@ export default function PortfolioPage() {
       }
       const data: PortfolioRiskRun = await response.json();
       setRiskData(data);
+
+      // Fetch diversification metrics
+      setIsLoadingDiv(true);
+      try {
+        const divRes = await postJson<DiversificationResponse>(
+          `/portfolios/${portfolioId}/diversification`
+        );
+        setDivData(divRes);
+      } catch {
+        // Non-blocking diversification load failure
+      } finally {
+        setIsLoadingDiv(false);
+      }
     } catch (err: unknown) {
       setActionWarning(err instanceof Error ? err.message : "Error executing risk calculation");
     } finally {
       setIsSubmitting(false);
     }
+
   };
 
   // Submit manual portfolio
@@ -768,6 +786,226 @@ export default function PortfolioPage() {
             </Grid>
           </Grid>
 
+          {/* Step 6: Diversification Analysis Card (FR-I1, OQ-5) */}
+          <Card variant="outlined" sx={{ mb: 4, borderTop: "4px solid #6366f1" }}>
+            <CardContent>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 2,
+                }}
+              >
+                <Typography
+                  variant="h6"
+                  sx={{ fontSize: "1.1rem", fontWeight: 700, color: "#1e1b4b" }}
+                >
+                  Portfolio Diversification &amp; Effective Number of Bets (FR-I1)
+                </Typography>
+                {divData && (
+                  <Chip
+                    label={`Default: ${divData.enb_default_type.toUpperCase()} ENB`}
+                    color="primary"
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+
+              {isLoadingDiv && (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 2 }}>
+                  <CircularProgress size={20} />
+                  <Typography variant="body2" color="text.secondary">
+                    Evaluating independent bets and universe correlations...
+                  </Typography>
+                </Box>
+              )}
+
+              {divData && (
+                <Box>
+                  {/* Two ENB Numbers with Plain Explanation */}
+                  <Grid container spacing={3} sx={{ mb: 3 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Box
+                        sx={{
+                          p: 2,
+                          bgcolor: "#f8fafc",
+                          borderRadius: 2,
+                          border: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          Risk-Contribution Entropy ENB (Default)
+                        </Typography>
+                        <Typography
+                          variant="h4"
+                          sx={{ fontWeight: 700, my: 1, color: "#4338ca" }}
+                        >
+                          {divData.enb_risk_entropy.toFixed(2)} bets
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: "block" }}
+                        >
+                          exp(- &sum; p_i ln p_i) where p_i is percentage risk contribution.
+                          Measures concentration of risk across assets. Equal to N when risk is
+                          evenly balanced.
+                        </Typography>
+                      </Box>
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 6 }}>
+                      <Box
+                        sx={{
+                          p: 2,
+                          bgcolor: "#f8fafc",
+                          borderRadius: 2,
+                          border: "1px solid #e2e8f0",
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          Eigenvalue Decomposition ENB (Secondary)
+                        </Typography>
+                        <Typography
+                          variant="h4"
+                          sx={{ fontWeight: 700, my: 1, color: "#0f766e" }}
+                        >
+                          {divData.enb_eigen.toFixed(2)} bets
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: "block" }}
+                        >
+                          (&sum; &lambda;_i)&sup2; / &sum; &lambda;_i&sup2; over shrunk correlation
+                          matrix. Measures uncorrelated statistical dimensions. Equal to N for
+                          uncorrelated assets and 1 for perfect co-movement.
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+
+                  {/* Cluster Concentration Breakdown & Findings */}
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: 700, mb: 1, color: "#334155" }}
+                  >
+                    MST Cluster Weight Distribution &amp; Concentration Findings
+                  </Typography>
+
+                  {/* Plain-Language Findings */}
+                  <Stack spacing={1} sx={{ mb: 3 }}>
+                    {divData.findings.concentration_findings?.map((f, idx) => (
+                      <Alert
+                        key={idx}
+                        severity={f.severity === "high" ? "warning" : "info"}
+                        sx={{ py: 0.5 }}
+                      >
+                        {f.message}
+                      </Alert>
+                    ))}
+                  </Stack>
+
+                  {/* Cluster Weights Grid */}
+                  <Grid container spacing={2} sx={{ mb: 3 }}>
+                    {Object.entries(divData.cluster_weights).map(([cid, wt]) => (
+                      <Grid key={cid} size={{ xs: 6, sm: 4, md: 3 }}>
+                        <Box
+                          sx={{
+                            p: 1.5,
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 1.5,
+                            bgcolor: "#ffffff",
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ fontWeight: 700 }}
+                          >
+                            {cid}
+                          </Typography>
+                          <Typography
+                            variant="h6"
+                            sx={{ fontWeight: 700, color: "#0f172a" }}
+                          >
+                            {(wt * 100).toFixed(1)}%
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+
+                  {/* Candidate Suggestions */}
+                  {divData.findings.candidate_suggestions &&
+                    divData.findings.candidate_suggestions.length > 0 && (
+                      <Box sx={{ mt: 3, pt: 2, borderTop: "1px solid #e2e8f0" }}>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{ fontWeight: 700, mb: 1, color: "#334155" }}
+                        >
+                          Diversification Opportunities (Universe Candidates with Low Correlation)
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: "block", mb: 1.5 }}
+                        >
+                          Universe stocks with lowest correlation to portfolio holdings (filtered
+                          by ADV &ge; 10M INR and confidence &ge; 60). Wording strictly formulated
+                          as &quot;would reduce concentration&quot; &mdash; not investment advice.
+                        </Typography>
+                        <Stack spacing={1}>
+                          {divData.findings.candidate_suggestions.map((cand) => (
+                            <Box
+                              key={cand.symbol}
+                              sx={{
+                                p: 1.5,
+                                bgcolor: "#f0fdf4",
+                                border: "1px solid #bbf7d0",
+                                borderRadius: 1.5,
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}
+                            >
+                              <Box>
+                                <Typography
+                                  variant="body2"
+                                  sx={{ fontWeight: 700, color: "#166534" }}
+                                >
+                                  {cand.symbol} &mdash; {cand.name} ({cand.industry})
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {cand.rationale}
+                                </Typography>
+                              </Box>
+                              <Chip
+                                label={`Avg Corr: ${cand.average_correlation.toFixed(2)}`}
+                                size="small"
+                                color="success"
+                                variant="outlined"
+                              />
+                            </Box>
+                          ))}
+                        </Stack>
+                      </Box>
+                    )}
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+
           {/* D3 Result Envelope: ExplainPanel */}
           {riskData.envelope && (
             <ExplainPanel
@@ -775,6 +1013,7 @@ export default function PortfolioPage() {
               title="Methodology, Covariance Shrinkage & Regulatory Envelope"
             />
           )}
+
         </Box>
       )}
     </Container>

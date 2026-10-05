@@ -7,11 +7,11 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Field | Value |
 |---|---|
 | Current phase | Phase 0 - Foundations |
-| Overall status | In progress (Step 4 completed: MST Diagnostics, Stability Scoring, Clustering, and Residual Variant - SRS Section 6, FR-M1 to FR-M5) |
+| Overall status | Step 5 complete (Next = Step 6) |
 | Last updated | 2026-10-05 |
 | Requirements source | `PRISM_SRS.md` version 1.6 |
 | Initial universe | NIFTY 200 |
-| Active implementation focus | Step 4 completed; proceeding to Step 5 risk score aggregation engine |
+| Active implementation focus | Step 5 completed; proceeding to Step 6 |
 
 ## Phase status
 
@@ -53,59 +53,28 @@ This is the living implementation record for PRISM. It must be updated after eve
 
 ## Known blockers
 
-1. Historical NIFTY 200 membership data is not yet available; the official source provides the current composition.
-2. The additive Layer 2, Step 1, and Step 2 migrations require explicit user authorization to execute against the configured shared Supabase database.
-3. SRS Section 16 item 16 requires confirmation/sign-off by a secondary team member using `docs/SETUP_RECOVERY.md`.
+1. Teammate sign-off for SRS item 16.
+2. Shares-outstanding data not yet loaded.
+3. Benchmark is single-source Yahoo Finance.
+4. Historical NIFTY 200 membership is not available.
 
 ## Verification status
 
 | Check | Result | Last run |
 |---|---|---|
-| Python environment | Python 3.12.13 provisioned by `uv` | 2026-09-29 |
-| Python dependency lock | 143 packages resolved; native scheduler stack active | 2026-09-29 |
-| Ruff | Passed (99 files checked, 0 errors) | 2026-10-05 |
-| mypy strict mode | Passed, 46 source files in backend and jobs | 2026-10-05 |
-| pytest | Passed, 86 tests (0 failures, 1 warning) | 2026-10-05 |
-| ESLint | Passed (0 warnings, 0 errors) | 2026-10-05 |
-| Vitest | Passed, 17 tests across 4 test suites | 2026-10-05 |
+| Python environment | Python 3.12 provisioned by `uv` | 2026-10-05 |
+| Python dependency lock | `uv lock --check` passed; `pyarrow>=25.0.1` locked; optional `ml` extra | 2026-10-05 |
+| Ruff | Passed (0 errors across workspace) | 2026-10-05 |
+| mypy strict mode | Passed (76 source files checked in backend and jobs, 0 errors) | 2026-10-05 |
+| pytest | Passed (136 tests passed, 0 failures) | 2026-10-05 |
+| ESLint | Passed (0 errors, 0 warnings) | 2026-10-05 |
+| Vitest | Passed (28 tests across 8 suites, 0 failures) | 2026-10-05 |
 | TypeScript/Vite production build | Passed (dist bundle built cleanly) | 2026-10-05 |
-| Supabase encrypted connection | Passed | 2026-10-04 |
-| Alembic migration | `d8031fcf7da5` at remote head; local head at `f2b9c8d1e302` | 2026-10-05 |
-| Phase 0 schema | 13 of 13 expected tables present | 2026-09-30 |
-| FastAPI readiness endpoint | HTTP 200, database connected | 2026-09-30 |
-| Official NIFTY 200 snapshot | 200 validated rows imported | 2026-09-30 |
-| Universe importer idempotency | Second run created and updated zero records | 2026-09-30 |
-| Market-data tests | Ruff passed; strict mypy passed; pytest passed | 2026-10-05 |
-| Daily raw-price coverage | 503,226 rows across 200 securities, 2015-01-01 through 2026-10-01 | 2026-10-01 |
-| Adjusted-price coverage | 591,176 versioned rows across 200 securities | 2026-10-01 |
-| Corporate actions | 2,864 dividend and split records | 2026-10-01 |
-| Stored OHLCV validity audit | Zero invalid rows | 2026-10-01 |
-| Pipeline-run recovery | Zero market-data runs left incorrectly running | 2026-10-01 |
-| Layer 1 engine tests | Ruff passed; strict mypy passed for 26 source files; pytest passed 25 tests | 2026-10-02 |
-| Layer 1 real-data input check | 110 dates; 186 eligible securities; 13 industries; 14 explicit small-industry exclusions; zero input issues | 2026-10-02 |
-| Layer 1 real-data calculation | 556 finite scores: 186 one-day, 186 five-day and 184 twenty-day; two explicit insufficient-horizon issues | 2026-10-02 |
-| Layer 1 persistence verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
-| Backend verification | Ruff passed; strict mypy passed for 46 source files; pytest passed 86 tests | 2026-10-05 |
-| Frontend verification | ESLint passed; 17 Vitest tests passed; TypeScript/Vite production build passed | 2026-10-05 |
-| Company-detail API check | BAJAJ-AUTO returned three scores, 13 exact peers and 61 comparison points | 2026-10-04 |
-| Persisted Layer 1 run | 556 scores, 14 exclusions and 2 calculation issues available through the API | 2026-10-04 |
-| Layer 2 engine tests | Determinism, tie-breaking, no-look-ahead, missing-data exclusion and topology invariants passed | 2026-10-04 |
-| Layer 2 real-data calculation | 199 nodes; 198 edges; connected and acyclic; VAML explicitly excluded; 2.171 second calculation | 2026-10-04 |
-| Layer 2 migration verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
-| Validation splits tests | 23 tests passed (walk-forward & purged k-fold; strict time ordering, no-look-ahead) | 2026-10-04 |
-| Last-known-good test | Ingestion failure isolation & idempotency verified | 2026-10-04 |
-| CI workflow | `.github/workflows/ci.yml` added for lint/type/test/build | 2026-10-04 |
-| Step 1 math specs | PORTFOLIO_MATH_SPEC, RISK_SCORE_SPEC, CONFIDENCE_SPEC verified by exact tests | 2026-10-04 |
-| Step 1 config & registry | ModelConfig Pydantic schemas, checksums, fingerprinting & ComponentRegistry passed | 2026-10-04 |
-| Step 1 migration verification | Additive PostgreSQL migration e1a8b9c7f201 renders successfully in offline mode | 2026-10-04 |
-| Step 2 data foundation tests | Benchmark, point-in-time shares, liquidity/market stats, and crosscheck tests passed (13 new tests, 86 total) | 2026-10-05 |
-| Step 2 migration verification | Additive PostgreSQL migration f2b9c8d1e302 renders cleanly offline (5 tables, 0 destructive ops) | 2026-10-05 |
-| Step 2b multi-page frontend | Pinned dependencies, AppLayout, generic shared components, Data Health page, 17 Vitest tests passed | 2026-10-05 |
-| Step 3 portfolio math & service | Euler decomposition, Ledoit-Wolf shrinkage, beta, drawdown, VaR/ES, and CSV import (96 tests passed) | 2026-10-05 |
-| Step 3 migration verification | Additive PostgreSQL migration c3d4e5f6a703 renders cleanly offline (5 tables, 0 destructive ops) | 2026-10-05 |
-| Step 4 MST diagnostics & stability | Edge persistence, k-cut clustering, OLS residual variant, 0 changes to Layer 2, 108 tests passed | 2026-10-05 |
-| Step 4 migration verification | Additive PostgreSQL migration d4e5f6a7b804 renders cleanly offline (3 tables, model_config seed, 0 destructive ops) | 2026-10-05 |
-| Step 4 frontend verification | Variant toggle, cluster color mode, stability badge, node side panel, 25 Vitest tests passed | 2026-10-05 |
+| Frontend frozen lockfile | `pnpm install --frozen-lockfile` passed with exact pinned versions | 2026-10-05 |
+| Layer 1 and Layer 2 Immutability | Passed (0 git diff on `backend/app/correlation_mst` and `backend/app/sector_divergence`) | 2026-10-05 |
+| Alembic head | Exactly one head: `e5f6a7b8c905` (chain: `d8031fcf7da5` -> `4a78e8c0c741` -> `9c41ad7b218e` -> `e1a8b9c7f201` -> `f2b9c8d1e302` -> `c3d4e5f6a703` -> `d4e5f6a7b804` -> `e5f6a7b8c905`); SQL verified purely additive; live DB pending AUTHORIZATION | 2026-10-05 |
+| NIFTY 200 Benchmark Ingestion | Dry-run passed; all 7 PASS RULES passed; single source `^CNX200` verified (`docs/evidence/benchmark_check.md`) | 2026-10-05 |
+| Step 5 Risk & Confidence Engine | Audited against RISK_SCORE_SPEC and CONFIDENCE_SPEC; no silent fallback on missing benchmark; all 136 tests green | 2026-10-05 |
 
 ## Update protocol
 

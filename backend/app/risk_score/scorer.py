@@ -144,9 +144,7 @@ class RiskScorer:
             vals_for_comp = val_map.get(comp_key, {})
             # Separate valid non-null values
             valid_universe_values: list[float] = [
-                cv.raw_value
-                for cv in vals_for_comp.values()
-                if cv.raw_value is not None
+                cv.raw_value for cv in vals_for_comp.values() if cv.raw_value is not None
             ]
 
             # Industry-specific lists of valid values
@@ -279,9 +277,7 @@ class RiskScorer:
 
             # Coverage
             coverage = (
-                avail_dim_weights / total_possible_weight
-                if total_possible_weight > 0
-                else 0.0
+                avail_dim_weights / total_possible_weight if total_possible_weight > 0 else 0.0
             )
 
             # Renormalised overall score
@@ -293,9 +289,7 @@ class RiskScorer:
             # Determine security status
             if coverage < self.min_coverage_ratio:
                 sec_status = "insufficient"
-                all_limitations.append(
-                    f"low_data_coverage_{round(coverage * 100, 1)}%"
-                )
+                all_limitations.append(f"low_data_coverage_{round(coverage * 100, 1)}%")
             elif any(d.status != "ok" for d in dim_scores.values()):
                 sec_status = "partial"
             else:
@@ -309,16 +303,12 @@ class RiskScorer:
                 d_weight = d_obj.weight
                 valid_c = [c for c in d_obj.components if c.points is not None]
                 sum_w_in_d = sum(c.weight for c in valid_c)
-                dim_weight_frac = (
-                    d_weight / avail_dim_weights if avail_dim_weights > 0 else 0.0
-                )
+                dim_weight_frac = d_weight / avail_dim_weights if avail_dim_weights > 0 else 0.0
 
                 for c in valid_c:
                     comp_weight_frac = c.weight / sum_w_in_d if sum_w_in_d > 0 else 0.0
                     points_val = c.points if c.points is not None else 0.0
-                    c.contribution = round(
-                        dim_weight_frac * comp_weight_frac * points_val, 4
-                    )
+                    c.contribution = round(dim_weight_frac * comp_weight_frac * points_val, 4)
                     all_limitations.extend(c.limitations)
 
             # Top 3 reasons

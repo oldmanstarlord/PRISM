@@ -25,12 +25,16 @@ dependencies = [
   "statsmodels>=0.14",
   "structlog>=25.4",
   "tenacity>=9.1",
+  "uvicorn[standard]>=0.35",
+  "yfinance>=0.2.65",
+]
+
+[project.optional-dependencies]
+ml = [
   "torch>=2.7",
   "torch-geometric>=2.6",
   "transformers>=4.53",
-  "uvicorn[standard]>=0.35",
   "xgboost>=3.0",
-  "yfinance>=0.2.65",
 ]
 
 [dependency-groups]

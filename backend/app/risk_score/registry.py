@@ -14,6 +14,12 @@ from backend.app.db.models import ScoreComponentDefinition
 from backend.app.risk_score.components.avg_traded_value import AvgTradedValueComponent
 from backend.app.risk_score.components.beta_to_benchmark import BetaToBenchmarkComponent
 from backend.app.risk_score.components.ewma_volatility import EwmaVolatilityComponent
+from backend.app.risk_score.components.fundamentals import (
+    FundCashflowQualityComponent,
+    FundCoverageComponent,
+    FundLeverageComponent,
+    FundProfitTrendComponent,
+)
 from backend.app.risk_score.components.max_drawdown_1y import MaxDrawdown1yComponent
 from backend.app.risk_score.components.mst_centrality import MstCentralityComponent
 from backend.app.risk_score.components.sector_divergence import SectorDivergenceComponent
@@ -339,6 +345,73 @@ STEP_5_COMPONENT_DEFINITIONS: dict[str, RegisteredComponentDefinition] = {
     ),
 }
 
+# Active Step 7 fundamental component definitions
+STEP_7_COMPONENT_DEFINITIONS: dict[str, RegisteredComponentDefinition] = {
+    "fund_leverage": RegisteredComponentDefinition(
+        id=None,
+        component_id="fund_leverage",
+        dimension="fundamentals",
+        name="Financial Leverage",
+        description=(
+            "Total Debt to Total Equity (or Assets to Equity for banks) relative "
+            "to industry peers (higher is riskier)."
+        ),
+        direction="higher_is_riskier",
+        scope="industry",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 7",
+    ),
+    "fund_coverage": RegisteredComponentDefinition(
+        id=None,
+        component_id="fund_coverage",
+        dimension="fundamentals",
+        name="Solvency & Interest Coverage",
+        description=(
+            "Operating profit to interest expense coverage ratio (lower is riskier)."
+        ),
+        direction="lower_is_riskier",
+        scope="industry",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 7",
+    ),
+    "fund_profit_trend": RegisteredComponentDefinition(
+        id=None,
+        component_id="fund_profit_trend",
+        dimension="fundamentals",
+        name="TTM Profit Growth Trend",
+        description=(
+            "Trailing 12-month net profit YoY growth rate relative to industry peers "
+            "(lower is riskier)."
+        ),
+        direction="lower_is_riskier",
+        scope="industry",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 7",
+    ),
+    "fund_cashflow_quality": RegisteredComponentDefinition(
+        id=None,
+        component_id="fund_cashflow_quality",
+        dimension="fundamentals",
+        name="Cash Flow Quality (CFO / PAT)",
+        description=(
+            "Operating cash flow to net profit ratio over trailing 12 months "
+            "(lower is riskier)."
+        ),
+        direction="lower_is_riskier",
+        scope="industry",
+        min_group_size=5,
+        weight=1.0,
+        active=True,
+        introduced_in_step="Step 7",
+    ),
+}
+
 BUILTIN_COMPONENT_CLASSES: dict[str, type] = {
     "ewma_volatility": EwmaVolatilityComponent,
     "beta_to_benchmark": BetaToBenchmarkComponent,
@@ -348,6 +421,10 @@ BUILTIN_COMPONENT_CLASSES: dict[str, type] = {
     "zero_volume_days": ZeroVolumeDaysComponent,
     "mst_centrality": MstCentralityComponent,
     "sector_divergence": SectorDivergenceComponent,
+    "fund_leverage": FundLeverageComponent,
+    "fund_coverage": FundCoverageComponent,
+    "fund_profit_trend": FundProfitTrendComponent,
+    "fund_cashflow_quality": FundCashflowQualityComponent,
 }
 
 

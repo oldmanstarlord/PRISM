@@ -21,6 +21,8 @@ frontend/*.tsbuildinfo
 !.env.example
 
 # Data and model artifacts
+artifacts/
+data/raw/
 data/raw/*
 data/processed/*
 data/models/*

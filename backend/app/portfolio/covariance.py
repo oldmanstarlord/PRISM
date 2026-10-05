@@ -144,7 +144,7 @@ def persist_covariance_parquet(
     run_id: UUID,
     symbols: list[str],
     cov_matrix: np.ndarray,
-    base_dir: str = "artifacts",
+    base_dir: str = "data/processed",
 ) -> tuple[str, str]:
     """Serialize covariance matrix as Parquet file and compute SHA-256 hash.
 

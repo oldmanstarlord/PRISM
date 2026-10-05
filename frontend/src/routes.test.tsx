@@ -148,6 +148,31 @@ beforeEach(() => {
           }),
         });
       }
+      if (url.includes("/stocks/TEST/risk/latest")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            subject: "stock:TEST",
+            symbol: "TEST",
+            company_name: "Test Ltd",
+            industry: "Technology",
+            effective_time: "2026-10-01",
+            total_score: 45.0,
+            confidence: { score: 85.0, factors: {} },
+            data_coverage: 0.8,
+            dimension_scores: {},
+            components: [],
+            limitations: [],
+            computed_at: "2026-10-01T18:00:00Z",
+          }),
+        });
+      }
+      if (url.includes("/portfolios")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [],
+        });
+      }
       return Promise.resolve({
         ok: true,
         json: async () => ({}),
@@ -190,6 +215,7 @@ describe("AppRoutes across all views", () => {
     { path: "/validation", expectedTitle: /walk-forward & purged validation/i },
     { path: "/data-health", expectedTitle: /data health & quality surveillance/i },
     { path: "/companies/TEST", expectedTitle: "TEST" },
+    { path: "/stocks/TEST", expectedTitle: "TEST" },
   ];
 
   routesToTest.forEach(({ path, expectedTitle }) => {

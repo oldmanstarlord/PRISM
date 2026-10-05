@@ -74,9 +74,9 @@ describe("StocksPage", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: /Multi-Dimensional Stock Risk Screener/i })
+      await screen.findByRole("heading", { name: /Multi-Dimensional Stock Risk/i })
     ).toBeInTheDocument();
-    expect(screen.getByText("RELIANCE")).toBeInTheDocument();
+    expect(await screen.findByText("RELIANCE")).toBeInTheDocument();
     expect(screen.getByText("TCS")).toBeInTheDocument();
     expect(screen.getByText("65.4")).toBeInTheDocument();
     expect(screen.getByText("32.1")).toBeInTheDocument();

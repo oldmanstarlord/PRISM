@@ -100,9 +100,7 @@ class ConfidenceEngine:
             .limit(1)
         ).first()
         base_mst_persistence = (
-            float(mst_stability_row.edge_persistence)
-            if mst_stability_row is not None
-            else 0.90
+            float(mst_stability_row.edge_persistence) if mst_stability_row is not None else 0.90
         )
 
         results: dict[UUID, SecurityConfidenceResult] = {}
@@ -129,6 +127,12 @@ class ConfidenceEngine:
                     max_age = self.max_age_by_dimension.get(c.dimension, 5)
                     age = c.data_age_days if c.data_age_days is not None else 0
                     comp_f = max(0.0, 1.0 - (age / max_age))
+                    if c.dimension == "fundamentals":
+                        is_est = c.evidence_ref.get(
+                            "published_at_method"
+                        ) == "estimated" or "estimated" in str(c.evidence_ref)
+                        if is_est:
+                            comp_f *= 0.85
                     freshness_scores.append(comp_f)
                 f_fresh = float(sum(freshness_scores) / len(freshness_scores))
             else:

@@ -13,6 +13,7 @@ const MstPage = lazy(() => import("./MstPage"));
 const PortfolioPage = lazy(() => import("./PortfolioPage"));
 const StocksPage = lazy(() => import("./StocksPage"));
 const StockDetailPage = lazy(() => import("./StockDetailPage"));
+const ShockPage = lazy(() => import("./ShockPage"));
 
 function LoadingFallback() {
   return (
@@ -64,13 +65,12 @@ export function AppRoutes() {
         <Route
           path="/shock"
           element={
-            <PlaceholderPage
-              title="Shock & Scenario Simulation"
-              stepName="Step 6"
-              description="What-if macro, sector, and constituent stress simulations. Scenarios are exploratory sensitivity tests, never price forecasts."
-            />
+            <Suspense fallback={<LoadingFallback />}>
+              <ShockPage />
+            </Suspense>
           }
         />
+
         <Route
           path="/validation"
           element={

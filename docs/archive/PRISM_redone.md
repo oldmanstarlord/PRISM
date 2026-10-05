@@ -1,3 +1,5 @@
+ARCHIVED: superseded by PRISM_SRS.md v1.6. Do not use as a requirements source.
+
 # PRISM — Software Requirements Specification (SRS)
 
 | Field | Value |

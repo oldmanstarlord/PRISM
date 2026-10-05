@@ -39,6 +39,7 @@ from backend.app.portfolio.parser import (
     parse_csv_holdings,
 )
 from backend.app.portfolio.schemas import (
+    DiversificationResponse,
     DrawdownPoint,
     PortfolioCreate,
     PortfolioHoldingOut,
@@ -47,6 +48,9 @@ from backend.app.portfolio.schemas import (
     PortfolioRiskRunOut,
     RiskContributionOut,
     RiskRunRequest,
+    ShockRequest,
+    ShockResultOut,
+    ShockScenarioResponse,
 )
 
 
@@ -405,7 +409,7 @@ def run_portfolio_risk(
     bench_stmt = (
         select(BenchmarkSeries.trade_date, BenchmarkSeries.close)
         .where(
-            BenchmarkSeries.benchmark_id.in_(["NIFTY 200", "NIFTY_200"]),
+            BenchmarkSeries.benchmark_id == "NIFTY_200",
             BenchmarkSeries.trade_date <= eff_as_of,
         )
         .order_by(BenchmarkSeries.trade_date.desc())
@@ -755,4 +759,166 @@ def get_latest_risk_run(session: Session, portfolio_id: UUID) -> PortfolioRiskRu
         data_sufficiency=run.data_sufficiency,
         envelope=dict(run.envelope or {}),
         computed_at=run.computed_at,
+    )
+
+
+def get_or_run_portfolio_diversification(
+    session: Session,
+    portfolio_id: UUID,
+) -> DiversificationResponse:
+    """Retrieve or compute diversification analysis for the latest risk run of a portfolio."""
+    # Find latest completed risk run
+    risk_run = session.scalars(
+        select(PortfolioRiskRun)
+        .where(
+            PortfolioRiskRun.portfolio_id == portfolio_id,
+            PortfolioRiskRun.status == "completed",
+        )
+        .order_by(PortfolioRiskRun.computed_at.desc())
+    ).first()
+
+    if not risk_run:
+        # Automatically compute risk run if not yet run
+        risk_run_out = run_portfolio_risk(session, portfolio_id, RiskRunRequest())
+        risk_run = session.get(PortfolioRiskRun, risk_run_out.id)
+        if not risk_run:
+            raise HTTPException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                detail=f"Unable to establish risk run for portfolio {portfolio_id}",
+            )
+
+    from backend.app.portfolio.diversification import run_portfolio_diversification
+
+    div_run = run_portfolio_diversification(session, risk_run.id)
+
+    return DiversificationResponse(
+        id=div_run.id,
+        portfolio_risk_run_id=div_run.portfolio_risk_run_id,
+        enb_eigen=float(div_run.enb_eigen),
+        enb_risk_entropy=float(div_run.enb_risk_entropy),
+        enb_default=float(div_run.enb_risk_entropy),
+        enb_default_type="entropy",
+        cluster_weights=dict(div_run.cluster_weights or {}),
+        findings=dict(div_run.findings or {}),
+        config_fingerprint=div_run.config_fingerprint,
+        computed_at=div_run.computed_at,
+    )
+
+
+def run_shock_simulation(
+    session: Session,
+    portfolio_id: UUID,
+    payload: ShockRequest,
+) -> ShockScenarioResponse:
+    """Execute shock scenario simulation on a portfolio."""
+    from backend.app.portfolio.shock import simulate_portfolio_shock
+
+    try:
+        scenario, results, envelope = simulate_portfolio_shock(
+            session=session,
+            portfolio_id=portfolio_id,
+            shocked_symbol=payload.symbol,
+            shock_pct=payload.shock_pct,
+            method=payload.method,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        ) from e
+
+    results_out = [
+        ShockResultOut(
+            symbol=str(r.method_detail.get("symbol", "")),
+            security_id=r.security_id,
+            weight=float(r.weight),
+            estimated_impact_pct=float(r.estimated_impact_pct),
+            contribution_pct=float(r.contribution_pct),
+            method_detail=dict(r.method_detail or {}),
+        )
+        for r in results
+    ]
+
+    return ShockScenarioResponse(
+        id=scenario.id,
+        portfolio_id=scenario.portfolio_id,
+        shocked_security_id=scenario.shocked_security_id,
+        shocked_symbol=payload.symbol.upper(),
+        shock_pct=float(scenario.shock_pct),
+        method_version=scenario.method_version,
+        portfolio_impact_pct=float(envelope["portfolio_impact_pct"]),
+        banner=str(envelope["banner"]),
+        assumptions=list(envelope.get("assumptions", [])),
+        results=results_out,
+        created_at=scenario.created_at,
+    )
+
+
+def get_shock_scenario(
+    session: Session,
+    portfolio_id: UUID,
+    scenario_id: UUID,
+) -> ShockScenarioResponse:
+    """Retrieve an existing shock scenario and its results."""
+    from backend.app.db.models import ShockResult, ShockScenario
+
+    scenario = session.get(ShockScenario, scenario_id)
+    if not scenario or scenario.portfolio_id != portfolio_id:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Shock scenario {scenario_id} not found for portfolio {portfolio_id}.",
+        )
+
+    results = session.scalars(
+        select(ShockResult)
+        .where(ShockResult.scenario_id == scenario_id)
+        .order_by(ShockResult.contribution_pct.asc())
+    ).all()
+
+    # Total impact
+    total_impact = sum(float(r.contribution_pct) for r in results)
+
+    # Shocked symbol
+    from backend.app.db.models import SecurityAlias
+
+    if scenario.shocked_security_id:
+        alias_stmt = select(SecurityAlias.symbol).where(
+            SecurityAlias.security_id == scenario.shocked_security_id
+        )
+        shocked_sym_val = session.scalars(alias_stmt).first()
+        shocked_symbol = shocked_sym_val or "SELECTED"
+    else:
+        shocked_symbol = "SELECTED"
+
+    results_out = [
+        ShockResultOut(
+            symbol=str(r.method_detail.get("symbol", "")),
+            security_id=r.security_id,
+            weight=float(r.weight),
+            estimated_impact_pct=float(r.estimated_impact_pct),
+            contribution_pct=float(r.contribution_pct),
+            method_detail=dict(r.method_detail or {}),
+        )
+        for r in results
+    ]
+
+    assumptions = [
+        "Linear co-movement estimated over trailing trading window is assumed constant.",
+        "No liquidity feedback or execution slippage cascades.",
+        "Covariance stability during hypothetical shock scenario.",
+        f"Isolated shock to {shocked_symbol} without contemporaneous independent shocks.",
+    ]
+
+    return ShockScenarioResponse(
+        id=scenario.id,
+        portfolio_id=scenario.portfolio_id,
+        shocked_security_id=scenario.shocked_security_id,
+        shocked_symbol=shocked_symbol,
+        shock_pct=float(scenario.shock_pct),
+        method_version=scenario.method_version,
+        portfolio_impact_pct=round(total_impact, 4),
+        banner="Scenario estimate, not a prediction",
+        assumptions=assumptions,
+        results=results_out,
+        created_at=scenario.created_at,
     )

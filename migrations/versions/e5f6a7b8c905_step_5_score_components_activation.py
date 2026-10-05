@@ -231,6 +231,4 @@ def downgrade() -> None:
             "'avg_traded_value', 'zero_volume_days', 'mst_centrality', 'sector_divergence')"
         )
     )
-    op.execute(
-        sa.text("DELETE FROM model_config WHERE config_key = 'risk_engine_parameters'")
-    )
+    op.execute(sa.text("DELETE FROM model_config WHERE config_key = 'risk_engine_parameters'"))

@@ -62,12 +62,16 @@ def persist_residual_mst(
     lookback_start: date,
     data_cutoff: datetime,
     computed_at: datetime | None = None,
-    benchmark_name: str = "NIFTY 200",
+    benchmark_id: str = "NIFTY_200",
+    benchmark_name: str | None = None,
 ) -> PersistedMst:
     """Build residual inputs and persist residual MST run via unchanged calculator."""
     raw_inputs = load_inputs(session, window_end, lookback_start, data_cutoff)
     residual_inputs, residual_meta = build_residual_inputs(
-        raw_inputs, session=session, benchmark_name=benchmark_name
+        raw_inputs,
+        session=session,
+        benchmark_id=benchmark_id,
+        benchmark_name=benchmark_name,
     )
 
     configuration = mst_configuration()

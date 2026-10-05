@@ -90,8 +90,11 @@ here.  Obtain them from the project secret store or a trusted team member.**
 ## 4. Python environment
 
 ```bash
-# Create the venv and install all dependencies (including dev extras).
-uv sync --dev
+# Create the venv and install all dependencies using locked versions:
+uv sync --locked
+
+# Optional: If ML capabilities (torch, torch-geometric, transformers, xgboost) are required:
+uv sync --extra ml
 
 # Verify the environment is usable.
 uv run python -c "import backend; print('backend OK')"
@@ -153,17 +156,23 @@ Universe identity seeded
 
 ---
 
-## 7. Ingest market data
+## 7. Ingest market data and benchmark
 
 ```bash
+# 7.1 Benchmark Ingestion (NIFTY 200 via Yahoo Finance ^CNX200)
+# Default behavior is DRY-RUN (runs all 8 consistency checks, writes nothing):
+uv run python jobs/ingest_benchmark.py --source yahoo
+
+# Only persist if all PASS RULES pass:
+uv run python jobs/ingest_benchmark.py --source yahoo --apply
+
+# 7.2 Stock Price Ingestion
 # Download and persist daily OHLCV for all 200 NIFTY 200 members.
-# Default start: 2015-01-01 (override with --start YYYY-MM-DD).
 # Snapshots are written to data/snapshots/<run_id>/.
 uv run python jobs/ingest_prices.py
 ```
 
-The job is incremental: a second run fetches only the seven-day overlap window.
-
+The price job is incremental: a second run fetches only the seven-day overlap window.
 For a single-symbol recovery:
 
 ```bash
@@ -172,18 +181,31 @@ uv run python jobs/ingest_prices.py --symbols RELIANCE
 
 ---
 
-## 8. Run scheduled jobs
+## 8. Run pipeline jobs in exact sequence
+
+Run the data and analytical calculation pipeline in this exact order:
 
 ```bash
-# Layer 1: sector-divergence calculation
+# 1. Benchmark Ingestion
+uv run python jobs/ingest_benchmark.py --source yahoo --apply
+
+# 2. Market Statistics Derivation (ADV, traded value)
+uv run python jobs/derive_market_stats.py
+
+# 3. Layer 1: Sector Divergence Calculation
 uv run python jobs/calculate_sector_divergence.py
 
-# Layer 2: correlation MST calculation
+# 4. Layer 2: Correlation Minimum Spanning Tree
 uv run python jobs/calculate_mst.py
+
+# 5. Layer 2 Diagnostics: MST Stability, Clustering & Centrality Metrics
+uv run python jobs/calculate_mst_diagnostics.py --history 26
+
+# 6. Step 5: Multi-Dimensional Stock Risk Scoring
+uv run python jobs/calculate_stock_scores.py
 ```
 
-Each job writes its run metadata and results to the database and prints a
-structured summary.
+Each job is idempotent — running them twice reuses existing runs and creates zero duplicate rows.
 
 ---
 

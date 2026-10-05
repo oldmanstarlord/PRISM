@@ -33,7 +33,7 @@ class PortfolioRulesConfig(BaseModel):
     annualisation_factor: int = 252
     default_lookback_days: int = 250
     rebalancing: str = "buy_and_hold"
-    benchmark: str = "NIFTY 200"
+    benchmark: str = "NIFTY_200"
     max_stale_days: int = 5
     risk_free_rate_source: str = "GOI_91D_TBILL"
 
@@ -123,6 +123,62 @@ class ConfidenceFactorsConfig(BaseModel):
             if weight <= 0:
                 raise ValueError(f"Factor weight for '{factor}' must be positive, got {weight}")
         return self
+
+
+class CandidateSuggestionRules(BaseModel):
+    min_confidence: float = 60.0
+    min_adv_20: float = 10000000.0
+    max_candidates: int = 5
+
+
+class ClusterConcentrationRules(BaseModel):
+    high_concentration_threshold: float = 0.40
+
+
+class PortfolioDiversificationConfig(BaseModel):
+    method_version: str = "diversification_v1"
+    enb_default: str = "entropy"
+    shrunk_correlation: bool = True
+    candidate_suggestion_rules: CandidateSuggestionRules = Field(
+        default_factory=CandidateSuggestionRules
+    )
+    cluster_concentration_rules: ClusterConcentrationRules = Field(
+        default_factory=ClusterConcentrationRules
+    )
+
+
+class ShockSimulatorConfig(BaseModel):
+    method_version: str = "shock_regression_v1"
+    default_propagation: str = "regression_beta"
+    window_size: int = 250
+    min_shock_pct: float = -50.0
+    max_shock_pct: float = 50.0
+    disclaimer_banner: str = "Scenario estimate, not a prediction"
+    mst_path_decay_enabled: bool = True
+
+
+class FundamentalQualityRules(BaseModel):
+    flag_negative_equity: bool = True
+    flag_extreme_margin_pct: float = 500.0
+    min_asset_value: float = 0.0
+
+
+class FundamentalAnalysisConfig(BaseModel):
+    quarterly_reporting_lag_days: int = 45
+    annual_reporting_lag_days: int = 60
+    min_peer_group_size: int = 5
+    ttm_min_quarters_for_yoy: int = 5
+    financial_sectors: list[str] = Field(
+        default_factory=lambda: [
+            "Financial Services",
+            "Banks",
+            "Banking",
+            "Finance",
+            "NBFC",
+        ]
+    )
+    default_basis_preference: str = "consolidated"
+    quality_rules: FundamentalQualityRules = Field(default_factory=FundamentalQualityRules)
 
 
 class ModelConfigEnvelope(BaseModel):

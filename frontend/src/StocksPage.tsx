@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   Chip,
   CircularProgress,
   FormControl,
@@ -28,8 +27,6 @@ import {
   Typography,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import ShieldIcon from "@mui/icons-material/Shield";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
@@ -71,7 +68,7 @@ export default function StocksPage() {
     <Box sx={{ maxWidth: 1400, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
       {/* Page Header */}
       <Stack spacing={1} sx={{ mb: 3 }}>
-        <Stack direction="row" alignItems="center" spacing={1.5}>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
           <ShieldIcon color="primary" sx={{ fontSize: 32 }} />
           <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
             Multi-Dimensional Stock Risk Explorer & Screener
@@ -82,10 +79,9 @@ export default function StocksPage() {
           coverage tracking, and confidence envelopes (D1–D6).
         </Typography>
         {data?.as_of_date && (
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ pt: 0.5 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center", pt: 0.5 }}>
             <FreshnessBadge
-              date={data.as_of_date}
-              maxAgeDays={5}
+              asOf={data.as_of_date}
               label={`Run As Of: ${data.as_of_date}`}
             />
             <Chip
@@ -113,21 +109,23 @@ export default function StocksPage() {
 
       {/* Filter and Control Bar */}
       <Card variant="outlined" sx={{ mb: 3, p: 2, borderRadius: 2 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={4} md={3}>
+        <Grid container spacing={2} sx={{ alignItems: "center" }}>
+          <Grid size={{ xs: 12, sm: 4, md: 3 }}>
             <TextField
               fullWidth
               size="small"
               placeholder="Search symbol or name..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: "text.secondary" }} />,
+              slotProps={{
+                input: {
+                  startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: "text.secondary" }} />,
+                },
               }}
             />
           </Grid>
 
-          <Grid item xs={12} sm={4} md={3}>
+          <Grid size={{ xs: 12, sm: 4, md: 3 }}>
             <FormControl fullWidth size="small">
               <InputLabel id="industry-filter-label">Industry Group</InputLabel>
               <Select
@@ -149,7 +147,7 @@ export default function StocksPage() {
             </FormControl>
           </Grid>
 
-          <Grid item xs={6} sm={2} md={2}>
+          <Grid size={{ xs: 6, sm: 2, md: 2 }}>
             <FormControl fullWidth size="small">
               <InputLabel id="sort-by-label">Sort By</InputLabel>
               <Select
@@ -166,7 +164,7 @@ export default function StocksPage() {
             </FormControl>
           </Grid>
 
-          <Grid item xs={6} sm={2} md={2}>
+          <Grid size={{ xs: 6, sm: 2, md: 2 }}>
             <FormControl fullWidth size="small">
               <InputLabel id="sort-order-label">Order</InputLabel>
               <Select
@@ -181,7 +179,7 @@ export default function StocksPage() {
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={12} md={2} sx={{ textAlign: { md: "right" } }}>
+          <Grid size={{ xs: 12, sm: 12, md: 2 }} sx={{ textAlign: { md: "right" } }}>
             <Button
               variant="outlined"
               size="small"
@@ -280,7 +278,7 @@ export default function StocksPage() {
                         </TableCell>
 
                         <TableCell>
-                          <Stack direction="row" spacing={1.5} alignItems="center">
+                          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
                             <Chip
                               label={score.toFixed(1)}
                               color={riskColor}
@@ -299,7 +297,7 @@ export default function StocksPage() {
                         </TableCell>
 
                         <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
+                          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                             <Chip
                               label={`${conf.toFixed(0)}%`}
                               size="small"
@@ -331,7 +329,7 @@ export default function StocksPage() {
                         </TableCell>
 
                         <TableCell align="right">
-                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                          <Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
                             <Button
                               component={RouterLink}
                               to={`/stocks/${row.symbol}`}
@@ -363,7 +361,7 @@ export default function StocksPage() {
 
           {/* Pagination */}
           {data && data.total_items > pageSize && (
-            <Stack direction="row" justifyContent="center" sx={{ mt: 2 }}>
+            <Stack direction="row" sx={{ justifyContent: "center", mt: 2 }}>
               <Pagination
                 count={Math.ceil(data.total_items / pageSize)}
                 page={page}

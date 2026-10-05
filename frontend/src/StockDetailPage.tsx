@@ -9,7 +9,6 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Divider,
   Grid,
   LinearProgress,
   Link,
@@ -20,15 +19,13 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import ShieldIcon from "@mui/icons-material/Shield";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 import { useApi } from "./api";
 import type { BreakdownItem, StockRiskEnvelope } from "./types";
 import { BreakdownBars } from "./components/BreakdownBars";
 import { ExplainPanel } from "./components/ExplainPanel";
 import { FreshnessBadge } from "./components/FreshnessBadge";
+import { FundamentalsPanel } from "./components/FundamentalsPanel";
 
 export default function StockDetailPage() {
   const { symbol = "" } = useParams<{ symbol: string }>();
@@ -118,13 +115,15 @@ export default function StockDetailPage() {
       {/* Header and Action Links */}
       <Stack
         direction={{ xs: "column", sm: "row" }}
-        justifyContent="space-between"
-        alignItems={{ sm: "center" }}
         spacing={2}
-        sx={{ mb: 3 }}
+        sx={{
+          justifyContent: "space-between",
+          alignItems: { sm: "center" },
+          mb: 3,
+        }}
       >
         <Box>
-          <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
             <ShieldIcon color="primary" sx={{ fontSize: 36 }} />
             <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
               {envelope.symbol}
@@ -136,10 +135,9 @@ export default function StockDetailPage() {
           </Typography>
         </Box>
 
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
           <FreshnessBadge
-            date={envelope.effective_time || envelope.computed_at}
-            maxAgeDays={5}
+            asOf={envelope.effective_time || envelope.computed_at}
             label={`As of: ${envelope.effective_time || "N/A"}`}
           />
           <Button
@@ -156,13 +154,13 @@ export default function StockDetailPage() {
       {/* Top Gauge Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         {/* Risk Score Gauge */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card variant="outlined" sx={{ p: 2, height: "100%", borderRadius: 2 }}>
             <CardContent>
               <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
                 Synthesized Multi-Dimensional Risk Score
               </Typography>
-              <Stack direction="row" alignItems="baseline" spacing={2} sx={{ mt: 1, mb: 2 }}>
+              <Stack direction="row" spacing={2} sx={{ alignItems: "baseline", mt: 1, mb: 2 }}>
                 <Typography variant="h2" sx={{ fontWeight: 800 }}>
                   {score.toFixed(1)}
                 </Typography>
@@ -190,13 +188,13 @@ export default function StockDetailPage() {
         </Grid>
 
         {/* Confidence Gauge */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card variant="outlined" sx={{ p: 2, height: "100%", borderRadius: 2 }}>
             <CardContent>
               <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
                 Confidence & Evidence Quality
               </Typography>
-              <Stack direction="row" alignItems="baseline" spacing={2} sx={{ mt: 1, mb: 2 }}>
+              <Stack direction="row" spacing={2} sx={{ alignItems: "baseline", mt: 1, mb: 2 }}>
                 <Typography variant="h2" sx={{ fontWeight: 800 }}>
                   {confidenceScore.toFixed(0)}%
                 </Typography>
@@ -244,7 +242,7 @@ export default function StockDetailPage() {
             </Typography>
             <Grid container spacing={2}>
               {envelope.component_contributions.map((reason, idx) => (
-                <Grid item xs={12} md={4} key={reason.component_id || idx}>
+                <Grid size={{ xs: 12, md: 4 }} key={reason.component_id || idx}>
                   <Paper
                     variant="outlined"
                     sx={{
@@ -258,7 +256,7 @@ export default function StockDetailPage() {
                     }}
                   >
                     <Box>
-                      <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+                      <Stack direction="row" sx={{ justifyContent: "space-between", mb: 1 }}>
                         <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                           #{idx + 1} {reason.name}
                         </Typography>
@@ -295,6 +293,9 @@ export default function StockDetailPage() {
           title="Dynamic Component Breakdown & Directional Rank"
         />
       </Box>
+
+      {/* Fundamentals Panel: Quarterly table, TTM metrics, and peer percentiles (Step 7) */}
+      <FundamentalsPanel symbol={upperSymbol} />
 
       {/* History Trajectory Card */}
       {history.length > 1 && (

@@ -160,10 +160,7 @@ def run_stock_score_calculation(
 
     # 4. Synchronize registry with database definitions (D2)
     registry.load_from_db(session)
-    active_defs = {
-        c.component_id: c
-        for c in registry.list_components(active_only=True)
-    }
+    active_defs = {c.component_id: c for c in registry.list_components(active_only=True)}
 
     # 5. Execute all active components point-in-time
     context = RiskContext(
@@ -424,8 +421,7 @@ def get_stock_risk_envelope(
 
     # Retrieve all component definitions (for names, directions, dimensions)
     definitions = {
-        d.component_id: d
-        for d in session.scalars(select(ScoreComponentDefinition)).all()
+        d.component_id: d for d in session.scalars(select(ScoreComponentDefinition)).all()
     }
 
     # Retrieve all component values for this run and security

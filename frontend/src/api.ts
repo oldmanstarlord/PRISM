@@ -15,6 +15,21 @@ export async function fetchJson<T>(path: string, signal?: AbortSignal): Promise<
   return (await response.json()) as T;
 }
 
+export async function postJson<T, B = unknown>(path: string, body?: B, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${apiBase}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal,
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(payload?.detail ?? `API returned ${response.status}`);
+  }
+  return (await response.json()) as T;
+}
+
+
 export interface UseApiOptions<T>
   extends Omit<UseQueryOptions<T, Error, T, readonly [string]>, "queryKey" | "queryFn"> {
   enabled?: boolean;

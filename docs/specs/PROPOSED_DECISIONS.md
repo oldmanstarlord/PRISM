@@ -211,5 +211,86 @@ Allows smooth future migration to multi-tenant user authentication without break
 6. **Stability Grading:** Consecutive window edge persistence $|E_t \cap E_{t-1}| / |E_t|$ classified into HIGH ($\ge 0.65$), MEDIUM ($\ge 0.45$), or LOW ($< 0.45$).
 7. **Descriptive Non-Causal Presentation:** MST relationships and clusters are explicitly framed as descriptive co-movement subgraphs, not causal connections or industrial classifications.
 
+---
 
+## Proposed decisions from Step 5 (2026-10-05)
 
+### PD-11 — Step 5 Risk Engine Architecture & Component Protocol
+
+**Proposed by:** Step 5 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending owner review)
+
+**Statement:**
+1. **Component Protocol & Generic Result Envelope (D1–D5):**
+   - Every risk component implements `RiskComponent` protocol accepting `(as_of, universe, context)` and returning `list[ComponentValue]`.
+   - The UI and API result envelope (`get_stock_risk_envelope`) generically dynamically render all registered components directly from `score_component_definition` without hardcoding specific component keys.
+   - Any uncomputed, inactive, or missing component renders gracefully as `"Not yet available"`.
+2. **Benchmark Stable ID Lookup:**
+   - All benchmark queries across the entire backend (portfolio beta, risk scores, helper functions, and MST residual variant) strictly lookup the benchmark by its unique stable ID `NIFTY_200` from configuration, never by human-readable display names.
+3. **No Silent Fallback Behavior:**
+   - If benchmark data is unavailable or empty, `BetaToBenchmarkComponent` strictly assigns `status = "missing"` with `evidence_ref={"reason": "benchmark_unavailable"}` to all stocks.
+   - No equal-weight market return or secondary index substitute is silently introduced.
+4. **Idempotent MST Diagnostics CLI Job:**
+   - `jobs/calculate_mst_diagnostics.py` runs diagnostics across the historical window series (`--history N`, default 26), computes stability, clustering, and centrality node metrics for both raw and residual MST variants, records a `PipelineRun` manifest, and ensures complete idempotency without duplicate DB rows.
+
+---
+
+### PD-12 — NIFTY 200 Benchmark Sourcing & Internal Consistency Verification
+
+**Proposed by:** Step 5 Implementation  
+**Date:** 2026-10-05  
+**Status:** Proposed (pending owner review)
+
+**Statement:**
+1. **Single Source (Yahoo Finance `^CNX200`):**
+   - The NIFTY 200 benchmark series is retrieved via `yfinance.Ticker("^CNX200").history(period="max", interval="1d", auto_adjust=False)`.
+   - The series represents the NIFTY 200 PRICE index (not Total Return Index). The benchmark definition description is explicitly set to:
+     `"NIFTY 200 PRICE index, single source Yahoo Finance ^CNX200 (unofficial), internally verified, not independently cross-checked."`
+2. **Timezone & Calendar Integrity:**
+   - Timestamps are converted to exchange-local calendar dates (`Asia/Kolkata`) without date shifting.
+   - Partial bars for today's date are excluded; non-positive and NaN closes are dropped.
+3. **Internal Consistency Verification & PASS RULES:**
+   - Production benchmark ingestion (`jobs/ingest_benchmark.py`) defaults to DRY-RUN mode.
+   - Data is only persisted when `--apply` is passed AND all 7 exact PASS RULES hold:
+     - Rule 1 (Historical coverage): Start date $\le$ 2015-03-31.
+     - Rule 2 (Data validity): 0 duplicate dates, 0 non-positive closes.
+     - Rule 3 (Calendar alignment): $\le 1\%$ of $D_u$ missing from benchmark, $\le 1\%$ of benchmark dates outside $D_u$.
+     - Rule 4 (Correlation): Overall Pearson correlation with equal-weighted NIFTY 200 proxy $\ge 0.95$; each full calendar year $\ge 0.90$.
+     - Rule 5 (Stale data): No more than 3 consecutive identical closes.
+     - Rule 6 (Extreme movement): Max 1-day move $\le 25\%$; moves $> 7\%$ flagged for review.
+     - Rule 7 (Freshness): Benchmark latest date within 3 calendar days of latest stock price date.
+   - If any PASS RULE fails, zero rows are written and the job exits with a full diagnostic report (`docs/evidence/benchmark_check.md`).
+4. **Single-Source Risk & Future Mitigation:**
+   - Relying on Yahoo Finance `^CNX200` poses single-source operational risk. Risk reduction through a secondary independent source (such as direct NSE Bhavcopy or official Nifty Indices daily CSV archives) should be scheduled for future procurement.
+
+---
+
+## Proposed decisions from Step 6 (2026-10-05)
+
+### PD-13 — Portfolio Diversification & Effective Number of Bets (ENB) Formulation (SRS OQ-5)
+
+**Proposed by:** Step 6 Implementation  
+**Date:** 2026-10-05  
+**Status:** Approved by User (2026-10-05)
+
+**Statement:**
+1. **Primary ENB Formulation:** Risk-contribution entropy $\text{ENB}_{\text{entropy}} = \exp\left(-\sum_{i=1}^N p_i \ln p_i\right)$, where $p_i$ is the normalized positive percentage risk contribution of asset $i$, is adopted as the primary diversification metric for all portfolios.
+2. **Secondary ENB Formulation:** Eigenvalue decomposition $\text{ENB}_{\text{eigen}} = \left(\sum_{i=1}^N \lambda_i\right)^2 / \sum_{i=1}^N \lambda_i^2$ on the shrunk correlation matrix is computed and displayed alongside for spectral structural comparison.
+3. **Cluster Concentration Analysis:** Portfolio holdings are mapped against Layer 2 MST clusters (`correlation-mst-v1`). Any cluster with $\ge 40\%$ aggregate weight is flagged as concentrated.
+4. **Candidate Suggestions Language:** Universe assets with low average correlation ($\le 0.30$) and sufficient liquidity/confidence ($\text{confidence} \ge 60$, $\text{ADV}_{20} \ge 10\text{M INR}$) are surfaced under the strict rationale: *"Adding {SYMBOL} would reduce concentration in cluster {C} due to low correlation ({R}) with portfolio holdings."* In accordance with PRISM descriptive risk principles, investment advice terms such as `"buy"` or `"invest"` are strictly prohibited.
+
+---
+
+### PD-14 — Stress Shock Simulator & Propagation Methodology (SRS OQ-6)
+
+**Proposed by:** Step 6 Implementation  
+**Date:** 2026-10-05  
+**Status:** Approved by User (2026-10-05)
+
+**Statement:**
+1. **Default Propagation Mechanism:** Pairwise regression beta $\beta_{j,s} = \text{Cov}(r_j, r_s) / \text{Var}(r_s)$, computed from 252-day daily log returns, serves as the default stress propagation method.
+2. **Optional Tree Decay Mode:** Users may optionally simulate stress along the unique Minimum Spanning Tree path with edge correlation product attenuation: $D_{s,j} = \prod_{(u,v) \in P(s,j)} \max(0, \rho_{u,v})$.
+3. **Mandatory Disclaimer Banner:** All stress shock simulation outputs, whether API responses or UI screens, prominently display:
+   > *"Scenario estimate, not a prediction. Hypothetical stress scenarios model historical co-movement and statistical sensitivities. They do not constitute forward price forecasts, guarantees, or investment advice."*
+4. **Permitted Shock Bounds:** Exogenous shocks are strictly bounded in $[-50\%, +50\%]$ to prevent unrealistic mathematical extrapolations of linear models.

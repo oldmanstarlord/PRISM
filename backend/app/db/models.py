@@ -10,6 +10,7 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -819,3 +820,171 @@ class MstNodeMetric(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
+
+class DiversificationRun(Base):
+    __tablename__ = "diversification_run"
+    __table_args__ = (
+        UniqueConstraint(
+            "portfolio_risk_run_id",
+            "config_fingerprint",
+            name="uq_diversification_run_portfolio_run_cfg",
+        ),
+        Index("ix_diversification_run_portfolio_run_id", "portfolio_risk_run_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    portfolio_risk_run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("portfolio_risk_run.id", ondelete="CASCADE"), nullable=False
+    )
+    enb_eigen: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    enb_risk_entropy: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    cluster_weights: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    findings: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    config_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ShockScenario(Base):
+    __tablename__ = "shock_scenario"
+    __table_args__ = (Index("ix_shock_scenario_portfolio_id", "portfolio_id"),)
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    portfolio_id: Mapped[UUID] = mapped_column(
+        ForeignKey("portfolio.id", ondelete="CASCADE"), nullable=False
+    )
+    shocked_security_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("security.id"), nullable=True
+    )
+    shock_pct: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False)
+    method_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ShockResult(Base):
+    __tablename__ = "shock_result"
+    __table_args__ = (
+        Index("ix_shock_result_scenario_id", "scenario_id"),
+        Index("ix_shock_result_security_id", "security_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    scenario_id: Mapped[UUID] = mapped_column(
+        ForeignKey("shock_scenario.id", ondelete="CASCADE"), nullable=False
+    )
+    security_id: Mapped[UUID | None] = mapped_column(ForeignKey("security.id"), nullable=True)
+    weight: Mapped[Decimal] = mapped_column(Numeric(12, 8), nullable=False)
+    estimated_impact_pct: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    contribution_pct: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    method_detail: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+
+
+class SourceDocument(Base):
+    __tablename__ = "source_document"
+    __table_args__ = (
+        Index("ix_source_document_security_published", "security_id", "published_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    source: Mapped[str] = mapped_column(String(120), nullable=False)
+    source_doc_id: Mapped[str | None] = mapped_column(String(200))
+    doc_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    published_at_method: Mapped[str] = mapped_column(
+        String(50), default="actual", server_default="actual", nullable=False
+    )
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    url: Mapped[str | None] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    raw_path: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class FundamentalPeriod(Base):
+    __tablename__ = "fundamental_period"
+    __table_args__ = (
+        UniqueConstraint(
+            "security_id",
+            "period_end",
+            "period_type",
+            "basis",
+            "version",
+            name="uq_fundamental_period_version",
+        ),
+        Index("ix_fundamental_period_sec_end_pub", "security_id", "period_end", "published_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    period_end: Mapped[date] = mapped_column(Date, nullable=False)
+    period_type: Mapped[str] = mapped_column(String(20), nullable=False)  # quarter | year
+    basis: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # consolidated | standalone | unknown
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    published_at_method: Mapped[str] = mapped_column(
+        String(50), default="actual", server_default="actual", nullable=False
+    )  # actual | estimated
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
+    source_document_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("source_document.id", ondelete="SET NULL"), nullable=True
+    )
+    revenue: Mapped[float | None] = mapped_column(Float)
+    operating_profit: Mapped[float | None] = mapped_column(Float)
+    pat: Mapped[float | None] = mapped_column(Float)
+    interest_expense: Mapped[float | None] = mapped_column(Float)
+    total_debt: Mapped[float | None] = mapped_column(Float)
+    total_equity: Mapped[float | None] = mapped_column(Float)
+    total_assets: Mapped[float | None] = mapped_column(Float)
+    cash_from_operations: Mapped[float | None] = mapped_column(Float)
+    extra: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class FundamentalMetric(Base):
+    __tablename__ = "fundamental_metric"
+    __table_args__ = (
+        UniqueConstraint(
+            "security_id",
+            "as_of",
+            "metric_key",
+            "peer_group",
+            name="uq_fundamental_metric_sec_asof_key",
+        ),
+        Index("ix_fundamental_metric_asof_peer", "as_of", "metric_key", "peer_group"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    as_of: Mapped[date] = mapped_column(Date, nullable=False)
+    metric_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    value: Mapped[float | None] = mapped_column(Float)
+    source_period_end: Mapped[date | None] = mapped_column(Date)
+    data_age_days: Mapped[int | None] = mapped_column(Integer)
+    peer_group: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(50), default="computed", server_default="computed", nullable=False
+    )  # computed | missing | insufficient | flagged
+    details: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

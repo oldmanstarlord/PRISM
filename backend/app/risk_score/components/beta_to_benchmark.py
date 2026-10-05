@@ -30,18 +30,27 @@ class BetaToBenchmarkComponent:
         universe: list[tuple[UUID, str, str]],
         context: RiskContext,
     ) -> list[ComponentValue]:
-        prices_map = get_adjusted_prices_map(context, universe, lookback_days=365)
-        bench_rets = get_benchmark_returns(context, "NIFTY 200", lookback_days=365)
+        benchmark_id = context.config.get("benchmark_id", "NIFTY_200")
+        bench_rets = get_benchmark_returns(context, benchmark_id=benchmark_id, lookback_days=365)
 
-        # Fallback to equal-weighted average return if benchmark series unavailable
+        # If benchmark data is unavailable, every stock receives status="missing"
+        # with {"reason": "benchmark_unavailable"} (no substitute index).
         if bench_rets.empty:
-            all_rets: list[pd.Series] = []
-            for p in prices_map.values():
-                if len(p) >= 2:
-                    all_rets.append(np.log(p / p.shift(1)).dropna())
-            if all_rets:
-                bench_rets = pd.concat(all_rets, axis=1).mean(axis=1)
+            return [
+                ComponentValue(
+                    security_id=sec_id,
+                    symbol=symbol,
+                    component_id=self.key,
+                    raw_value=None,
+                    status="missing",
+                    data_as_of=None,
+                    data_age_days=None,
+                    evidence_ref={"reason": "benchmark_unavailable"},
+                )
+                for sec_id, symbol, _ in universe
+            ]
 
+        prices_map = get_adjusted_prices_map(context, universe, lookback_days=365)
         results: list[ComponentValue] = []
 
         for sec_id, symbol, _ in universe:

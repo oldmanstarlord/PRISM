@@ -59,6 +59,7 @@ def test_no_lookahead_filtering(memory_db: Session) -> None:
         security_id=sec_id,
         trade_date=date(2026, 1, 9),
         adjusted_close=Decimal("3800.0"),
+        method_version="official_daily_v1",
         computed_at=datetime(2026, 1, 9, 18, 0, 0, tzinfo=UTC),
     )
     # Valid on-date observation
@@ -67,6 +68,7 @@ def test_no_lookahead_filtering(memory_db: Session) -> None:
         security_id=sec_id,
         trade_date=date(2026, 1, 10),
         adjusted_close=Decimal("3820.0"),
+        method_version="official_daily_v1",
         computed_at=datetime(2026, 1, 10, 17, 30, 0, tzinfo=UTC),
     )
     # FUTURE observation (trade_date > as_of)
@@ -75,6 +77,7 @@ def test_no_lookahead_filtering(memory_db: Session) -> None:
         security_id=sec_id,
         trade_date=date(2026, 1, 11),
         adjusted_close=Decimal("4500.0"),
+        method_version="official_daily_v1",
         computed_at=datetime(2026, 1, 11, 18, 0, 0, tzinfo=UTC),
     )
     # LATE computed observation (computed_at > cutoff)
@@ -83,6 +86,7 @@ def test_no_lookahead_filtering(memory_db: Session) -> None:
         security_id=sec_id,
         trade_date=date(2026, 1, 10),
         adjusted_close=Decimal("3900.0"),
+        method_version="official_daily_v2",
         computed_at=datetime(2026, 1, 10, 20, 0, 0, tzinfo=UTC),
     )
     memory_db.add_all([p1, p2, p3_future, p4_late])

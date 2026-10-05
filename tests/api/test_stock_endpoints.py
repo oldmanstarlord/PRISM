@@ -194,7 +194,15 @@ def test_get_stock_risk_latest_envelope(client: TestClient, mock_session: MagicM
         return result
 
     mock_session.scalars.side_effect = mock_scalars
-    mock_session.get.return_value = mock_run
+
+    def mock_get(entity, ident):
+        if entity is Security or entity == Security:
+            return mock_sec
+        if entity is ScoreRun or entity == ScoreRun:
+            return mock_run
+        return None
+
+    mock_session.get.side_effect = mock_get
 
     response = client.get("/api/v1/stocks/INFY/risk/latest")
     assert response.status_code == 200
