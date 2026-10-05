@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     database_url: str
     migration_database_url: str | None = None
     cors_origins: list[str] = ["http://localhost:5173"]
+    supabase_url: str | None = None
+    supabase_publishable_key: str | None = None
 
     @field_validator("database_url", "migration_database_url", mode="before")
     @classmethod

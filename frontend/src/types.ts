@@ -88,3 +88,48 @@ export interface PipelineStatus {
   last_successful_pipeline_at: string | null;
   latest_error: string | null;
 }
+
+export type PortfolioInputMode = "quantities" | "weights";
+
+export interface PortfolioInputRow {
+  symbol: string;
+  value: string;
+}
+
+export interface PreviewHolding {
+  security_id: string;
+  symbol: string;
+  company_name: string;
+  industry: string | null;
+  value: string;
+}
+
+export interface PortfolioPreview {
+  valid: boolean;
+  input_mode: PortfolioInputMode;
+  valuation_date: string | null;
+  holdings: PreviewHolding[];
+  cash_value: string;
+  errors: string[];
+  warnings: string[];
+  preview_fingerprint: string | null;
+}
+
+export interface PortfolioSummary {
+  id: string;
+  name: string;
+  input_mode: PortfolioInputMode;
+  currency: string;
+  archived_at: string | null;
+  latest_snapshot_id: string;
+  valuation_date: string;
+  holding_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PortfolioDetail extends PortfolioSummary {
+  owner_id: string;
+  cash_value: string;
+  holdings: PreviewHolding[];
+}

@@ -6,8 +6,10 @@ from uuid import UUID
 
 import pandas as pd  # type: ignore[import-untyped]
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import func, select, text
 
+from backend.app.core.auth import AuthenticatedUser, require_user
 from backend.app.correlation_mst.service import persist_mst
 from backend.app.db.models import (
     PriceDailyAdjusted,
@@ -17,6 +19,7 @@ from backend.app.db.models import (
     UniverseMembership,
 )
 from backend.app.db.session import SessionLocal
+from backend.app.main import app
 from backend.app.sector_divergence.service import latest_market_snapshot, persist_calculation
 
 pytestmark = pytest.mark.integration
@@ -93,7 +96,15 @@ def test_migrations_and_quantitative_runs_are_idempotent() -> None:
     _seed_synthetic_snapshot()
     with SessionLocal() as session:
         revision = session.scalar(text("select version_num from alembic_version"))
-        assert revision == "9c41ad7b218e"
+        assert revision == "c6f2e9a1b304"
+        rls_tables = session.execute(
+            text(
+                "select relname from pg_class "
+                "where relname in ('portfolio', 'portfolio_snapshot', 'portfolio_holding') "
+                "and relrowsecurity"
+            )
+        ).scalars().all()
+        assert set(rls_tables) == {"portfolio", "portfolio_snapshot", "portfolio_holding"}
         market_date, cutoff = latest_market_snapshot(session)
         first_l1 = persist_calculation(
             session,
@@ -123,3 +134,49 @@ def test_migrations_and_quantitative_runs_are_idempotent() -> None:
     assert second_l1.created is False
     assert first_l2.run_id == second_l2.run_id
     assert second_l2.created is False
+
+
+@pytest.mark.skipif(
+    os.getenv("PRISM_RUN_DB_INTEGRATION") != "1",
+    reason="Set PRISM_RUN_DB_INTEGRATION=1 only for an approved PostgreSQL test database",
+)
+def test_portfolio_api_enforces_authenticated_ownership() -> None:
+    _seed_synthetic_snapshot()
+    owner = AuthenticatedUser(
+        id=UUID("00000000-0000-0000-0000-000000000101"),
+        email="owner@example.com",
+    )
+    other_user = AuthenticatedUser(
+        id=UUID("00000000-0000-0000-0000-000000000102"),
+        email="other@example.com",
+    )
+    app.dependency_overrides[require_user] = lambda: owner
+    try:
+        with TestClient(app) as client:
+            preview = client.post(
+                "/api/v1/portfolios/preview",
+                json={
+                    "input_mode": "quantities",
+                    "rows": [{"symbol": "TEST0", "value": "2"}],
+                },
+            )
+            assert preview.status_code == 200
+            assert preview.json()["valid"] is True
+            created = client.post(
+                "/api/v1/portfolios",
+                json={
+                    "name": "CI private portfolio",
+                    "input_mode": "quantities",
+                    "rows": [{"symbol": "TEST0", "value": "2"}],
+                    "preview_fingerprint": preview.json()["preview_fingerprint"],
+                },
+            )
+            assert created.status_code == 201
+            portfolio_id = created.json()["id"]
+            assert client.get(f"/api/v1/portfolios/{portfolio_id}").status_code == 200
+
+            app.dependency_overrides[require_user] = lambda: other_user
+            assert client.get("/api/v1/portfolios").json() == []
+            assert client.get(f"/api/v1/portfolios/{portfolio_id}").status_code == 404
+    finally:
+        app.dependency_overrides.pop(require_user, None)

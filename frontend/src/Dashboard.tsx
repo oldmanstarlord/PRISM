@@ -66,6 +66,7 @@ export default function Dashboard() {
               <Typography color="text.secondary">Select a company to inspect its exact peer comparison.</Typography>
             </Box>
             <Stack direction="row" sx={{ gap: 1, alignItems: "center" }}>
+            <Button component={Link} to="/portfolios" variant="outlined">My portfolios</Button>
             <Button component={Link} to="/mst" variant="contained">Explore correlation MST</Button>
             <FormControl size="small" sx={{ minWidth: 170 }}>
               <InputLabel id="horizon-label">Horizon</InputLabel>

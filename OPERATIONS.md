@@ -5,13 +5,16 @@
 1. Install Python 3.12, `uv`, Node.js 24 and pnpm 10.16.1.
 2. Clone the repository and copy `.env.example` to `.env`.
 3. Set `PRISM_DATABASE_URL` to the SSL-required Supabase session-pooler URL.
-4. Run `uv sync --locked --all-groups`.
-5. Run `pnpm install --frozen-lockfile` in `frontend`.
-6. Run `uv run alembic upgrade head`.
-7. Run `uv run python -m jobs.seed_universe` and
+4. Set `PRISM_SUPABASE_URL` and `PRISM_SUPABASE_PUBLISHABLE_KEY` for authenticated
+   portfolio routes. Copy the same public values to `frontend/.env` using
+   `frontend/.env.example`; never place a Supabase secret or service-role key in Vite variables.
+5. Run `uv sync --locked --all-groups`.
+6. Run `pnpm install --frozen-lockfile` in `frontend`.
+7. Run `uv run alembic upgrade head`.
+8. Run `uv run python -m jobs.seed_universe` and
    `uv run python -m jobs.import_nifty200`.
-8. Run the first daily workflow with `uv run python -m jobs.run_daily_pipeline`.
-9. Start the API and frontend using the commands in `README.md`.
+9. Run the first daily workflow with `uv run python -m jobs.run_daily_pipeline`.
+10. Start the API and frontend using the commands in `README.md`.
 
 ## Daily workflow
 

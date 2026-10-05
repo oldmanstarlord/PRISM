@@ -8,3 +8,31 @@ export async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T
   }
   return (await response.json()) as T;
 }
+
+function errorMessage(payload: unknown, status: number) {
+  if (payload && typeof payload === "object" && "detail" in payload) {
+    const detail = (payload as { detail: unknown }).detail;
+    if (typeof detail === "string") return detail;
+    if (detail && typeof detail === "object" && "message" in detail) {
+      return String((detail as { message: unknown }).message);
+    }
+  }
+  return `API returned ${status}`;
+}
+
+export async function fetchAuthenticatedJson<T>(
+  path: string,
+  token: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  if (init.body) headers.set("Content-Type", "application/json");
+  const response = await fetch(`${apiBase}${path}`, { ...init, headers });
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => null);
+    throw new Error(errorMessage(payload, response.status));
+  }
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}

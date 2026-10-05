@@ -8,3 +8,10 @@ def test_health() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "service": "prism-api"}
+
+
+def test_portfolios_require_authentication() -> None:
+    response = TestClient(app).get("/api/v1/portfolios")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Authentication required"}
