@@ -10,6 +10,8 @@ dependencies = [
   "arch>=7.2",
   "fastapi>=0.116",
   "httpx>=0.28",
+  "joblib>=1.4",
+  "lxml>=5.3",
   "networkx>=3.4",
   "numpy>=2.2",
   "orjson>=3.10",
@@ -60,6 +62,10 @@ select = ["E", "F", "I", "B", "UP"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "joblib.*", "lxml.*"]
+ignore_missing_imports = true
 
 [build-system]
 requires = ["hatchling"]

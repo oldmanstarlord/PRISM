@@ -19,6 +19,7 @@ from backend.app.db.models import (
     Security,
 )
 from backend.app.db.session import engine, get_session
+from backend.app.fundamentals.api import router as fundamentals_router
 from backend.app.sector_divergence.inputs import load_inputs
 from backend.app.sector_divergence.service import (
     build_company_comparison,
@@ -27,6 +28,7 @@ from backend.app.sector_divergence.service import (
 )
 
 router = APIRouter()
+router.include_router(fundamentals_router)
 DatabaseSession = Annotated[Session, Depends(get_session)]
 
 
