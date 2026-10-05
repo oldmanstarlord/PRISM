@@ -356,3 +356,72 @@ class MstEdge(Base):
     distance: Mapped[Decimal] = mapped_column(Numeric(18, 12), nullable=False)
     paired_observations: Mapped[int | None] = mapped_column(Integer)
     edge_rank: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class Portfolio(TimestampMixin, Base):
+    __tablename__ = "portfolio"
+    __table_args__ = (
+        CheckConstraint("input_mode IN ('quantities', 'weights')", name="ck_portfolio_input_mode"),
+        Index("ix_portfolio_owner_archived", "owner_id", "archived_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    input_mode: Mapped[str] = mapped_column(String(20), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PortfolioSnapshot(Base):
+    __tablename__ = "portfolio_snapshot"
+    __table_args__ = (
+        CheckConstraint("cash_amount >= 0", name="ck_snapshot_cash_amount"),
+        CheckConstraint("cash_weight >= 0 AND cash_weight <= 1", name="ck_snapshot_cash_weight"),
+        Index("ix_portfolio_snapshot_owner", "owner_id"),
+        Index("ix_portfolio_snapshot_latest", "portfolio_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    portfolio_id: Mapped[UUID] = mapped_column(
+        ForeignKey("portfolio.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    owner_id: Mapped[UUID] = mapped_column(nullable=False)
+    valuation_date: Mapped[date] = mapped_column(Date, nullable=False)
+    cash_amount: Mapped[Decimal] = mapped_column(
+        Numeric(24, 8), default=0, server_default="0", nullable=False
+    )
+    cash_weight: Mapped[Decimal] = mapped_column(
+        Numeric(18, 12), default=0, server_default="0", nullable=False
+    )
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    source: Mapped[str] = mapped_column(String(20), default="csv", server_default="csv")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PortfolioHolding(Base):
+    __tablename__ = "portfolio_holding"
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "security_id", name="uq_portfolio_snapshot_security"),
+        CheckConstraint(
+            "(quantity IS NOT NULL AND quantity > 0 AND target_weight IS NULL) OR "
+            "(target_weight IS NOT NULL AND target_weight > 0 AND target_weight <= 1 "
+            "AND quantity IS NULL)",
+            name="ck_portfolio_holding_value",
+        ),
+        Index("ix_portfolio_holding_owner", "owner_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    snapshot_id: Mapped[UUID] = mapped_column(
+        ForeignKey("portfolio_snapshot.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    owner_id: Mapped[UUID] = mapped_column(nullable=False)
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id"), nullable=False, index=True
+    )
+    symbol: Mapped[str] = mapped_column(String(40), nullable=False)
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(24, 8))
+    target_weight: Mapped[Decimal | None] = mapped_column(Numeric(18, 12))

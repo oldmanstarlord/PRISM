@@ -6,19 +6,19 @@ This is the living implementation record for PRISM. It must be updated after eve
 
 | Field | Value |
 |---|---|
-| Current phase | Phase 0 - Foundations |
+| Current phase | Phase 1 - Portfolio insight |
 | Overall status | In progress |
-| Last updated | 2026-10-04 |
+| Last updated | 2026-10-05 |
 | Requirements source | `PRISM_SRS.md` version 1.6 |
 | Initial universe | NIFTY 200 |
-| Active implementation focus | Activate and demonstrate the persisted Layer 2 MST pipeline |
+| Active implementation focus | Session-only portfolio performance, risk, diversification, MST diagnostics and stress testing |
 
 ## Phase status
 
 | Phase | Name | Status | Exit evidence |
 |---|---|---|---|
-| 0 | Foundations | In progress | Pending |
-| 1 | Portfolio insight | Not started | Pending |
+| 0 | Foundations | Complete | CI, reproducibility, unified pipeline and independent teammate operations verification passed |
+| 1 | Portfolio insight | In progress | Pending |
 | 2 | Text intelligence | Not started | Pending |
 | 3 | Attribution and forecasting | Not started | Pending |
 | 4 | Advanced research | Not started | Pending |
@@ -44,12 +44,27 @@ This is the living implementation record for PRISM. It must be updated after eve
 - [x] Layer 1 persistence, calculation job, read API and results dashboard implemented locally.
 - [x] Layer 1 and Layer 2 formulas and interfaces designed and approved.
 - [x] Layer 1 and Layer 2 implementations tested and documented.
-- [ ] Reproducible Layer 1 and Layer 2 pipeline demonstrated.
+- [x] Reproducible Layer 1 and Layer 2 pipeline demonstrated.
 
-## Known blockers
+## Phase 1 checklist
+
+- [x] Weighted sample and CSV portfolio input without login.
+- [x] Point-in-time historical performance, volatility, downside volatility and drawdown.
+- [x] Holding-level covariance/Euler risk contribution.
+- [x] Holding and industry HHI plus effective exposures.
+- [x] Risk-entropy and correlation-eigenvalue effective bets.
+- [x] Direct and indirect MST paths, bridge stocks and correlation-defined clusters.
+- [x] Selected-holding and selected-industry stress scenarios with visible assumptions.
+- [x] Current 20-day divergence annotations and company-detail links.
+- [x] Downloadable JSON report and print-to-PDF presentation view.
+- [ ] Reconcile the independently developed shared-database portfolio schema before persistence.
+- [ ] Add audit persistence and MST stability confidence required for full Phase 1 closure.
+
+## Known limitations
 
 1. Historical NIFTY 200 membership data is not yet available; the official source provides the current composition.
-2. The additive Layer 2 migration and first persisted MST run require explicit authorization to mutate the configured shared Supabase database.
+2. The presentation portfolio is session-only: it performs no authentication, persistence or shared Supabase writes.
+3. The shared Supabase database has an independently developed portfolio schema/revision that must be reconciled before the authenticated portfolio migration can be deployed safely.
 
 ## Verification status
 
@@ -79,13 +94,21 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Layer 1 real-data input check | 110 dates; 186 eligible securities; 13 industries; 14 explicit small-industry exclusions; zero input issues | 2026-10-02 |
 | Layer 1 real-data calculation | 556 finite scores: 186 one-day, 186 five-day and 184 twenty-day; two explicit insufficient-horizon issues | 2026-10-02 |
 | Layer 1 persistence verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
-| Backend verification | Ruff passed; strict mypy passed for 33 source files; pytest passed 34 tests | 2026-10-04 |
-| Frontend verification | ESLint passed; 2 Vitest tests passed; TypeScript/Vite production build passed | 2026-10-04 |
+| Backend verification | Ruff passed; strict mypy passed for 42 source files; GitHub CI passed all backend tests including the PostgreSQL integration test | 2026-10-05 |
+| Frontend verification | ESLint passed; 7 Vitest tests passed across 4 files; TypeScript/Vite production build passed | 2026-10-06 |
+| Portfolio analytics verification | Ruff passed; strict mypy passed across 52 source files; 48 tests passed and 2 approved database integration tests skipped | 2026-10-06 |
+| Portfolio browser rehearsal | Prepared sample, performance, risk, MST, stress and JSON download passed in headless Chrome with zero console errors | 2026-10-06 |
 | Company-detail API check | BAJAJ-AUTO returned three scores, 13 exact peers and 61 comparison points | 2026-10-04 |
 | Persisted Layer 1 run | 556 scores, 14 exclusions and 2 calculation issues available through the API | 2026-10-04 |
 | Layer 2 engine tests | Determinism, tie-breaking, no-look-ahead, missing-data exclusion and topology invariants passed | 2026-10-04 |
 | Layer 2 real-data calculation | 199 nodes; 198 edges; connected and acyclic; VAML explicitly excluded; 2.171 second calculation | 2026-10-04 |
 | Layer 2 migration verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
+| Phase 0 reproducibility audit | Layer 1 and Layer 2 semantic digests reproduced identically across repeated calculations | 2026-10-04 |
+| Unified daily pipeline | Completed for market date 2026-10-01; pipeline run `9aca74e2-90dd-47e7-bdf8-0d23f80ffe3f` linked persisted Layer 1 and Layer 2 runs | 2026-10-05 |
+| GitHub CI | Backend and frontend jobs passed for commit `739ce35` | 2026-10-05 |
+| Phase 1 local backend verification | Ruff passed; strict mypy passed for 47 source files; 45 tests passed and 2 database integration tests were skipped locally | 2026-10-05 |
+| Phase 1 local frontend verification | ESLint passed; 4 Vitest tests passed; TypeScript/Vite production build passed | 2026-10-05 |
+| Phase 1 migration verification | Portfolio/RLS migration `c6f2e9a1b304` renders successfully in offline PostgreSQL mode | 2026-10-05 |
 
 ## Update protocol
 
@@ -204,3 +227,46 @@ After every material update:
 - Added an idempotent calculation job, latest-MST API and interactive Cytoscape network view with explicit non-causality limitations.
 - Verified read-only against real stored data: 199 eligible nodes, 198 edges, one explicit insufficient-history exclusion, connected and acyclic.
 - Did not apply the additive migration or persist the real run because external Supabase mutation requires explicit user authorization.
+
+### 2026-10-05 - Phase 0 completed
+
+- Verified the full GitHub CI workflow on commit `739ce35`, including PostgreSQL migrations, the database integration test, repository policy, frontend tests and the production build.
+- Ran the provider-free unified pipeline against the existing versioned Supabase snapshot.
+- Completed pipeline run `9aca74e2-90dd-47e7-bdf8-0d23f80ffe3f` for market date 2026-10-01 with persisted Layer 1 run `717bf1e1-9893-4f66-bf89-b51f5cdbf89c` and Layer 2 run `6b1ac59d-7af1-4cca-8975-21ef1300108e`.
+- Confirmed that another team member independently tested the documented setup and recovery procedure.
+- Closed Phase 0 after all sixteen SRS acceptance checks passed and opened Phase 1 portfolio insight work.
+
+### 2026-10-05 - Phase 1 authenticated portfolio slice implemented locally
+
+- Approved the quantity/weight, valuation, cash, universe, validation, authentication, risk, shock, snapshot and deletion policies in `PHASE1_PORTFOLIO_CONTRACT.md`.
+- Added versioned portfolio, immutable snapshot and holding models plus an additive Alembic migration.
+- Added Supabase row-level security policies and explicit backend owner filtering as defense in depth.
+- Added Supabase bearer-token verification without storing or exposing service-role credentials.
+- Added deterministic preview validation, duplicate aggregation, active-universe enforcement, latest-common-date selection and preview fingerprints.
+- Added private create, list, read, archive and guarded permanent-delete APIs.
+- Added an authenticated frontend route for sign-in, account creation, CSV preview, confirmation, persistence and reload.
+- Added authentication, model, normalization, CSV and isolated PostgreSQL ownership integration tests.
+- Kept the shared Supabase migration unapplied pending CI and explicit database-deployment approval.
+
+### 2026-10-05 - No-login portfolio presentation demo implemented
+
+- Added a browser-only portfolio route with a prepared diversified sample and `symbol,weight` CSV input.
+- Validated holdings against the symbols in the latest persisted NIFTY 200 MST and required weights to total 100%.
+- Combined real persisted 20-day divergence results with holding weights, industry allocation and company-detail links.
+- Highlighted unusually moving holdings, concentrated positions, concentrated industries and high-correlation direct MST links.
+- Added held-to-held MST connection reporting using the real Layer 2 edge correlations.
+- Kept all portfolio input in memory for the current browser session; no login, database migration or portfolio persistence is required for the presentation.
+- Verified ESLint, 7 Vitest tests across 4 files and the TypeScript/Vite production build.
+
+### 2026-10-06 - Portfolio risk and explainability implemented
+
+- Added the read-only `portfolio-analytics-v1` API without new tables, migrations, authentication or database writes.
+- Added point-in-time 250-day portfolio performance, annualized return and volatility, downside volatility and maximum drawdown using complete common adjusted-price dates without imputation.
+- Added annual covariance and Euler holding-risk contribution, holding/industry HHI and effective exposure measures.
+- Added risk-contribution entropy and correlation-eigenvalue effective-bet estimates.
+- Added direct holding MST edges, every unique holding-to-holding path, held and non-held bridge stocks, and transparent correlation-floor clusters.
+- Added regression-beta selected-stock stress and parallel selected-industry stress with explicit assumptions and limitations.
+- Added a responsive performance/drawdown chart, risk and concentration panels, MST diagnostics, interactive stress controls, JSON export and print-to-PDF layout.
+- Added a favicon so the presentation page loads without the previous browser-console 404.
+- Verified the real prepared sample with 250 returns, 15 holding paths, 3 direct edges, 11 bridge stocks and 3 clusters through 2026-10-01.
+- Completed a browser rehearsal of sample analysis, stress calculation and report download with zero console errors.

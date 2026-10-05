@@ -20,6 +20,8 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import engine, get_session
 from backend.app.fundamentals.api import router as fundamentals_router
+from backend.app.portfolio.router import router as portfolio_router
+from backend.app.portfolio_analytics.router import router as portfolio_analytics_router
 from backend.app.sector_divergence.inputs import load_inputs
 from backend.app.sector_divergence.service import (
     build_company_comparison,
@@ -29,12 +31,14 @@ from backend.app.sector_divergence.service import (
 
 router = APIRouter()
 router.include_router(fundamentals_router)
+router.include_router(portfolio_router)
+router.include_router(portfolio_analytics_router)
 DatabaseSession = Annotated[Session, Depends(get_session)]
 
 
 @router.get("/status", tags=["operations"])
 def project_status() -> dict[str, str]:
-    return {"phase": "0", "status": "foundation"}
+    return {"phase": "1", "status": "portfolio-insight"}
 
 
 @router.get("/ready", tags=["operations"])

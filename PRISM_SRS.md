@@ -882,22 +882,22 @@ Phase 1 and Phase 2 may proceed in parallel after Phase 0. Every phase must leav
 
 Phase 0 is complete only when all applicable statements are true:
 
-- [ ] The NIFTY 200 universe is loaded from a versioned source rather than hard-coded.
-- [ ] Security identity uses ISIN with versioned symbol aliases.
-- [ ] Daily raw and adjusted price records are stored with ingestion metadata.
-- [ ] Corporate actions and adjustment provenance are retained.
-- [ ] Quality checks detect duplicates, gaps, invalid OHLC relationships and suspicious moves.
-- [ ] Failed or partial ingestion cannot replace the last-known-good dataset.
-- [ ] Layer 1 and Layer 2 formulas, windows and missing-data rules are approved.
-- [ ] Layer 1 and Layer 2 implementations and interfaces are documented and tested.
-- [ ] The covariance and correlation foundation is reproducible from a versioned price snapshot.
-- [ ] Valid Layer 2 runs are connected, acyclic and contain `N-1` edges.
-- [ ] Re-running the same snapshot and configuration reproduces the same outputs.
-- [ ] Walk-forward validation utilities prohibit shuffled evaluation.
-- [ ] Database schema changes are reproducible through Alembic.
-- [ ] Unit, contract, integration and data-quality tests pass in CI.
-- [ ] No credentials or restricted datasets are committed.
-- [ ] Setup and recovery instructions have been tested by another team member.
+- [x] The NIFTY 200 universe is loaded from a versioned source rather than hard-coded.
+- [x] Security identity uses ISIN with versioned symbol aliases.
+- [x] Daily raw and adjusted price records are stored with ingestion metadata.
+- [x] Corporate actions and adjustment provenance are retained.
+- [x] Quality checks detect duplicates, gaps, invalid OHLC relationships and suspicious moves.
+- [x] Failed or partial ingestion cannot replace the last-known-good dataset.
+- [x] Layer 1 and Layer 2 formulas, windows and missing-data rules are approved.
+- [x] Layer 1 and Layer 2 implementations and interfaces are documented and tested.
+- [x] The covariance and correlation foundation is reproducible from a versioned price snapshot.
+- [x] Valid Layer 2 runs are connected, acyclic and contain `N-1` edges.
+- [x] Re-running the same snapshot and configuration reproduces the same outputs.
+- [x] Walk-forward validation utilities prohibit shuffled evaluation.
+- [x] Database schema changes are reproducible through Alembic.
+- [x] Unit, contract, integration and data-quality tests pass in CI.
+- [x] No credentials or restricted datasets are committed.
+- [x] Setup and recovery instructions have been tested by another team member.
 
 ---
 
