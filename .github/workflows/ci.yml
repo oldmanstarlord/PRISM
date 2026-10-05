@@ -1,0 +1,117 @@
+name: PRISM CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+# Prevent concurrent runs on the same branch from wasting minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Python: ruff, mypy, pytest
+  # -------------------------------------------------------------------------
+  python:
+    name: Python checks
+    runs-on: ubuntu-latest
+
+    env:
+      # Tests use SQLite in-memory databases or pure unit mocks.
+      # A real Supabase URL is never required in CI.
+      PRISM_DATABASE_URL: "postgresql+psycopg://prism:prism@localhost:5432/prism?sslmode=disable"
+      PRISM_ENVIRONMENT: "test"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      # ------------------------------------------------------------------
+      # Ruff — linting and import sorting
+      # ------------------------------------------------------------------
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      # ------------------------------------------------------------------
+      # mypy — strict type checking
+      # Tests are excluded from strict mypy because some test helpers use
+      # type: ignore comments for untyped third-party libraries (pandas).
+      # The pre-existing "Library stubs not installed for pandas" errors in
+      # test files are tracked as a known issue; production code is clean.
+      # ------------------------------------------------------------------
+      - name: mypy (production code only)
+        run: uv run mypy backend jobs
+
+      # ------------------------------------------------------------------
+      # pytest
+      # All tests use either:
+      #   (a) in-memory SQLite databases (market_data, validation)
+      #   (b) pure unit mocks (sector_divergence, correlation_mst, core)
+      #   (c) no database at all (quality checks, yahoo normalizer)
+      # No real PostgreSQL service container is required.
+      # ------------------------------------------------------------------
+      - name: pytest
+        run: uv run pytest -ra --tb=short
+
+  # -------------------------------------------------------------------------
+  # Frontend: ESLint, Vitest, TypeScript / Vite production build
+  # -------------------------------------------------------------------------
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ------------------------------------------------------------------
+      # ESLint
+      # ------------------------------------------------------------------
+      - name: ESLint
+        run: pnpm lint
+
+      # ------------------------------------------------------------------
+      # Vitest unit tests
+      # ------------------------------------------------------------------
+      - name: Vitest
+        run: pnpm test
+
+      # ------------------------------------------------------------------
+      # TypeScript type-check + Vite production build
+      # ------------------------------------------------------------------
+      - name: Build
+        run: pnpm build

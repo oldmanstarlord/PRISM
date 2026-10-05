@@ -3,9 +3,7 @@ from backend.app.core.config import Settings
 
 def test_database_url_normalizes_driver_ssl_and_reserved_password_characters() -> None:
     settings = Settings(
-        database_url=(
-            "postgresql://postgres.project:secret@6969@pooler.supabase.com:5432/postgres"
-        )
+        database_url=("postgresql://postgres.project:secret@6969@pooler.supabase.com:5432/postgres")
     )
 
     assert settings.database_url.startswith("postgresql+psycopg://")

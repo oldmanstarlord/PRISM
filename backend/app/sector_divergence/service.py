@@ -99,8 +99,12 @@ def input_fingerprint(inputs: SectorDivergenceInputs) -> str:
         "signal_date": inputs.signal_date.isoformat(),
         "data_cutoff": inputs.data_cutoff.isoformat(),
         "members": [
-            [symbol, str(inputs.security_ids[symbol]), inputs.industries[symbol],
-             inputs.membership_sources[symbol]]
+            [
+                symbol,
+                str(inputs.security_ids[symbol]),
+                inputs.industries[symbol],
+                inputs.membership_sources[symbol],
+            ]
             for symbol in sorted(inputs.security_ids)
         ],
         "observations": observations,

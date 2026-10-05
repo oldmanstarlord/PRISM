@@ -229,10 +229,14 @@ def calculate_sector_divergence(
         adjustment_version = str(adjustment_value)
         for horizon in HORIZONS:
             first_position = signal_position - horizon + 1
-            residual_estimates = [
-                estimates.get((symbol, position))
-                for position in range(first_position, signal_position + 1)
-            ] if first_position >= 0 else []
+            residual_estimates = (
+                [
+                    estimates.get((symbol, position))
+                    for position in range(first_position, signal_position + 1)
+                ]
+                if first_position >= 0
+                else []
+            )
             if len(residual_estimates) != horizon or any(
                 residual_estimate is None for residual_estimate in residual_estimates
             ):

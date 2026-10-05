@@ -19,14 +19,25 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.add_column("mst_run", sa.Column("data_cutoff", sa.DateTime(timezone=True)))
-    op.add_column("mst_run", sa.Column("is_acyclic", sa.Boolean(), server_default="false", nullable=False))
     op.add_column(
         "mst_run",
-        sa.Column("configuration", postgresql.JSONB(astext_type=sa.Text()), server_default="{}", nullable=False),
+        sa.Column("is_acyclic", sa.Boolean(), server_default="false", nullable=False),
+    )
+    op.add_column(
+        "mst_run",
+        sa.Column(
+            "configuration",
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default="{}",
+            nullable=False,
+        ),
     )
     op.add_column("mst_run", sa.Column("configuration_hash", sa.String(64)))
     op.add_column("mst_run", sa.Column("input_fingerprint", sa.String(64)))
-    op.add_column("mst_run", sa.Column("status", sa.String(30), server_default="legacy", nullable=False))
+    op.add_column(
+        "mst_run",
+        sa.Column("status", sa.String(30), server_default="legacy", nullable=False),
+    )
     op.create_unique_constraint(
         "uq_mst_reproducible_run",
         "mst_run",

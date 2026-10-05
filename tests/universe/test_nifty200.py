@@ -24,4 +24,3 @@ def test_parse_constituents_rejects_duplicate_symbols() -> None:
 
     with pytest.raises(ValueError, match="duplicate symbols"):
         parse_constituents(HEADER + ROW_A + duplicate, expected_count=2)
-

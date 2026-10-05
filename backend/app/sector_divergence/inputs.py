@@ -220,10 +220,7 @@ def prepare_inputs(
                 f"{observed_member.symbol} on {observation.trade_date}"
             )
         seen_keys.add(key)
-        if (
-            not observation.adjusted_close.is_finite()
-            or observation.adjusted_close <= 0
-        ):
+        if not observation.adjusted_close.is_finite() or observation.adjusted_close <= 0:
             issues.append(
                 InputIssue(
                     security_id=observed_member.security_id,
@@ -317,9 +314,7 @@ def prepare_inputs(
         adjusted_closes=adjusted_closes,
         adjustment_versions=adjustment_versions,
         adjustment_times=adjustment_times,
-        security_ids=MappingProxyType(
-            {member.symbol: member.security_id for member in eligible}
-        ),
+        security_ids=MappingProxyType({member.symbol: member.security_id for member in eligible}),
         industries=MappingProxyType(
             {member.symbol: member.industry.strip() for member in eligible if member.industry}
         ),
