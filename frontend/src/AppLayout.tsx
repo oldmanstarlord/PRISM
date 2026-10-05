@@ -12,7 +12,7 @@ import {
 import React from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useApi } from "./api";
-import type { MarketRegimeResponse, MetaResponse } from "./types";
+import type { LimitationsResponse, MarketRegimeResponse, MetaResponse, OperationsFreshness } from "./types";
 
 const DEFAULT_DISCLAIMER =
   "PRISM is descriptive risk and explanation, NOT price prediction and NOT investment advice. " +
@@ -30,6 +30,9 @@ const NAV_ITEMS = [
   { label: "Shock", path: "/shock" },
   { label: "Validation", path: "/validation" },
   { label: "Data Health", path: "/data-health" },
+  { label: "Alerts", path: "/alerts" },
+  { label: "Watchlists", path: "/watchlists" },
+  { label: "Limitations", path: "/about/limitations" },
 ];
 
 export interface AppLayoutProps {
@@ -40,6 +43,9 @@ export function AppLayoutInner({ children }: AppLayoutProps) {
   const location = useLocation();
   const { data: meta } = useApi<MetaResponse>("/meta");
   const { data: regimeData } = useApi<MarketRegimeResponse>("/macro/regime/latest");
+  const { data: freshness = [] } = useApi<OperationsFreshness[]>("/ops/freshness");
+  const { data: limitations } = useApi<LimitationsResponse>("/about/limitations");
+  const freshnessItems = Array.isArray(freshness) ? freshness : [];
 
   const disclaimerText = meta?.disclaimer ?? DEFAULT_DISCLAIMER;
   const platformName = meta?.platform ?? "PRISM";
@@ -99,6 +105,13 @@ export function AppLayoutInner({ children }: AppLayoutProps) {
       </AppBar>
 
       {/* Market Regime Banner (FR-F4, D5) */}
+      {freshnessItems.some((item) => item.status === "stale") && (
+        <Box sx={{ bgcolor: "#fff1f0", borderBottom: "1px solid #ffccc7", py: 1 }}>
+          <Container maxWidth="lg"><Typography color="error.dark" sx={{ fontWeight: 700 }}>
+            Stale data: {freshnessItems.filter((item) => item.status === "stale").map((item) => item.source_key).join(", ")}. Scores may not reflect the latest available source data.
+          </Typography></Container>
+        </Box>
+      )}
       {regimeData && (
         <Box
           data-testid="regime-banner"
@@ -202,6 +215,9 @@ export function AppLayoutInner({ children }: AppLayoutProps) {
           <Stack spacing={1.5}>
             <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
               {disclaimerText}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              End-of-day prices; filings and news checked every {limitations?.filings_news_poll_minutes ?? 30} minutes.
             </Typography>
 
             <Divider sx={{ my: 0.5 }} />

@@ -27,13 +27,14 @@ import {
 } from "@mui/material";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { z } from "zod";
-import { useApi, apiBase, postJson } from "./api";
+import { useApi, apiBase, fetchJson, postJson } from "./api";
 import { ExplainPanel } from "./components/ExplainPanel";
 import { FreshnessBadge } from "./components/FreshnessBadge";
 import { DrawdownChart, RiskContributionChart } from "./components/PortfolioCharts";
 import type {
   DiversificationResponse,
   Portfolio,
+  PortfolioRiskScore,
   PortfolioRiskRun,
   PortfolioImportResult,
   RowValidationError,
@@ -63,6 +64,7 @@ export default function PortfolioPage() {
   const [actionWarning, setActionWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [riskData, setRiskData] = useState<PortfolioRiskRun | null>(null);
+  const [riskScore, setRiskScore] = useState<PortfolioRiskScore | null>(null);
   const [divData, setDivData] = useState<DiversificationResponse | null>(null);
   const [isLoadingDiv, setIsLoadingDiv] = useState<boolean>(false);
   const [forceRerun, setForceRerun] = useState<boolean>(false);
@@ -112,6 +114,14 @@ export default function PortfolioPage() {
       }
       const data: PortfolioRiskRun = await response.json();
       setRiskData(data);
+
+      try {
+        setRiskScore(
+          await fetchJson<PortfolioRiskScore>(`/portfolios/${portfolioId}/risk-score/latest`)
+        );
+      } catch {
+        setRiskScore(null);
+      }
 
       // Fetch diversification metrics
       setIsLoadingDiv(true);
@@ -560,6 +570,79 @@ export default function PortfolioPage() {
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, color: "#0f172a" }}>
             Risk Analysis & Aggregation Results
           </Typography>
+
+          {riskScore && (
+            <Box sx={{ mb: 4 }}>
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Card variant="outlined" sx={{ borderTop: "4px solid #dc2626", height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        Portfolio Risk Score
+                      </Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 700, my: 1 }}>
+                        {riskScore.total_score.toFixed(1)} / 100
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Holding risk plus the portfolio structure term
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Card variant="outlined" sx={{ borderTop: "4px solid #f59e0b", height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        Holding / Structure
+                      </Typography>
+                      <Typography variant="h5" sx={{ fontWeight: 700, my: 1 }}>
+                        {riskScore.holding_risk_score.toFixed(1)} / {riskScore.structure_score?.toFixed(1) ?? "N/A"}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Cluster {riskScore.structure_components.cluster_concentration?.toFixed(1) ?? "N/A"}
+                        {" · "}Effective bets {riskScore.structure_components.effective_bets?.toFixed(1) ?? "N/A"}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Card variant="outlined" sx={{ borderTop: "4px solid #2563eb", height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        Portfolio Confidence
+                      </Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 700, my: 1 }}>
+                        {riskScore.confidence.toFixed(0)}%
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Weighted confidence, capped by the weakest large holding
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Card variant="outlined" sx={{ borderTop: "4px solid #64748b", height: "100%" }}>
+                    <CardContent>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        Score Coverage
+                      </Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 700, my: 1 }}>
+                        {(riskScore.coverage * 100).toFixed(0)}%
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {riskScore.status} · {riskScore.method_version}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+              {riskScore.missing_holdings.length > 0 && (
+                <Alert severity="warning" sx={{ mt: 2 }}>
+                  Missing current holding scores: {riskScore.missing_holdings.join(", ")}
+                </Alert>
+              )}
+            </Box>
+          )}
 
           {/* Summary Metric Cards */}
           <Grid container spacing={3} sx={{ mb: 4 }}>

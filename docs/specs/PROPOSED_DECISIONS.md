@@ -476,4 +476,95 @@ All series are ingested through the `MacroSeriesAdapter` protocol into immutable
 3. **Immutable Rule Versioning:**
    - Modifying a policy rule via `PUT /policy/rules/{key}` creates a new active version row, supersedes the previous version, and preserves the complete audit trail.
 
+---
 
+## Proposed decisions from Step 12 (2026-10-06)
+
+### PD-23 — Draft v2 Full-Confidence Inputs and Missing-Evidence Policy
+
+**Proposed by:** Step 12 Implementation
+**Date:** 2026-10-06
+**Status:** Proposed; `risk_engine_parameters:2.0.0` remains `draft`
+
+**Statement:**
+The six approved confidence-factor names are retained, with the concrete real-input
+formulas recorded in `STEP12_SCORE_SPEC.md`. Missing cross-check, MST, volatility,
+event, or policy evidence contributes no invented success value. Explicitly
+unavailable dimensions remain visible, lower configured-weight coverage, and may
+trigger the approved low-coverage cap. Event/news components only report zero risk
+when a point-in-time source observation proves feed coverage; otherwise they return
+`missing`.
+
+**Approval requested:**
+Approve the complete v2 configuration and formulas before changing the scoring job's
+default from approved v1 to v2. Until then, v1 remains the default.
+
+---
+
+### PD-24 — Portfolio Risk Score and Confidence Aggregation
+
+**Proposed by:** Step 12 Implementation
+**Date:** 2026-10-06
+**Status:** ASSUMPTION — pending owner approval
+
+**Statement:**
+Holding risk is the normalized weight average of stock risk scores. Structural risk
+is the equal-weight mean of cluster-concentration risk
+`100 * maximum_cluster_weight` and effective-bet shortfall
+`100 * (1 - min(1, ENB_entropy / holding_count))`. Draft v2 combines holding and
+structure risk at 80/20. Portfolio confidence is the holding-weight average capped
+by the weakest holding with at least 10% normalized weight. Missing structure or
+holding scores reduce reported coverage and confidence; available score terms are
+renormalized. Each term is returned separately and remains descriptive/non-causal.
+
+---
+
+## Proposed decisions from Step 13 (2026-10-06)
+
+### PD-25 — Walk-Forward Validation Targets and Evaluation Contract
+
+**Proposed by:** Step 13 Implementation
+**Date:** 2026-10-06
+**Status:** ASSUMPTION — pending owner approval
+
+**Statement:**
+Use monthly point-in-time scores with a 12-period expanding training window,
+one-period embargo, three-period test window, and three-period step. Evaluate only
+test dates. Targets are forward 20-session annualized sample volatility, forward
+20-session maximum drawdown, and the worst compounded five-session return. Require
+at least five securities in a period. Full formulas, missing-label behavior, and
+baseline orientation are recorded in `VALIDATION_SPEC.md`. These settings are
+stored in draft `validation_parameters:1.0.0` and are not promoted automatically.
+
+### PD-26 — Empirical Layer 1 Labels Without Formula Changes
+
+**Proposed by:** Step 13 Implementation
+**Date:** 2026-10-06
+**Status:** Proposed; calibration evidence is TBD until an uncontaminated run
+
+**Statement:**
+Keep `sector-divergence-v1` formulas, windows, thresholds, and tie-breaks unchanged.
+Compare empirical absolute 1/2/3-sigma exceedance rates by existing horizon with
+standard-normal two-sided references. After a valid historical run, labels may be
+proposed as empirically common/elevated/rare using the observed rates, but no label
+or threshold should be approved without that evidence. This proposal does not
+claim normality and makes no causal or predictive statement.
+
+---
+
+## Proposed decisions from Step 14 (2026-10-06)
+
+### PD-27 — Local Operations Cadence and Alert Defaults
+
+**Proposed by:** Step 14 Implementation
+**Date:** 2026-10-06
+**Status:** ASSUMPTION — approved only as the initial local operations configuration
+
+**Statement:**
+Run the end-of-day DAG at 19:00 Asia/Kolkata and poll filings/news every 30 minutes.
+Use three exponential-backoff attempts. Initial alert thresholds are risk jump 10
+points, confidence drop 15 points, negative-event importance 8, and state changes
+for regime/MST clusters; stale data uses source cadence plus grace. Cooldowns and
+watchlist defaults remain versioned in `operations_parameters:1.0.0`. These are
+operational defaults, not validated market thresholds, and must not be described as
+predictive.

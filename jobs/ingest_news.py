@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from backend.app.db.models import ModelConfig, NewsItem, NewsSecurityLink, Security
 from backend.app.db.session import SessionLocal
 from backend.app.policy.adapters.base import NewsAdapter, RawNewsItem
-from backend.app.policy.adapters.json_adapter import JsonNewsAdapter
 from backend.app.policy.adapters.rss_adapter import RssNewsAdapter
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -65,8 +64,7 @@ def link_news_to_securities(
 
 def run_ingest_news(
     session: Session,
-    source_type: str = "fixture",
-    fixture_path: str | None = None,
+    source_type: str = "rss",
     rss_url: str | None = None,
     dry_run: bool = False,
     limit: int | None = None,
@@ -87,11 +85,9 @@ def run_ingest_news(
     logger.info("Configured news poll interval: %d minutes", poll_interval)
 
     # 2. Select Adapter
-    adapter: NewsAdapter
-    if source_type == "rss":
-        adapter = RssNewsAdapter(rss_url=rss_url)
-    else:
-        adapter = JsonNewsAdapter(file_path=fixture_path)
+    if source_type != "rss":
+        raise ValueError("Production news ingestion supports only the rss source")
+    adapter: NewsAdapter = RssNewsAdapter(rss_url=rss_url)
 
     raw_items: list[RawNewsItem] = adapter.fetch_news(limit=limit)
     logger.info("Fetched %d raw news items from adapter (%s)", len(raw_items), source_type)
@@ -158,14 +154,13 @@ def run_ingest_news(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Ingest news items from official RSS or fixtures")
+    parser = argparse.ArgumentParser(description="Ingest news items from official RSS feeds")
     parser.add_argument(
         "--source",
-        choices=["fixture", "rss"],
-        default="fixture",
-        help="Source adapter type (default: fixture)",
+        choices=["rss"],
+        default="rss",
+        help="Source adapter type (default: rss)",
     )
-    parser.add_argument("--fixture-path", default=None, help="Path to local news JSON fixture")
     parser.add_argument("--rss-url", default=None, help="RSS feed URL for regulatory releases")
     parser.add_argument("--dry-run", action="store_true", help="Dry run without DB commits")
     parser.add_argument("--limit", type=int, default=None, help="Max items to fetch")
@@ -176,7 +171,6 @@ def main() -> None:
         stats = run_ingest_news(
             session=session,
             source_type=args.source,
-            fixture_path=args.fixture_path,
             rss_url=args.rss_url,
             dry_run=args.dry_run,
             limit=args.limit,

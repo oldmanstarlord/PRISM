@@ -26,7 +26,11 @@ class MaxDrawdown1yComponent:
         universe: list[tuple[UUID, str, str]],
         context: RiskContext,
     ) -> list[ComponentValue]:
-        prices_map = get_adjusted_prices_map(context, universe, lookback_days=365)
+        lookback = int(context.config.get("drawdown_lookback_days", 250))
+        minimums = context.config.get("minimum_observations", {})
+        minimum = int(minimums.get(self.key, 30)) if isinstance(minimums, dict) else 30
+        stale_days = int(context.config.get("stale_price_days_cap_threshold", 5))
+        prices_map = get_adjusted_prices_map(context, universe, lookback_days=lookback)
         results: list[ComponentValue] = []
 
         for sec_id, symbol, _ in universe:
@@ -48,10 +52,10 @@ class MaxDrawdown1yComponent:
 
             last_date = prices.index[-1]
             age_days = (as_of - last_date).days
-            status = "stale" if age_days > 5 else "ok"
+            status = "stale" if age_days > stale_days else "ok"
 
-            series_vals = prices.tail(250).to_numpy(dtype=float)
-            if len(series_vals) < 30:
+            series_vals = prices.tail(lookback).to_numpy(dtype=float)
+            if len(series_vals) < minimum:
                 results.append(
                     ComponentValue(
                         security_id=sec_id,
@@ -61,7 +65,7 @@ class MaxDrawdown1yComponent:
                         status="insufficient",
                         data_as_of=last_date,
                         data_age_days=age_days,
-                        evidence_ref={"observations": len(series_vals), "required": 30},
+                        evidence_ref={"observations": len(series_vals), "required": minimum},
                     )
                 )
                 continue

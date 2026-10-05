@@ -11,6 +11,12 @@
 
 PRISM Step 10 introduces the **Corporate Announcements & Explainable Events Engine** and activates the **`event_risk_pressure`** risk component under the `events` dimension (10% target weight in `prism-risk-score-v1`).
 
+### Production source status
+
+The live corporate-announcement source is **TBD**. PRISM does not scrape undocumented
+exchange endpoints. Production ingestion requires an explicit export from a verified
+official feed or licensed provider; with no export file, the job exits without writing.
+
 ### Core Design Rules Enforced
 1. **Config-Driven (D1):** Classification mappings (`event_rule`), base importance weights, magnitude multipliers, and recency half-lives reside in versioned database tables and `model_config` entries.
 2. **Component Registry (D2):** `EventRiskPressureComponent` implements the `Component` protocol and is registered dynamically with zero changes required to existing scorer logic.
@@ -106,4 +112,4 @@ $$\text{event\_risk\_pressure}(t) = \max\left(0, \text{GrossNeg}(t) - \text{Allo
 - **Model Revision:** Pinned HuggingFace revision `ProsusAI/finbert` (`90eb618b0f7ca7067d2feae4d588523ee734c5db`).
 - **Configuration Switch:** `model_config.parameters.finbert_enabled: false` (default off until user approval).
 - **Fallback Engine:** Zero-dependency, deterministic financial dictionary scorer with exact keyword polarity matches and evidence extraction.
-- **Evaluation Tooling:** `backend/app/events/eval_finbert.py` and `data/labelled/labelled_examples.csv` for evaluating classification accuracy on Indian regulatory announcements.
+- **Evaluation Tooling:** `backend/app/events/eval_finbert.py` accepts an explicit labelled CSV. The repository's illustrative examples live under `tests/fixtures/` and are not evaluation evidence.

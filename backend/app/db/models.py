@@ -434,6 +434,12 @@ class ScoreRun(Base):
     )
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    parent_run_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("score_run.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    run_kind: Mapped[str] = mapped_column(
+        String(30), default="full", server_default="full", nullable=False
+    )
 
 
 class StockRiskResult(Base):
@@ -1117,6 +1123,7 @@ class MacroObservation(Base):
     value: Mapped[float] = mapped_column(Float, nullable=False)
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source: Mapped[str | None] = mapped_column(String(80), nullable=True)
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -1310,9 +1317,7 @@ class PolicyRule(Base):
     """Editable, versioned policy-to-sector transmission rule (D1)."""
 
     __tablename__ = "policy_rule"
-    __table_args__ = (
-        Index("ix_policy_rule_key_version", "rule_key", "version"),
-    )
+    __table_args__ = (Index("ix_policy_rule_key_version", "rule_key", "version"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     rule_key: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
@@ -1369,3 +1374,141 @@ class PolicyEvent(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
+
+class ValidationRun(Base):
+    """One reproducible, time-ordered validation experiment."""
+
+    __tablename__ = "validation_run"
+    __table_args__ = (
+        UniqueConstraint(
+            "kind", "config_fingerprint", "period", name="uq_validation_run_reproducible"
+        ),
+        Index("ix_validation_run_latest", "kind", "completed_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(50), nullable=False)
+    config_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    period: Mapped[str] = mapped_column(String(80), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+
+
+class ValidationResult(Base):
+    """A scalar validation metric or explicit unavailable/failure result."""
+
+    __tablename__ = "validation_result"
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id",
+            "metric_key",
+            "component_key",
+            "period",
+            name="uq_validation_result_metric",
+        ),
+        Index("ix_validation_result_run_metric", "run_id", "metric_key"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("validation_run.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    metric_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    component_key: Mapped[str] = mapped_column(String(100), nullable=False, server_default="score")
+    value: Mapped[float | None] = mapped_column(Float)
+    baseline_value: Mapped[float | None] = mapped_column(Float)
+    n: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    period: Mapped[str] = mapped_column(String(80), nullable=False)
+
+
+class ExperimentLog(Base):
+    """Immutable record of every validation variant attempted."""
+
+    __tablename__ = "experiment_log"
+    __table_args__ = (Index("ix_experiment_log_created", "created_at"),)
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    variants_tried: Mapped[list[object]] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False
+    )
+    config_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class DataFreshness(Base):
+    """Latest successful observation and evaluated staleness for one source."""
+
+    __tablename__ = "data_freshness"
+
+    source_key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_data_date: Mapped[date | None] = mapped_column(Date)
+    expected_cadence: Mapped[int] = mapped_column(Integer, nullable=False)
+    grace: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+
+
+class Alert(Base):
+    """Explainable, deduplicated alert with versioned input evidence."""
+
+    __tablename__ = "alert"
+    __table_args__ = (
+        UniqueConstraint("dedup_key", name="uq_alert_dedup_key"),
+        Index("ix_alert_latest", "status", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    subject_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    subject_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    alert_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    inputs_ref: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    score: Mapped[float | None] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(
+        String(30), default="open", server_default="open", nullable=False
+    )
+    dedup_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    cooldown_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    config_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    config_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+
+
+class Watchlist(TimestampMixin, Base):
+    """Named local-user watchlist."""
+
+    __tablename__ = "watchlist"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+
+
+class WatchlistItem(Base):
+    """Security and optional per-item alert threshold overrides."""
+
+    __tablename__ = "watchlist_item"
+    __table_args__ = (
+        UniqueConstraint("watchlist_id", "security_id", name="uq_watchlist_item_security"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    watchlist_id: Mapped[UUID] = mapped_column(
+        ForeignKey("watchlist.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    thresholds: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

@@ -1,0 +1,26 @@
+{
+  "symbol": "STK_C",
+  "overall_score": 50.0,
+  "coverage": 1.0,
+  "status": "ok",
+  "dimensions": {
+    "market": {"score": 50.0, "status": "ok"},
+    "liquidity": {"score": 50.0, "status": "ok"},
+    "structure": {"score": 50.0, "status": "ok"},
+    "relative": {"score": 50.0, "status": "ok"},
+    "fundamentals": {"score": 50.0, "status": "ok"},
+    "governance": {"score": 50.0, "status": "ok"},
+    "events": {"score": 50.0, "status": "ok"},
+    "macro": {"score": 50.0, "status": "ok"}
+  },
+  "component_points": {
+    "market_test": 50.0,
+    "liquidity_test": 50.0,
+    "structure_test": 50.0,
+    "relative_test": 50.0,
+    "fundamentals_test": 50.0,
+    "governance_test": 50.0,
+    "events_test": 50.0,
+    "macro_test": 50.0
+  }
+}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any
@@ -25,7 +25,7 @@ from backend.app.db.models import (
     StockRiskResult,
 )
 from backend.app.risk_score.components.base import ComponentValue, RiskContext
-from backend.app.risk_score.confidence import ConfidenceEngine
+from backend.app.risk_score.confidence import FACTOR_DESCRIPTIONS, ConfidenceEngine
 from backend.app.risk_score.registry import (
     registry,
 )
@@ -42,12 +42,16 @@ def compute_input_fingerprint(
     universe: list[tuple[UUID, str, str]],
     as_of: date,
     data_cutoff: datetime,
+    result_limitations: list[str] | None = None,
+    parent_run_id: UUID | None = None,
 ) -> str:
     """Compute point-in-time input fingerprint for idempotency checking (D6)."""
     payload = {
         "as_of": as_of.isoformat(),
         "data_cutoff": data_cutoff.isoformat(),
         "universe": [(str(u[0]), u[1], u[2]) for u in universe],
+        "result_limitations": sorted(result_limitations or []),
+        "parent_run_id": str(parent_run_id) if parent_run_id is not None else None,
     }
     return _canonical_hash(payload)
 
@@ -72,6 +76,11 @@ def run_stock_score_calculation(
     data_cutoff: datetime | None = None,
     config_version: str = "1.0.0",
     force: bool = False,
+    exclude_components: set[str] | None = None,
+    exclude_dimensions: set[str] | None = None,
+    result_limitations: list[str] | None = None,
+    security_ids: set[UUID] | None = None,
+    parent_run_id: UUID | None = None,
 ) -> CalculationSummary:
     """Orchestrate dynamic component execution, synthesis, and persistence (D1-D6)."""
     now = datetime.now(UTC)
@@ -98,6 +107,13 @@ def run_stock_score_calculation(
         ).all()
 
     universe = [(r[0], r[1], r[2] or "General") for r in rows]
+    target_universe = (
+        [item for item in universe if item[0] in security_ids]
+        if security_ids is not None
+        else universe
+    )
+    if security_ids is not None and len(target_universe) != len(security_ids):
+        raise ValueError("incremental score scope contains an unknown or inactive security")
 
     # 2. Load model configuration (D1)
     cfg_row = session.scalars(
@@ -110,10 +126,13 @@ def run_stock_score_calculation(
         .limit(1)
     ).first()
 
+    config_data: dict[str, Any]
     if cfg_row is not None:
         config_data = dict(cfg_row.configuration)
         cfg_id = cfg_row.id
     else:
+        if config_version == "2.0.0":
+            raise ValueError("Draft risk configuration 2.0.0 is not installed")
         # Fallback config
         config_data = {
             "ewma_lambda": 0.94,
@@ -130,8 +149,26 @@ def run_stock_score_calculation(
         }
         cfg_id = uuid4()
 
+    configured_ablation = config_data.get("ablation", {})
+    if not isinstance(configured_ablation, dict):
+        configured_ablation = {}
+    excluded_components = set(configured_ablation.get("excluded_components", []))
+    excluded_dimensions = set(configured_ablation.get("excluded_dimensions", []))
+    excluded_components.update(exclude_components or set())
+    excluded_dimensions.update(exclude_dimensions or set())
+    config_data["ablation"] = {
+        "excluded_components": sorted(excluded_components),
+        "excluded_dimensions": sorted(excluded_dimensions),
+    }
+
     config_fingerprint = _canonical_hash(config_data)
-    input_fingerprint = compute_input_fingerprint(universe, as_of, cutoff)
+    input_fingerprint = compute_input_fingerprint(
+        target_universe,
+        as_of,
+        cutoff,
+        result_limitations=result_limitations,
+        parent_run_id=parent_run_id,
+    )
 
     # 3. Check for existing completed run (D6 Idempotency)
     existing_run = session.scalars(
@@ -160,7 +197,20 @@ def run_stock_score_calculation(
 
     # 4. Synchronize registry with database definitions (D2)
     registry.load_from_db(session)
-    active_defs = {c.component_id: c for c in registry.list_components(active_only=True)}
+    configured_component_weights = config_data.get("component_weights", {})
+    if not isinstance(configured_component_weights, dict):
+        configured_component_weights = {}
+    active_defs = {
+        component.component_id: replace(
+            component,
+            weight=float(
+                configured_component_weights.get(component.component_id, component.weight)
+            ),
+        )
+        for component in registry.list_components(active_only=True)
+        if component.component_id not in excluded_components
+        and component.dimension not in excluded_dimensions
+    }
 
     # 5. Execute all active components point-in-time
     context = RiskContext(
@@ -184,6 +234,11 @@ def run_stock_score_calculation(
     # 7. Confidence engine evaluation (6 factors and hard caps)
     confidence_engine = ConfidenceEngine(config_data)
     confidence_results = confidence_engine.evaluate(risk_scores, context)
+    target_ids = {item[0] for item in target_universe}
+    risk_scores = {key: value for key, value in risk_scores.items() if key in target_ids}
+    confidence_results = {
+        key: value for key, value in confidence_results.items() if key in target_ids
+    }
 
     # 8. Persist Run and Results (Atomic Transaction)
     run_id = uuid4()
@@ -196,10 +251,12 @@ def run_stock_score_calculation(
         config_fingerprint=config_fingerprint,
         input_fingerprint=input_fingerprint,
         status="completed",
-        total_securities=len(universe),
+        total_securities=len(target_universe),
         scored_securities=len(risk_scores),
         started_at=now,
         completed_at=datetime.now(UTC),
+        parent_run_id=parent_run_id,
+        run_kind="incremental" if security_ids is not None else "full",
     )
     session.add(score_run)
     session.flush()
@@ -228,7 +285,7 @@ def run_stock_score_calculation(
             data_coverage=Decimal(str(score_obj.coverage)),
             dimension_scores=dim_scores_json,
             top_reasons=score_obj.top_reasons,
-            limitations=score_obj.limitations,
+            limitations=score_obj.limitations + (result_limitations or []),
             computed_at=datetime.now(UTC),
         )
         session.add(res)
@@ -236,6 +293,8 @@ def run_stock_score_calculation(
     # Persist ScoreComponentValue rows
     for comp_id, cv_list in component_values_by_key.items():
         for cv in cv_list:
+            if cv.security_id not in target_ids:
+                continue
             # Match scored component for percentile and points
             sc_list = risk_scores[cv.security_id].components
             matched_sc = next((c for c in sc_list if c.component_id == comp_id), None)
@@ -260,10 +319,17 @@ def run_stock_score_calculation(
     # Persist ConfidenceFactorValue rows
     for sec_id, conf_obj in confidence_results.items():
         for f_name, factor in conf_obj.factors.items():
-            cap_note = next(
-                (c for c in conf_obj.caps_applied if f_name in c or "cap" in c),
-                None,
-            )
+            cap_note = None
+            if f_name == "data_coverage":
+                cap_note = next(
+                    (cap for cap in conf_obj.caps_applied if cap.startswith("low_coverage")),
+                    None,
+                )
+            elif f_name == "data_freshness":
+                cap_note = next(
+                    (cap for cap in conf_obj.caps_applied if cap.startswith("stale_price")),
+                    None,
+                )
             cfv = ConfidenceFactorValue(
                 id=uuid4(),
                 run_id=run_id,
@@ -292,6 +358,8 @@ def run_stock_score_calculation(
             "config_fingerprint": config_fingerprint,
             "input_fingerprint": input_fingerprint,
             "active_components": list(active_defs.keys()),
+            "run_kind": "incremental" if security_ids is not None else "full",
+            "parent_run_id": str(parent_run_id) if parent_run_id is not None else None,
         },
     )
     session.add(audit)
@@ -301,7 +369,7 @@ def run_stock_score_calculation(
         run_id=run_id,
         is_new=True,
         as_of_date=as_of,
-        total_securities=len(universe),
+        total_securities=len(target_universe),
         scored_securities=len(risk_scores),
         config_version=config_version,
         config_fingerprint=config_fingerprint,
@@ -423,6 +491,13 @@ def get_stock_risk_envelope(
     definitions = {
         d.component_id: d for d in session.scalars(select(ScoreComponentDefinition)).all()
     }
+    model_config = session.get(ModelConfig, score_run.model_config_id)
+    config_data: dict[str, Any] = (
+        dict(model_config.configuration) if model_config is not None else {}
+    )
+    configured_weights = config_data.get("component_weights", {})
+    if not isinstance(configured_weights, dict):
+        configured_weights = {}
 
     # Retrieve all component values for this run and security
     comp_values = session.scalars(
@@ -452,6 +527,7 @@ def get_stock_risk_envelope(
                     "status_label": "Not yet available",
                     "data_as_of": None,
                     "data_age_days": None,
+                    "weight": float(configured_weights.get(comp_id, comp_def.weight)),
                     "evidence_ref": {},
                 }
             )
@@ -470,9 +546,12 @@ def get_stock_risk_envelope(
                     "points": None,
                     "status": "missing",
                     "status_label": "Not yet available",
-                    "data_as_of": None,
-                    "data_age_days": None,
-                    "evidence_ref": {},
+                    "data_as_of": (
+                        cv.data_as_of.isoformat() if cv is not None and cv.data_as_of else None
+                    ),
+                    "data_age_days": cv.data_age_days if cv is not None else None,
+                    "weight": float(configured_weights.get(comp_id, comp_def.weight)),
+                    "evidence_ref": cv.evidence_ref if cv is not None else {},
                 }
             )
         else:
@@ -491,6 +570,7 @@ def get_stock_risk_envelope(
                     "status_label": cv.status.capitalize(),
                     "data_as_of": cv.data_as_of.isoformat() if cv.data_as_of else None,
                     "data_age_days": cv.data_age_days,
+                    "weight": float(configured_weights.get(comp_id, comp_def.weight)),
                     "evidence_ref": cv.evidence_ref,
                 }
             )
@@ -507,9 +587,83 @@ def get_stock_risk_envelope(
             "value": float(cf.factor_value),
             "weight": float(cf.weight),
             "cap_applied": cf.cap_applied,
+            "description": FACTOR_DESCRIPTIONS.get(cf.factor_name, cf.factor_name),
         }
         for cf in cf_rows
     }
+    confidence_caps = list(
+        dict.fromkeys(cf.cap_applied for cf in cf_rows if cf.cap_applied is not None)
+    )
+
+    missing_components = [
+        {
+            "component_id": component["component_id"],
+            "name": component["name"],
+            "dimension": component["dimension"],
+            "status": component["status"],
+            "reason": component["evidence_ref"].get("reason", component["status_label"]),
+        }
+        for component in components_array
+        if component["status"] in {"missing", "insufficient"}
+    ]
+
+    previous_pair = session.execute(
+        select(StockRiskResult, ScoreRun)
+        .join(ScoreRun, StockRiskResult.run_id == ScoreRun.id)
+        .where(
+            StockRiskResult.security_id == result_row.security_id,
+            ScoreRun.status == "completed",
+            ScoreRun.completed_at < score_run.completed_at,
+        )
+        .order_by(desc(ScoreRun.completed_at))
+        .limit(1)
+    ).first()
+    changes: list[dict[str, Any]] = []
+    previous_score: float | None = None
+    if previous_pair is not None:
+        previous_result, previous_run = previous_pair
+        previous_score = float(previous_result.total_score)
+        previous_values = {
+            value.component_id: value
+            for value in session.scalars(
+                select(ScoreComponentValue).where(
+                    ScoreComponentValue.run_id == previous_run.id,
+                    ScoreComponentValue.security_id == result_row.security_id,
+                )
+            ).all()
+        }
+        for current in comp_values:
+            previous = previous_values.get(current.component_id)
+            if (
+                previous is None
+                or current.points is None
+                or previous.points is None
+                or current.percentile_rank is None
+                or previous.percentile_rank is None
+            ):
+                continue
+            point_delta = float(current.points) - float(previous.points)
+            percentile_delta = float(current.percentile_rank) - float(previous.percentile_rank)
+            if abs(point_delta) < 0.0001 and abs(percentile_delta) < 0.0001:
+                continue
+            definition = definitions.get(current.component_id)
+            component_name = definition.name if definition is not None else current.component_id
+            direction = "rose" if point_delta > 0 else "fell"
+            changes.append(
+                {
+                    "component_id": current.component_id,
+                    "name": component_name,
+                    "dimension": definition.dimension if definition is not None else None,
+                    "point_change": round(point_delta, 2),
+                    "percentile_change": round(percentile_delta, 2),
+                    "text": (
+                        f"{component_name} risk {direction} {abs(point_delta):.1f} points: "
+                        f"percentile {percentile_delta:+.1f}."
+                    ),
+                }
+            )
+        changes.sort(key=lambda item: abs(float(item["point_change"])), reverse=True)
+        changes = changes[:3]
 
     comp_name = (sec.company_name if sec else None) or result_row.symbol
     ind_name = (sec.industry if sec else None) or "General"
@@ -531,17 +685,30 @@ def get_stock_risk_envelope(
         "confidence": {
             "score": float(result_row.confidence),
             "factors": factors_dict,
+            "caps": confidence_caps,
         },
         "data_sufficiency": (
-            "sufficient" if float(result_row.data_coverage) >= 0.70 else "partial"
+            "sufficient"
+            if float(result_row.data_coverage) >= float(config_data.get("min_coverage_ratio", 0.70))
+            else "partial"
         ),
         "data_coverage": float(result_row.data_coverage),
         "dimension_scores": result_row.dimension_scores,
         "component_contributions": result_row.top_reasons,
         "components": components_array,
+        "missing_components": missing_components,
+        "change_explanation": {
+            "previous_score": previous_score,
+            "total_score_change": (
+                round(float(result_row.total_score) - previous_score, 2)
+                if previous_score is not None
+                else None
+            ),
+            "top_component_changes": changes,
+        },
         "thresholds": {
-            "min_coverage_ratio": 0.70,
-            "stale_price_days": 5,
+            "min_coverage_ratio": float(config_data.get("min_coverage_ratio", 0.70)),
+            "stale_price_days": int(config_data.get("stale_price_days_cap_threshold", 5)),
         },
         "limitations": result_row.limitations
         + [

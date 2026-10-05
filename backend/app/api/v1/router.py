@@ -41,6 +41,23 @@ from backend.app.macro.schemas import (
 )
 from backend.app.mst_diagnostics.config import load_mst_diagnostics_config
 from backend.app.mst_diagnostics.stability import calculate_stability_grade
+from backend.app.operations.schemas import (
+    AlertOut,
+    FreshnessOut,
+    LimitationsOut,
+    PipelineRunOut,
+    WatchlistCreate,
+    WatchlistOut,
+)
+from backend.app.operations.service import (
+    create_watchlist,
+    delete_watchlist,
+    evaluate_freshness,
+    list_alerts,
+    list_pipeline_runs,
+    list_watchlists,
+    load_operations_config,
+)
 from backend.app.policy.schemas import (
     PolicyRuleOut,
     PolicyRuleUpdate,
@@ -54,6 +71,7 @@ from backend.app.portfolio.schemas import (
     PortfolioImportResult,
     PortfolioOut,
     PortfolioRiskRunOut,
+    PortfolioRiskScoreOut,
     RiskRunRequest,
     RowValidationError,
     ShockRequest,
@@ -71,9 +89,92 @@ from backend.app.sector_divergence.service import (
     latest_completed_run_query,
     run_summary,
 )
+from backend.app.validation.schemas import ValidationRunDetailOut, ValidationRunSummaryOut
+from backend.app.validation.service import get_validation_run, list_validation_runs
 
 router = APIRouter()
 DatabaseSession = Annotated[Session, Depends(get_session)]
+
+
+@router.get("/ops/pipeline-runs", response_model=list[PipelineRunOut], tags=["operations"])
+def operations_pipeline_runs(
+    session: DatabaseSession, limit: int = Query(default=100, ge=1, le=500)
+) -> list[PipelineRunOut]:
+    return [PipelineRunOut.model_validate(row) for row in list_pipeline_runs(session, limit)]
+
+
+@router.get("/ops/freshness", response_model=list[FreshnessOut], tags=["operations"])
+def operations_freshness(session: DatabaseSession) -> list[FreshnessOut]:
+    return [FreshnessOut.model_validate(row) for row in evaluate_freshness(session)]
+
+
+@router.get("/alerts", response_model=list[AlertOut], tags=["alerts"])
+def alerts_list(
+    session: DatabaseSession, limit: int = Query(default=100, ge=1, le=500)
+) -> list[AlertOut]:
+    return [AlertOut.model_validate(row) for row in list_alerts(session, limit)]
+
+
+@router.post(
+    "/watchlists",
+    response_model=WatchlistOut,
+    status_code=http_status.HTTP_201_CREATED,
+    tags=["watchlists"],
+)
+def watchlist_create(payload: WatchlistCreate, session: DatabaseSession) -> WatchlistOut:
+    try:
+        return create_watchlist(session, payload)
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/watchlists", response_model=list[WatchlistOut], tags=["watchlists"])
+def watchlists_list(session: DatabaseSession) -> list[WatchlistOut]:
+    return list_watchlists(session)
+
+
+@router.delete(
+    "/watchlists/{watchlist_id}",
+    status_code=http_status.HTTP_204_NO_CONTENT,
+    tags=["watchlists"],
+)
+def watchlist_delete(watchlist_id: UUID, session: DatabaseSession) -> None:
+    if not delete_watchlist(session, watchlist_id):
+        raise HTTPException(status_code=404, detail=f"Watchlist {watchlist_id} not found")
+
+
+@router.get("/about/limitations", response_model=LimitationsOut, tags=["operations"])
+def limitations(session: DatabaseSession) -> LimitationsOut:
+    config, _, _ = load_operations_config(session)
+    return LimitationsOut(
+        method_version="operations-disclosure-v1",
+        price_frequency_label=str(config["price_frequency_label"]),
+        filings_news_poll_minutes=int(config["near_real_time_poll_minutes"]),
+        limitations=[str(item) for item in config.get("limitations", [])],
+    )
+
+
+@router.get("/validation/runs", response_model=list[ValidationRunSummaryOut], tags=["validation"])
+def validation_runs(session: DatabaseSession) -> list[ValidationRunSummaryOut]:
+    """List persisted honest-validation runs, including failed outcomes."""
+    return list_validation_runs(session)
+
+
+@router.get(
+    "/validation/runs/{run_id}",
+    response_model=ValidationRunDetailOut,
+    tags=["validation"],
+)
+def validation_run_detail(run_id: UUID, session: DatabaseSession) -> ValidationRunDetailOut:
+    """Return metrics, baselines, ablations, calibration, and limitations for one run."""
+    try:
+        return get_validation_run(session, run_id)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Validation run {run_id} not found",
+        ) from exc
 
 
 @router.get("/status", tags=["operations"])
@@ -934,6 +1035,19 @@ def get_latest_portfolio_risk(
 ) -> PortfolioRiskRunOut:
     """Retrieve the latest risk run and result envelope for a portfolio."""
     return portfolio_service.get_latest_risk_run(session, portfolio_id=portfolio_id)
+
+
+@router.get(
+    "/portfolios/{portfolio_id}/risk-score/latest",
+    response_model=PortfolioRiskScoreOut,
+    tags=["portfolio"],
+)
+def get_latest_portfolio_risk_score(
+    portfolio_id: UUID,
+    session: DatabaseSession,
+) -> PortfolioRiskScoreOut:
+    """Return holding-risk and structural-risk synthesis with confidence."""
+    return portfolio_service.get_latest_portfolio_risk_score(session, portfolio_id)
 
 
 @router.post(

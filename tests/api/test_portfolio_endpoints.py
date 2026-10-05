@@ -1,6 +1,6 @@
 """Tests for Step 3 portfolio API endpoints."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 import pytest
@@ -13,6 +13,7 @@ from backend.app.db.base import Base
 from backend.app.db.models import Security, SecurityAlias
 from backend.app.db.session import get_session
 from backend.app.main import app
+from backend.app.portfolio.schemas import PortfolioRiskScoreOut
 
 
 @pytest.fixture
@@ -105,5 +106,47 @@ def test_import_portfolio_csv_endpoint(mock_db: Session) -> None:
         assert result_bad["portfolio"] is None
         assert len(result_bad["errors"]) > 0
         assert result_bad["errors"][0]["symbol"] == "BAD_SYMBOL"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_latest_portfolio_risk_score_endpoint(
+    mock_db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    portfolio_id = uuid4()
+    score_run_id = uuid4()
+    monkeypatch.setattr(
+        "backend.app.api.v1.router.portfolio_service.get_latest_portfolio_risk_score",
+        lambda session, requested_id: PortfolioRiskScoreOut(
+            portfolio_id=requested_id,
+            as_of=date(2026, 10, 6),
+            stock_score_run_id=score_run_id,
+            total_score=54.3,
+            holding_risk_score=56.0,
+            structure_score=47.5,
+            structure_components={
+                "cluster_concentration": 70.0,
+                "effective_bets": 25.0,
+            },
+            confidence=40.0,
+            weighted_holding_confidence=70.0,
+            weakest_large_holding_confidence=40.0,
+            coverage=1.0,
+            status="ok",
+            method_version="portfolio-risk-score-v2-draft",
+            config_version="2.0.0",
+            computed_at=datetime(2026, 10, 6, 12, 0, tzinfo=UTC),
+        ),
+    )
+    app.dependency_overrides[get_session] = lambda: mock_db
+    try:
+        response = TestClient(app).get(
+            f"/api/v1/portfolios/{portfolio_id}/risk-score/latest"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["holding_risk_score"] == 56.0
+        assert data["structure_components"]["effective_bets"] == 25.0
+        assert data["confidence"] == 40.0
     finally:
         app.dependency_overrides.clear()

@@ -26,7 +26,18 @@ describe("Shared Components", () => {
         lookback: { start: "2026-04-01", end: "2026-10-01", window_size: 120 },
         confidence: {
           score: 87.5,
-          factors: { data_coverage: 1.0, data_freshness: 0.95 },
+          factors: {
+            data_coverage: {
+              value: 1.0,
+              weight: 1.0,
+              description: "Configured dimension coverage.",
+            },
+            data_freshness: {
+              value: 0.95,
+              weight: 1.0,
+              description: "Observed input freshness.",
+            },
+          },
           caps: ["coverage_cap"],
         },
         thresholds: {

@@ -7,11 +7,11 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Field | Value |
 |---|---|
 | Current phase | Phase 0 - Foundations |
-| Overall status | Steps 5, 6, 7, 8, 9, 10, and 11 complete; all gates green |
-| Last updated | 2026-10-05 |
+| Overall status | Steps 14 and 15 implemented; seven-day soak and clean empirical validation remain pending |
+| Last updated | 2026-10-06 |
 | Requirements source | `PRISM_SRS.md` version 1.6 |
 | Initial universe | NIFTY 200 |
-| Active implementation focus | Step 11 (Timestamped news/policy items, editable explainable policy-to-sector rules, news_policy_pressure component) complete |
+| Active implementation focus | Approve cleanup of quarantined fixture rows, then run validation, the seven-day scheduler soak, and recovery sign-off |
 
 ## Phase status
 
@@ -57,6 +57,14 @@ This is the living implementation record for PRISM. It must be updated after eve
 2. Shares-outstanding data not yet loaded.
 3. Benchmark is single-source Yahoo Finance.
 4. Historical NIFTY 200 membership is not available.
+5. `risk_engine_parameters:2.0.0` is intentionally `draft`; explicit owner approval is required before it becomes the default.
+6. Previously imported fixture announcement/news/macro rows remain quarantined pending the exact cleanup approval phrase `APPROVE CLEANUP`; no production Step 12 score run has been executed against them.
+7. Step 13 historical backfill/validation must not run on those contaminated inputs;
+   empirical score, confidence, ablation, and Layer 1 conclusions remain unproven.
+8. The Step 14 seven-day soak has not started: running the scheduler would score
+   the quarantined fixture-derived inputs. The soak report records this plainly.
+9. A real Supabase restore drill and teammate recovery sign-off remain external,
+   destructive/coordination-sensitive checks and have not been claimed complete.
 
 ## Verification status
 
@@ -64,19 +72,24 @@ This is the living implementation record for PRISM. It must be updated after eve
 |---|---|---|
 | Python environment | Python 3.12 provisioned by `uv` | 2026-10-05 |
 | Python dependency lock | `uv lock --check` passed; `pyarrow>=25.0.1` locked; optional `ml` extra | 2026-10-05 |
-| Ruff | Passed (0 errors across workspace) | 2026-10-05 |
-| mypy strict mode | Passed (128 source files checked in backend and jobs, 0 errors); `warn_unused_ignores=false` override for frozen Layer 1/2 modules only | 2026-10-05 |
-| pytest | Passed (212 tests passed, 0 failures, 1 harmless deprecation warning) | 2026-10-05 |
-| ESLint | Passed (0 errors across frontend) | 2026-10-05 |
-| Vitest | Passed (42 tests across 12 suites, 0 failures) | 2026-10-05 |
-| TypeScript/Vite production build | Passed (dist bundle built cleanly) | 2026-10-05 |
+| Ruff | Passed (0 errors across workspace) | 2026-10-06 |
+| mypy strict mode | Passed (146 source files checked in backend and jobs, 0 errors); default paths are configured so `uv run mypy` is the exact gate | 2026-10-06 |
+| pytest | Passed (235 tests, 0 failures, 1 dependency deprecation warning); DB-backed tests are transaction-isolated and rolled back | 2026-10-06 |
+| ESLint | Passed (0 errors, 0 warnings across frontend) | 2026-10-06 |
+| Vitest | Passed (47 tests across 15 suites, 0 failures) | 2026-10-06 |
+| TypeScript/Vite production build | Passed; pre-existing Plotly chunk-size advisory remains | 2026-10-06 |
 | Frontend frozen lockfile | `pnpm install --frozen-lockfile` passed with exact pinned versions | 2026-10-05 |
 | Layer 1 and Layer 2 Immutability | Passed (0 git diff on `backend/app/correlation_mst` and `backend/app/sector_divergence`) | 2026-10-05 |
-| Alembic head | Exactly one head: `e1f2a3b4c511` (chain ending at `e1f2a3b4c511`); SQL verified purely additive; applied to live Supabase PostgreSQL DB | 2026-10-05 |
+| Playwright smoke | Passed (1 end-to-end demo flow in Chromium) | 2026-10-06 |
+| Alembic head | Exactly one head/current: `c5d6e7f8a914`; additive Step 14 SQL inspected and applied successfully | 2026-10-06 |
 | NIFTY 200 Benchmark Ingestion | Dry-run passed; all 7 PASS RULES passed; single source `^CNX200` verified (`docs/evidence/benchmark_check.md`) | 2026-10-05 |
 | Step 5 Risk & Confidence Engine | Audited against RISK_SCORE_SPEC and CONFIDENCE_SPEC; no silent fallback on missing benchmark; all 145 tests green | 2026-10-05 |
 | Step 6 Shock & Diversification | Shock scenarios, diversification run engine, MST-cluster HHI and portfolio diversification cards implemented; API and frontend verified | 2026-10-05 |
 | Step 7 Fundamentals as Components | 4 fundamental components (leverage, coverage, profit trend, cash flow quality) registered; FundamentalsPanel rendered and tested | 2026-10-05 |
+| Step 12 Full Score | Eight-dimension coverage contract, draft v2 config, real-input confidence, portfolio synthesis, change explanations, ablation, APIs and UI implemented; activation pending approval | 2026-10-06 |
+| Step 13 Honest Validation | Persistence, PIT backfill job, forward labels, time-ordered metrics/baselines, ablation, calibration, Layer 1 bands, API and UI implemented; empirical run blocked by quarantined fixture inputs | 2026-10-06 |
+| Step 14 Operations | Configured DAG, retries/failure isolation, freshness, explainable alerts, watchlists, incremental rescoring, APIs/UI and export/backup procedure implemented; seven-day soak not started | 2026-10-06 |
+| Step 15 Demonstration | Three fixture portfolios, one-command loader, Playwright smoke, limitations page, demo/viva/architecture/recovery docs and final SRS audit implemented | 2026-10-06 |
 
 ## Update protocol
 
@@ -502,5 +515,115 @@ After every material update:
   - Python tests: `tests/policy/` (16 tests covering hash deduplication, deterministic matching, rule versioning & audit requirements, recency decay math & tailwind cap, point-in-time filtering, and API endpoints). Total Python tests: 212 passed.
   - Frontend tests: `NewsPolicyPanel.test.tsx` (2 tests), `PolicyRulesPage.test.tsx` (2 tests). Total Vitest tests: 42 passed across 12 test suites.
   - All 6 quality gates green: `ruff` (0 errors), `mypy` (128 source files clean), `pytest` (212 passed), `pnpm lint` (0 errors), `pnpm test` (42 passed), `pnpm build` (clean bundle).
+
+### 2026-10-06 - Step 12: Full Coverage, Confidence, Portfolio Score, and Gap Proof
+
+- Added the executable eight-dimension coverage contract and
+  `docs/specs/COVERAGE_MATRIX.md`; unavailable observations remain explicit and
+  reduce coverage/confidence.
+- Added and applied additive migration `a3b4c5d6e712`, inserting only
+  `risk_engine_parameters:2.0.0` with status `draft`. Version 1 remains approved
+  and the default. Offline SQL inspection caught and fixed JSON bind rendering
+  before application.
+- Configured all component/dimension weights, windows, minimum histories, decay
+  half-lives, age thresholds, confidence weights/caps, portfolio weights, and
+  ablation exclusions under the v2 fingerprint.
+- Completed all six confidence factors from point-in-time observations. Removed
+  optimistic fallback values for absent source cross-check and MST evidence.
+- Added source-coverage guards so absence of an announcement/news feed is
+  `missing`, not a synthetic zero-risk observation.
+- Added config-fingerprinted component/dimension ablation, generic missing-data
+  output, and top component changes against the previous completed stock run.
+- Added portfolio score synthesis with separate holding, structure,
+  cluster-concentration and effective-bet terms; confidence is capped by the
+  weakest large holding and reduced for missing coverage.
+- Extended `GET /api/v1/stocks/{symbol}/risk/latest` and added
+  `GET /api/v1/portfolios/{id}/risk-score/latest`.
+- Added frontend confidence-factor panel, missing-data banner, previous-run
+  changes, and portfolio risk/confidence cards.
+- Added full-score golden, coverage, cap, ablation, portfolio numeric,
+  determinism, no-look-ahead, and idempotency tests. Shared DB-backed tests now
+  use rollback-only transactions and do not persist fixtures.
+- Verification: Ruff passed; mypy passed 130 source files; pytest passed 222;
+  ESLint passed with no warnings; Vitest passed 44; production build passed.
+- Database evidence: `model_config` changed 12 -> 13 rows; the row-count hash for
+  every other existing table (54 tables) remained
+  `6c6351cacf256f08ebfcced42d9a013792c6a3874a8f9b93d97a55ee02c8c3e1`.
+- Production scoring was not run because known fixture-derived rows remain in the
+  database and cleanup has not been approved. No fixture rows were deleted.
+
+### 2026-10-06 - Step 13: Honest Historical Score and Confidence Validation
+
+- Added and applied additive migration `b4c5d6e7f813`, creating
+  `validation_run`, `validation_result`, and `experiment_log`, plus draft
+  `validation_parameters:1.0.0`. Offline SQL was inspected before application.
+- Added idempotent monthly point-in-time score backfill and historical-validation
+  jobs. Every historical score carries the current-membership survivorship warning.
+- Added strict post-as-of forward volatility, max-drawdown, and worst-five-session
+  targets; configured purged walk-forward evaluation reuses Step 0b splits.
+- Added per-period Spearman, decile/quintile comparisons, score stability,
+  trailing-volatility/beta/random baselines, confidence-bin calibration, and plain
+  failure reporting.
+- Added component/dimension ablations through the Step 12 hook for all three
+  targets. Every attempted variant is logged and weights are never auto-adjusted.
+- Added empirical Layer 1 band-rate comparisons without changing frozen Layer 1.
+- Added `GET /api/v1/validation/runs`, `GET /api/v1/validation/runs/{id}`, and a
+  `/validation` page with baseline, ablation, calibration, limitation, and failure
+  views.
+- Added numeric, no-look-ahead, split-purity, ablation-isolation, idempotency, API,
+  and frontend tests. Detailed assumptions are in `VALIDATION_SPEC.md`; PD-25 and
+  PD-26 await owner review.
+- Database evidence: 54 pre-existing non-config table counts were unchanged;
+  `model_config` changed 13 -> 14; all three new validation tables remain empty.
+- The authorized production jobs were not run because quarantined fixture-derived
+  event/news/macro rows would invalidate the evidence. No data was deleted or
+  overwritten; run remains pending exact cleanup approval `APPROVE CLEANUP`.
+- Verification: Ruff passed; exact `uv run mypy` passed 135 source files; pytest
+  passed 229; ESLint passed; Vitest passed 45; the production build passed. Layer
+  1/2 have no diff. Alembic head/current are both `b4c5d6e7f813`.
+- A diagnostic `alembic check` still reports older model/index naming and type drift
+  across pre-Step-13 tables. This migration did not alter those tables; resolving
+  that legacy drift requires a separate audited additive migration.
+
+### 2026-10-06 - Step 14: Unattended Operations, Freshness, Alerts, and Watchlists
+
+- Added and applied additive migration `c5d6e7f8a914`: `data_freshness`, `alert`,
+  `watchlist`, and `watchlist_item`; linked incremental score runs to their parent;
+  seeded approved checksummed `operations_parameters:1.0.0`.
+- Implemented the config-ordered APScheduler/Tenacity daily DAG with step-level
+  manifests, retries, failure isolation, and preservation of last-known-good data.
+- Added point-in-time freshness evaluation, six config-driven explainable alert
+  rules with deduplication/cooldown, watchlist defaults/CRUD, and targeted
+  filing/news incremental rescoring while keeping prices explicitly end-of-day.
+- Added operations, freshness, alert, watchlist, and limitations APIs; traffic-light
+  health/run views, alerts/watchlist pages, global stale banner, and EOD footer.
+- Added allowlisted key-table export plus documented Supabase backup/restore
+  evidence steps. No restore was performed or claimed.
+- Database evidence: all 57 pre-existing non-config table counts retained the exact
+  pre/post hash `459952f1f0095cb463e8ba01d423304d8e0276fc81db8c7c0d5a35f7fa7a7b32`;
+  `model_config` changed 14 -> 15 and all four new tables began empty.
+- Added tests for DAG ordering/retries/failure isolation, freshness boundaries and
+  no-look-ahead, alert deduplication/cooldown/idempotency, API contracts, and
+  affected-stock-only incremental persistence.
+- The authorized seven-day local soak was not started because known quarantined
+  fixture-derived production inputs would make its scoring evidence invalid.
+  `docs/evidence/SOAK_TEST_REPORT.md` records the blocked/not-started status.
+
+### 2026-10-06 - Step 15: Demonstration and Defensibility
+
+- Added concentrated, diversified, and sector-heavy synthetic fixture portfolios
+  under `data/demo/` plus a one-command local API loader.
+- Added a Chromium Playwright smoke covering upload, portfolio risk, stock risk,
+  confidence, component breakdown, fundamentals, events, shock simulation, and
+  mandatory disclaimers; the smoke passes.
+- Added `DEMO_SCRIPT.md`, `VIVA_QA.md`, `ARCHITECTURE.md`, the config-rendered
+  `/about/limitations` page, and `SRS_FINAL_AUDIT.md`; rewrote README and recovery
+  instructions to match the implemented commands and known limitations.
+- Final gates: Ruff passed; mypy passed 146 files; pytest passed 235; ESLint passed;
+  Vitest passed 47; production build passed; Playwright passed 1. The existing
+  large Plotly bundle advisory and Starlette/httpx deprecation warning remain
+  non-failing observations.
+- Final audit does not claim Phase 0 completion: teammate recovery sign-off, a real
+  restore drill, clean historical validation, and the seven-day soak remain open.
 
 

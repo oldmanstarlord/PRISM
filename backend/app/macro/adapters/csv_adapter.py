@@ -1,4 +1,4 @@
-"""CSV import adapter for macroeconomic series (FR-D9 fallback)."""
+"""Explicit CSV import adapter for macroeconomic series (FR-D9)."""
 
 from __future__ import annotations
 
@@ -10,10 +10,13 @@ from backend.app.macro.adapters.base import ParsedObservation
 
 
 class CsvMacroAdapter:
-    """Imports macro observations from CSV files (fallback source)."""
+    """Imports macro observations from an explicitly supplied CSV path."""
 
-    def __init__(self, base_dir: Path | None = None) -> None:
-        self.base_dir = base_dir or Path("data/macro")
+    def __init__(self, base_dir: Path | None = None, file_path: Path | None = None) -> None:
+        if base_dir is None and file_path is None:
+            raise ValueError("CSV import requires an explicit file path or base directory")
+        self.base_dir = base_dir
+        self.file_path = file_path
 
     @property
     def source_name(self) -> str:
@@ -26,7 +29,11 @@ class CsvMacroAdapter:
         end_date: date | None = None,
         cutoff: datetime | None = None,
     ) -> list[ParsedObservation]:
-        file_path = self.base_dir / f"{series_key}.csv"
+        file_path = self.file_path or (
+            self.base_dir / f"{series_key}.csv" if self.base_dir else None
+        )
+        if file_path is None:
+            return []
         if not file_path.exists():
             return []
 

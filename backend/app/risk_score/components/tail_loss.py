@@ -28,6 +28,9 @@ class TailLossComponent:
     ) -> list[ComponentValue]:
         lookback = int(context.config.get("tail_loss_lookback_days", 250))
         alpha = float(context.config.get("tail_loss_alpha", 0.05))
+        minimums = context.config.get("minimum_observations", {})
+        minimum = int(minimums.get(self.key, 20)) if isinstance(minimums, dict) else 20
+        stale_days = int(context.config.get("stale_price_days_cap_threshold", 5))
         prices_map = get_adjusted_prices_map(context, universe, lookback_days=lookback)
 
         results: list[ComponentValue] = []
@@ -51,10 +54,10 @@ class TailLossComponent:
 
             last_date = prices.index[-1]
             age_days = (as_of - last_date).days
-            status = "stale" if age_days > 5 else "ok"
+            status = "stale" if age_days > stale_days else "ok"
 
             rets = np.log(prices / prices.shift(1)).dropna().to_numpy(dtype=float)
-            if len(rets) < 20:
+            if len(rets) < minimum:
                 results.append(
                     ComponentValue(
                         security_id=sec_id,
@@ -64,7 +67,7 @@ class TailLossComponent:
                         status="insufficient",
                         data_as_of=last_date,
                         data_age_days=age_days,
-                        evidence_ref={"observations": len(rets), "required": 20},
+                        evidence_ref={"observations": len(rets), "required": minimum},
                     )
                 )
                 continue

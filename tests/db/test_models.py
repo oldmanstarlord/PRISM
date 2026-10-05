@@ -11,9 +11,12 @@ def test_database_tables_are_registered() -> None:
         "confidence_factor_value",
         "corporate_action",
         "data_crosscheck",
+        "data_freshness",
         "diversification_run",
         "event_item",
         "event_rule",
+        "experiment_log",
+        "alert",
         "fundamental_metric",
         "fundamental_period",
         "insider_trade",
@@ -59,6 +62,10 @@ def test_database_tables_are_registered() -> None:
         "trading_calendar",
         "universe",
         "universe_membership",
+        "validation_result",
+        "validation_run",
+        "watchlist",
+        "watchlist_item",
     }
 
     assert set(Base.metadata.tables) == expected

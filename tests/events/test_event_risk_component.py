@@ -216,9 +216,11 @@ def test_no_look_ahead_event_filtering(session) -> None:
     vals = component.compute(as_of, [(sec.id, "TEST", sec.industry or "IT")], ctx)
     assert len(vals) == 1
     res = vals[0]
-    # The future event must not be counted; raw_value is baseline 0.0
-    assert res.raw_value == 0.0
+    # Neither the future event nor its future source document can establish coverage.
+    assert res.raw_value is None
+    assert res.status == "missing"
     assert res.evidence_ref["event_count"] == 0
+    assert res.evidence_ref["reason"] == "no_point_in_time_announcement_source_coverage"
 
     # Cleanup
     session.query(EventItem).filter_by(security_id=sec.id).delete()

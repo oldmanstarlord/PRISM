@@ -7,7 +7,6 @@ import AppLayout from "./AppLayout";
 import CompanyDetail from "./CompanyDetail";
 import Dashboard from "./Dashboard";
 import DataHealthPage from "./DataHealthPage";
-import PlaceholderPage from "./PlaceholderPage";
 
 const MstPage = lazy(() => import("./MstPage"));
 const PortfolioPage = lazy(() => import("./PortfolioPage"));
@@ -16,6 +15,10 @@ const StockDetailPage = lazy(() => import("./StockDetailPage"));
 const MacroPage = lazy(() => import("./MacroPage"));
 const ShockPage = lazy(() => import("./ShockPage"));
 const PolicyRulesPage = lazy(() => import("./PolicyRulesPage"));
+const ValidationPage = lazy(() => import("./ValidationPage"));
+const AlertsPage = lazy(() => import("./AlertsPage"));
+const WatchlistsPage = lazy(() => import("./WatchlistsPage"));
+const LimitationsPage = lazy(() => import("./LimitationsPage"));
 
 function LoadingFallback() {
   return (
@@ -92,14 +95,15 @@ export function AppRoutes() {
         <Route
           path="/validation"
           element={
-            <PlaceholderPage
-              title="Walk-Forward & Purged Validation"
-              stepName="Step 7"
-              description="Strict out-of-sample backtesting, purged k-fold cross-validation with embargo, and calibration surveillance without look-ahead."
-            />
+            <Suspense fallback={<LoadingFallback />}>
+              <ValidationPage />
+            </Suspense>
           }
         />
         <Route path="/data-health" element={<DataHealthPage />} />
+        <Route path="/alerts" element={<Suspense fallback={<LoadingFallback />}><AlertsPage /></Suspense>} />
+        <Route path="/watchlists" element={<Suspense fallback={<LoadingFallback />}><WatchlistsPage /></Suspense>} />
+        <Route path="/about/limitations" element={<Suspense fallback={<LoadingFallback />}><LimitationsPage /></Suspense>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

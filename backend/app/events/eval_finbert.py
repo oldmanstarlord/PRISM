@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 import logging
 from collections import defaultdict
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def evaluate_sentiment_model(
-    csv_path: Path | str | None = None,
+    csv_path: Path | str,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Evaluate sentiment classification on a labelled CSV dataset.
@@ -22,12 +23,7 @@ def evaluate_sentiment_model(
     Returns:
         dict with overall accuracy, total count, and per-class precision/recall/F1 metrics.
     """
-    if csv_path is None:
-        csv_file = (
-            Path(__file__).resolve().parents[3] / "data" / "labelled" / "labelled_examples.csv"
-        )
-    else:
-        csv_file = Path(csv_path)
+    csv_file = Path(csv_path)
 
     if not csv_file.exists():
         raise FileNotFoundError(f"Labelled evaluation dataset not found at {csv_file}")
@@ -94,7 +90,10 @@ def evaluate_sentiment_model(
 
 
 if __name__ == "__main__":
-    report = evaluate_sentiment_model()
+    parser = argparse.ArgumentParser(description="Evaluate sentiment against an explicit dataset")
+    parser.add_argument("csv_path", type=Path)
+    args = parser.parse_args()
+    report = evaluate_sentiment_model(args.csv_path)
     print("--- Sentiment Model Evaluation Report ---")
     print(f"Total Examples: {report['total_examples']}")
     print(f"Accuracy:       {report['accuracy'] * 100:.1f}%")

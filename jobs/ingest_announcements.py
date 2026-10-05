@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 from backend.app.db.models import EventItem, SourceDocument
 from backend.app.db.session import SessionLocal
 from backend.app.events.adapters.base import AnnouncementAdapter
-from backend.app.events.adapters.exchange_adapter import ExchangeAnnouncementAdapter
 from backend.app.events.adapters.json_adapter import JsonAnnouncementAdapter
 from backend.app.events.importance import calculate_event_importance
 from backend.app.events.rules import (
@@ -29,16 +28,14 @@ logger = logging.getLogger("ingest_announcements")
 
 def run_ingest_announcements(
     session: Session,
-    source_file: str | None = None,
+    source_file: str,
     dry_run: bool = False,
     limit: int | None = None,
 ) -> dict[str, int]:
     """Ingest announcements into source_document and event_item tables idempotently (D4, D6)."""
-    adapter: AnnouncementAdapter = (
-        JsonAnnouncementAdapter(file_path=source_file)
-        if source_file
-        else ExchangeAnnouncementAdapter(use_fallback=True)
-    )
+    if not source_file:
+        raise ValueError("--source-file is required; no live announcement source is configured")
+    adapter: AnnouncementAdapter = JsonAnnouncementAdapter(file_path=source_file)
 
     raw_announcements = adapter.fetch_announcements(limit=limit)
     logger.info("Retrieved %d raw announcements from adapter", len(raw_announcements))
@@ -95,7 +92,7 @@ def run_ingest_announcements(
             source_doc = SourceDocument(
                 id=uuid4(),
                 security_id=security.id,
-                source="NSE_BSE_EXCHANGE",
+                source="ANNOUNCEMENT_FILE_IMPORT",
                 source_doc_id=a.source_doc_id,
                 doc_type="announcement",
                 published_at=a.published_at,
@@ -168,7 +165,12 @@ def run_ingest_announcements(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest exchange announcements idempotently.")
-    parser.add_argument("--source-file", type=str, default=None, help="Custom JSON fixture file")
+    parser.add_argument(
+        "--source-file",
+        type=str,
+        required=True,
+        help="Path to a verified real announcement export JSON file",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Inspect without committing to DB")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of items")
     args = parser.parse_args()

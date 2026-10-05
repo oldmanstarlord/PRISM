@@ -1,4 +1,4 @@
-"""File-based JSON announcement adapter for reproducible testing and fixture ingestion (D4)."""
+"""Explicit file-based JSON announcement adapter (D4)."""
 
 from __future__ import annotations
 
@@ -10,18 +10,10 @@ from backend.app.events.adapters.base import AnnouncementAdapter, RawAnnouncemen
 
 
 class JsonAnnouncementAdapter(AnnouncementAdapter):
-    """Loads curated exchange announcements from a JSON file fixture."""
+    """Loads announcements from a caller-supplied export file."""
 
-    def __init__(self, file_path: Path | str | None = None) -> None:
-        if file_path is None:
-            self.file_path = (
-                Path(__file__).resolve().parents[4]
-                / "data"
-                / "announcements"
-                / "announcements.json"
-            )
-        else:
-            self.file_path = Path(file_path)
+    def __init__(self, file_path: Path | str) -> None:
+        self.file_path = Path(file_path)
 
     def fetch_announcements(
         self,

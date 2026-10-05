@@ -22,6 +22,7 @@ class MacroObservationOut(BaseModel):
     obs_date: date
     value: float
     published_at: datetime
+    source: str | None = None
     version: int
 
 

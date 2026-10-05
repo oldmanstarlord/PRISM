@@ -1,4 +1,4 @@
-"""JSON file adapter for news and policy fixtures (Step 11)."""
+"""Explicit JSON file adapter for tests and controlled imports (Step 11)."""
 
 from __future__ import annotations
 
@@ -10,14 +10,10 @@ from backend.app.policy.adapters.base import RawNewsItem
 
 
 class JsonNewsAdapter:
-    """Loads timestamped news items from local JSON fixtures."""
+    """Loads timestamped news items from a caller-supplied JSON file."""
 
-    def __init__(self, file_path: str | Path | None = None) -> None:
-        if file_path is None:
-            project_root = Path(__file__).resolve().parents[4]
-            self.file_path = project_root / "data" / "news" / "news.json"
-        else:
-            self.file_path = Path(file_path)
+    def __init__(self, file_path: str | Path) -> None:
+        self.file_path = Path(file_path)
 
     def fetch_news(
         self,

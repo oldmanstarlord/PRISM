@@ -333,3 +333,22 @@ on a clean machine and sign off by ticking each item below.
 > The SRS Section 16 item "Setup and recovery instructions have been tested by
 > another team member" is marked **NOT DONE** until a teammate completes and
 > signs the checklist above.
+
+## 14. Operations, export, demo, and restore evidence
+
+Start the configured scheduler with `uv run python -m jobs.run_scheduler`. Use
+`--once` for one isolated daily DAG or `--soak-days 7` for the required soak. Prices
+remain end-of-day; the filing/news interval comes from `operations_parameters`.
+
+Export key tables with `uv run python -m jobs.export_key_tables --output exports`.
+The timestamped export directory contains no connection string. Preserve it with
+raw source snapshots and the migration directory before a restore.
+
+Load synthetic demo fixtures only through the local API with
+`uv run python -m jobs.load_demo_portfolios`. Do not load them into production.
+
+A restore check is complete only after restoring to a separate target, running
+`alembic current`, comparing row counts/checksums, starting the API, and executing
+the backend/frontend/Playwright gates. This check remains NOT DONE until another
+team member records the target, timestamp and evidence; never paste credentials into
+the report.

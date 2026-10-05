@@ -203,6 +203,7 @@ def test_get_stock_risk_latest_envelope(client: TestClient, mock_session: MagicM
         return None
 
     mock_session.get.side_effect = mock_get
+    mock_session.execute.return_value.first.return_value = None
 
     response = client.get("/api/v1/stocks/INFY/risk/latest")
     assert response.status_code == 200
@@ -211,9 +212,12 @@ def test_get_stock_risk_latest_envelope(client: TestClient, mock_session: MagicM
     assert data["symbol"] == "INFY"
     assert data["total_score"] == 55.0
     assert data["confidence"]["score"] == 80.0
+    assert data["confidence"]["factors"]["data_coverage"]["value"] == 0.75
     assert len(data["components"]) == 1
     assert data["components"][0]["component_id"] == "ewma_volatility"
     assert data["components"][0]["raw_value"] == 0.24
+    assert data["missing_components"] == []
+    assert data["change_explanation"]["previous_score"] is None
 
 
 def test_get_stock_risk_latest_not_found(client: TestClient, mock_session: MagicMock) -> None:

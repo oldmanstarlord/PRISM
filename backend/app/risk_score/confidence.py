@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
@@ -11,6 +13,15 @@ from sqlalchemy import desc, select
 from backend.app.db.models import DataCrosscheck, MstStability
 from backend.app.risk_score.components.base import RiskContext
 from backend.app.risk_score.scorer import SecurityRiskScore
+
+FACTOR_DESCRIPTIONS: dict[str, str] = {
+    "data_coverage": "Configured dimension weight supported by usable real observations.",
+    "data_freshness": "Component-weighted age against each dimension's maximum age.",
+    "source_agreement": "Observed agreement rate across available independent cross-checks.",
+    "signal_agreement": "Share of usable component signals on the dominant side of median risk.",
+    "model_stability": "Observed MST persistence and volatility-estimation reliability.",
+    "evidence_volume": "Saturating event and matched-policy evidence count.",
+}
 
 
 @dataclass
@@ -81,10 +92,12 @@ class ConfidenceEngine:
 
         # 1. Preload recent data crosschecks for universe point-in-time
         sec_ids = list(risk_scores.keys())
+        source_lookback = int(self.config.get("source_agreement_lookback_days", 60))
         crosscheck_rows = session.scalars(
             select(DataCrosscheck).where(
                 DataCrosscheck.security_id.in_(sec_ids),
                 DataCrosscheck.trade_date <= as_of,
+                DataCrosscheck.trade_date >= as_of - timedelta(days=source_lookback),
                 DataCrosscheck.checked_at <= context.data_cutoff,
             )
         ).all()
@@ -100,7 +113,7 @@ class ConfidenceEngine:
             .limit(1)
         ).first()
         base_mst_persistence = (
-            float(mst_stability_row.edge_persistence) if mst_stability_row is not None else 0.90
+            float(mst_stability_row.edge_persistence) if mst_stability_row is not None else None
         )
 
         results: dict[UUID, SecurityConfidenceResult] = {}
@@ -110,54 +123,94 @@ class ConfidenceEngine:
             factors: dict[str, ConfidenceFactor] = {}
 
             # --- Factor 1: Data Coverage ---
-            f_cov = min(1.0, max(0.0, score_obj.coverage))
+            dimension_coverage = min(1.0, max(0.0, score_obj.coverage))
+            history_ratios: list[float] = []
+            missing_history_days = 0
+            required_by_component = self.config.get("coverage_required_observations", {})
+            if not isinstance(required_by_component, dict):
+                required_by_component = {}
+            for component in score_obj.components:
+                observations = component.evidence_ref.get(
+                    "observations", component.evidence_ref.get("paired_observations")
+                )
+                required = component.evidence_ref.get(
+                    "required", required_by_component.get(component.component_id)
+                )
+                if isinstance(observations, (int, float)) and isinstance(required, (int, float)):
+                    if required > 0:
+                        history_ratios.append(min(1.0, max(0.0, observations / required)))
+                        missing_history_days += max(0, int(required - observations))
+            history_completeness = (
+                sum(history_ratios) / len(history_ratios) if history_ratios else 1.0
+            )
+            f_cov = dimension_coverage * history_completeness
             factors["data_coverage"] = ConfidenceFactor(
                 factor_name="data_coverage",
                 factor_value=round(f_cov, 4),
                 weight=self.factor_weights.get("data_coverage", 1.0),
-                description="Share of available risk dimension weights",
-                details={"coverage_ratio": score_obj.coverage},
+                description=FACTOR_DESCRIPTIONS["data_coverage"],
+                details={
+                    "dimension_weight_coverage": dimension_coverage,
+                    "history_completeness": round(history_completeness, 4),
+                    "missing_history_days": missing_history_days,
+                    "missing_components": sum(
+                        component.points is None for component in score_obj.components
+                    ),
+                },
             )
 
             # --- Factor 2: Data Freshness ---
             valid_comps = [c for c in score_obj.components if c.points is not None]
             if valid_comps:
-                freshness_scores: list[float] = []
+                weighted_freshness = 0.0
+                freshness_weight = 0.0
                 for c in valid_comps:
                     max_age = self.max_age_by_dimension.get(c.dimension, 5)
-                    age = c.data_age_days if c.data_age_days is not None else 0
-                    comp_f = max(0.0, 1.0 - (age / max_age))
+                    age = c.data_age_days
+                    comp_f = max(0.0, 1.0 - (age / max_age)) if age is not None else 0.0
                     if c.dimension == "fundamentals":
                         is_est = c.evidence_ref.get(
                             "published_at_method"
                         ) == "estimated" or "estimated" in str(c.evidence_ref)
                         if is_est:
                             comp_f *= 0.85
-                    freshness_scores.append(comp_f)
-                f_fresh = float(sum(freshness_scores) / len(freshness_scores))
+                    weighted_freshness += c.weight * comp_f
+                    freshness_weight += c.weight
+                f_fresh = weighted_freshness / freshness_weight if freshness_weight > 0 else 0.0
             else:
-                f_fresh = 0.5
+                f_fresh = 0.0
             factors["data_freshness"] = ConfidenceFactor(
                 factor_name="data_freshness",
                 factor_value=round(f_fresh, 4),
                 weight=self.factor_weights.get("data_freshness", 1.0),
-                description="Linear calendar freshness of underlying inputs",
-                details={"evaluated_components": len(valid_comps)},
+                description=FACTOR_DESCRIPTIONS["data_freshness"],
+                details={
+                    "evaluated_components": len(valid_comps),
+                    "weighted_by_component_weight": True,
+                },
             )
 
             # --- Factor 3: Source Agreement ---
             cc_list = crosscheck_by_sec.get(sec_id, [])
             if cc_list:
-                max_diff = max(float(cc.rel_diff) for cc in cc_list)
-                f_source = max(0.0, 1.0 - min(1.0, max_diff * 10.0))
+                mismatch_count = sum(cc.status != "match" for cc in cc_list)
+                mismatch_rate = mismatch_count / len(cc_list)
+                f_source = max(0.0, 1.0 - mismatch_rate)
             else:
-                f_source = 1.0  # Official primary source verified
+                mismatch_count = 0
+                mismatch_rate = None
+                f_source = 0.0
             factors["source_agreement"] = ConfidenceFactor(
                 factor_name="source_agreement",
                 factor_value=round(f_source, 4),
                 weight=self.factor_weights.get("source_agreement", 1.0),
-                description="Concordance across redundant price sources",
-                details={"crosschecks_count": len(cc_list)},
+                description=FACTOR_DESCRIPTIONS["source_agreement"],
+                details={
+                    "crosschecks_count": len(cc_list),
+                    "mismatch_count": mismatch_count,
+                    "mismatch_rate": mismatch_rate,
+                    "status": "missing" if not cc_list else "ok",
+                },
             )
 
             # --- Factor 4: Signal Agreement ---
@@ -172,34 +225,62 @@ class ConfidenceEngine:
                 factor_name="signal_agreement",
                 factor_value=round(f_signal, 4),
                 weight=self.factor_weights.get("signal_agreement", 1.0),
-                description="Share of risk components pointing to the same side of median",
+                description=FACTOR_DESCRIPTIONS["signal_agreement"],
                 details={"components_evaluated": len(valid_comps)},
             )
 
             # --- Factor 5: Model Stability ---
-            # Combine MST edge persistence and component status completeness
-            f_stability = min(1.0, max(0.0, base_mst_persistence))
+            # Combine observed MST persistence and volatility estimation reliability.
+            stability_inputs: list[float] = []
+            if base_mst_persistence is not None:
+                stability_inputs.append(min(1.0, max(0.0, base_mst_persistence)))
+            volatility_observations: list[int] = []
+            for component in valid_comps:
+                if component.component_id != "ewma_volatility":
+                    continue
+                observations = component.evidence_ref.get("observations")
+                if isinstance(observations, int) and observations > 1:
+                    volatility_observations.append(observations)
+                    relative_error = math.sqrt(1.0 / (2.0 * (observations - 1)))
+                    stability_inputs.append(max(0.0, 1.0 - relative_error))
+            f_stability = (
+                sum(stability_inputs) / len(stability_inputs) if stability_inputs else 0.0
+            )
             factors["model_stability"] = ConfidenceFactor(
                 factor_name="model_stability",
                 factor_value=round(f_stability, 4),
                 weight=self.factor_weights.get("model_stability", 1.0),
-                description="Structural robustness and edge persistence of underlying models",
-                details={"base_mst_persistence": base_mst_persistence},
+                description=FACTOR_DESCRIPTIONS["model_stability"],
+                details={
+                    "mst_edge_persistence": base_mst_persistence,
+                    "volatility_observations": volatility_observations,
+                    "status": "missing" if not stability_inputs else "ok",
+                },
             )
 
             # --- Factor 6: Evidence Volume ---
-            # Proportion of active components that met sample size requirements
-            active_defs_count = sum(1 for c in score_obj.components)
-            if active_defs_count > 0:
-                f_volume = min(1.0, len(valid_comps) / active_defs_count)
-            else:
-                f_volume = 1.0
+            event_count = 0
+            matched_policy_count = 0
+            for component in score_obj.components:
+                raw_event_count = component.evidence_ref.get("event_count", 0)
+                raw_policy_count = component.evidence_ref.get("matched_policy_count", 0)
+                if isinstance(raw_event_count, int):
+                    event_count += raw_event_count
+                if isinstance(raw_policy_count, int):
+                    matched_policy_count += raw_policy_count
+            evidence_count = event_count + matched_policy_count
+            scale = max(0.0001, float(self.config.get("evidence_volume_scale", 5.0)))
+            f_volume = 1.0 - math.exp(-evidence_count / scale)
             factors["evidence_volume"] = ConfidenceFactor(
                 factor_name="evidence_volume",
                 factor_value=round(f_volume, 4),
                 weight=self.factor_weights.get("evidence_volume", 1.0),
-                description="Degree to which statistical sample size is satisfied",
-                details={"valid_components": len(valid_comps), "total": active_defs_count},
+                description=FACTOR_DESCRIPTIONS["evidence_volume"],
+                details={
+                    "event_count": event_count,
+                    "matched_policy_count": matched_policy_count,
+                    "saturation_scale": scale,
+                },
             )
 
             # Calculate unconstrained raw confidence
@@ -216,18 +297,18 @@ class ConfidenceEngine:
             # Check 1: Stale price data cap (market components older than stale_price_limit)
             market_comps = [c for c in valid_comps if c.dimension == "market"]
             has_stale_market_price = any(
-                (c.data_age_days or 0) > self.stale_price_limit for c in market_comps
+                c.status == "stale"
+                or (c.data_age_days is not None and c.data_age_days > self.stale_price_limit)
+                for c in market_comps
             )
             if has_stale_market_price:
-                if final_c > self.stale_price_cap:
-                    final_c = self.stale_price_cap
-                    caps_applied.append(f"stale_price_cap_{int(self.stale_price_cap)}")
+                final_c = min(final_c, self.stale_price_cap)
+                caps_applied.append(f"stale_price_cap_{int(self.stale_price_cap)}")
 
             # Check 2: Low coverage cap (coverage < min_coverage_ratio)
-            if score_obj.coverage < self.min_coverage_ratio:
-                if final_c > self.low_coverage_cap:
-                    final_c = self.low_coverage_cap
-                    caps_applied.append(f"low_coverage_cap_{int(self.low_coverage_cap)}")
+            if f_cov < self.min_coverage_ratio:
+                final_c = min(final_c, self.low_coverage_cap)
+                caps_applied.append(f"low_coverage_cap_{int(self.low_coverage_cap)}")
 
             results[sec_id] = SecurityConfidenceResult(
                 security_id=sec_id,

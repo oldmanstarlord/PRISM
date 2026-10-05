@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
 
-from backend.app.db.models import EventItem, TextScore
+from backend.app.db.models import EventItem, SourceDocument, TextScore
 from backend.app.risk_score.components.base import ComponentValue, RiskContext
 
 
@@ -28,9 +28,24 @@ class EventRiskPressureComponent:
         session = context.session
         cfg = context.config.get("event_risk_pressure", {})
         half_life_days = float(cfg.get("recency_half_life_days", 14))
+        lookback_days = int(cfg.get("lookback_days", 90))
         positive_offset_cap = float(cfg.get("positive_offset_cap", 0.30))
 
         sec_ids = [u[0] for u in universe]
+
+        source_rows = session.execute(
+            select(SourceDocument.security_id, SourceDocument.published_at).where(
+                SourceDocument.security_id.in_(sec_ids),
+                SourceDocument.published_at <= context.data_cutoff,
+                SourceDocument.ingested_at <= context.data_cutoff,
+            )
+        ).all()
+        latest_source_date: dict[UUID, date] = {}
+        for source_security_id, published_at in source_rows:
+            published_date = published_at.date()
+            previous_date = latest_source_date.get(source_security_id)
+            if previous_date is None or published_date > previous_date:
+                latest_source_date[source_security_id] = published_date
 
         # Query all relevant announcements up to cutoff
         query = (
@@ -40,6 +55,7 @@ class EventRiskPressureComponent:
                 EventItem.security_id.in_(sec_ids),
                 EventItem.published_at <= context.data_cutoff,
                 EventItem.effective_trading_date <= as_of,
+                EventItem.effective_trading_date >= as_of - timedelta(days=lookback_days),
             )
             .order_by(EventItem.effective_trading_date.desc())
         )
@@ -56,7 +72,26 @@ class EventRiskPressureComponent:
             items = events_by_sec.get(sec_id, [])
 
             if not items:
-                # No recent announcements: baseline 0 pressure
+                source_date = latest_source_date.get(sec_id)
+                if source_date is None:
+                    results.append(
+                        ComponentValue(
+                            security_id=sec_id,
+                            symbol=symbol,
+                            component_id=self.key,
+                            raw_value=None,
+                            status="missing",
+                            data_as_of=None,
+                            data_age_days=None,
+                            evidence_ref={
+                                "reason": "no_point_in_time_announcement_source_coverage",
+                                "event_count": 0,
+                            },
+                        )
+                    )
+                    continue
+
+                # The source was observed but no material event mapped to this security.
                 results.append(
                     ComponentValue(
                         security_id=sec_id,
@@ -64,8 +99,8 @@ class EventRiskPressureComponent:
                         component_id=self.key,
                         raw_value=0.0,
                         status="ok",
-                        data_as_of=as_of,
-                        data_age_days=0,
+                        data_as_of=source_date,
+                        data_age_days=max(0, (as_of - source_date).days),
                         evidence_ref={
                             "event_count": 0,
                             "neg_pressure": 0.0,

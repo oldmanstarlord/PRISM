@@ -30,8 +30,14 @@ class BetaToBenchmarkComponent:
         universe: list[tuple[UUID, str, str]],
         context: RiskContext,
     ) -> list[ComponentValue]:
-        benchmark_id = context.config.get("benchmark_id", "NIFTY_200")
-        bench_rets = get_benchmark_returns(context, benchmark_id=benchmark_id, lookback_days=365)
+        benchmark_id = str(context.config.get("benchmark_id", "NIFTY_200"))
+        lookback = int(context.config.get("beta_lookback_days", 250))
+        minimums = context.config.get("minimum_observations", {})
+        minimum = int(minimums.get(self.key, 30)) if isinstance(minimums, dict) else 30
+        stale_days = int(context.config.get("stale_price_days_cap_threshold", 5))
+        bench_rets = get_benchmark_returns(
+            context, benchmark_id=benchmark_id, lookback_days=lookback
+        )
 
         # If benchmark data is unavailable, every stock receives status="missing"
         # with {"reason": "benchmark_unavailable"} (no substitute index).
@@ -50,7 +56,7 @@ class BetaToBenchmarkComponent:
                 for sec_id, symbol, _ in universe
             ]
 
-        prices_map = get_adjusted_prices_map(context, universe, lookback_days=365)
+        prices_map = get_adjusted_prices_map(context, universe, lookback_days=lookback)
         results: list[ComponentValue] = []
 
         for sec_id, symbol, _ in universe:
@@ -72,11 +78,11 @@ class BetaToBenchmarkComponent:
 
             last_date = prices.index[-1]
             age_days = (as_of - last_date).days
-            status = "stale" if age_days > 5 else "ok"
+            status = "stale" if age_days > stale_days else "ok"
 
             stk_rets = np.log(prices / prices.shift(1)).dropna()
-            paired = pd.concat([stk_rets, bench_rets], axis=1).dropna()
-            if len(paired) < 30:
+            paired = pd.concat([stk_rets, bench_rets], axis=1).dropna().tail(lookback)
+            if len(paired) < minimum:
                 results.append(
                     ComponentValue(
                         security_id=sec_id,
@@ -86,7 +92,7 @@ class BetaToBenchmarkComponent:
                         status="insufficient",
                         data_as_of=last_date,
                         data_age_days=age_days,
-                        evidence_ref={"paired_observations": len(paired), "required": 30},
+                        evidence_ref={"paired_observations": len(paired), "required": minimum},
                     )
                 )
                 continue

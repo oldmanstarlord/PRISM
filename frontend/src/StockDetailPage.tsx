@@ -23,11 +23,13 @@ import ShieldIcon from "@mui/icons-material/Shield";
 import { useApi } from "./api";
 import type { BreakdownItem, StockEventsResponse, StockRiskEnvelope } from "./types";
 import { BreakdownBars } from "./components/BreakdownBars";
+import { ConfidencePanel } from "./components/ConfidencePanel";
 import { ExplainPanel } from "./components/ExplainPanel";
 import { FreshnessBadge } from "./components/FreshnessBadge";
 import { FundamentalsPanel } from "./components/FundamentalsPanel";
 import { GovernancePanel } from "./components/GovernancePanel";
 import { MacroPanel } from "./components/MacroPanel";
+import { MissingDataBanner } from "./components/MissingDataBanner";
 import { NewsPolicyPanel } from "./components/NewsPolicyPanel";
 import { Timeline } from "./components/Timeline";
 
@@ -63,7 +65,7 @@ export default function StockDetailPage() {
         display_name: c.name,
         percentile: c.percentile_rank !== null ? c.percentile_rank : undefined,
         risk_points: c.points !== null ? c.points : undefined,
-        weight: 1.0,
+        weight: c.weight,
         status: isMissingOrInactive ? "not yet available" : c.status,
         data_age_days: c.data_age_days !== null ? c.data_age_days : undefined,
         reason:
@@ -106,6 +108,10 @@ export default function StockDetailPage() {
       ? envelope.confidence
       : envelope.confidence?.score ?? 50.0;
   const covPct = Math.round((envelope.data_coverage || 0) * 100);
+  const confidenceFactors =
+    typeof envelope.confidence === "object" ? envelope.confidence.factors ?? {} : {};
+  const confidenceCaps =
+    typeof envelope.confidence === "object" ? envelope.confidence.caps ?? [] : [];
 
   const riskColor =
     score >= 70 ? "error" : score >= 45 ? "warning" : "success";
@@ -158,6 +164,8 @@ export default function StockDetailPage() {
           </Button>
         </Stack>
       </Stack>
+
+      <MissingDataBanner components={envelope.missing_components ?? []} />
 
       {/* Top Gauge Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -240,6 +248,33 @@ export default function StockDetailPage() {
           </Card>
         </Grid>
       </Grid>
+
+      <ConfidencePanel
+        score={confidenceScore}
+        factors={confidenceFactors}
+        caps={confidenceCaps}
+      />
+
+      {envelope.change_explanation?.top_component_changes.length > 0 && (
+        <Card variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+              Changes since the previous run
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Total risk score changed {envelope.change_explanation.total_score_change! >= 0 ? "+" : ""}
+              {envelope.change_explanation.total_score_change?.toFixed(1)} points.
+            </Typography>
+            <Stack spacing={1}>
+              {envelope.change_explanation.top_component_changes.map((change) => (
+                <Alert key={change.component_id} severity={change.point_change > 0 ? "warning" : "success"}>
+                  {change.text}
+                </Alert>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Top Risk Drivers / Reasons */}
       {envelope.component_contributions && envelope.component_contributions.length > 0 && (

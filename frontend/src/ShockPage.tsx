@@ -27,7 +27,7 @@ import {
   Typography,
 } from "@mui/material";
 import Grid from "@mui/material/Grid";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { postJson, useApi } from "./api";
@@ -57,7 +57,6 @@ export default function ShockPage(): React.ReactElement {
     control,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<ShockFormValues>({
     defaultValues: {
@@ -69,7 +68,7 @@ export default function ShockPage(): React.ReactElement {
   });
 
   const portfolioList = Array.isArray(portfolios) ? portfolios : [];
-  const currentPortfolioId = watch("portfolioId");
+  const currentPortfolioId = useWatch({ control, name: "portfolioId" });
   const selectedPortfolio = portfolioList.find((p) => p.id === currentPortfolioId);
 
   // Shock mutation
@@ -284,9 +283,8 @@ export default function ShockPage(): React.ReactElement {
               <Card
                 variant="outlined"
                 sx={{
-                  borderTop: `4px solid ${
-                    scenario.portfolio_impact_pct < 0 ? "#dc2626" : "#16a34a"
-                  }`,
+                  borderTop: `4px solid ${scenario.portfolio_impact_pct < 0 ? "#dc2626" : "#16a34a"
+                    }`,
                 }}
               >
                 <CardContent>

@@ -13,20 +13,24 @@ import numpy as np
 import pandas as pd
 from fastapi import HTTPException
 from fastapi import status as http_status
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from backend.app.core.model_config import load_model_config
 from backend.app.db.models import (
     AnalyticsArtifact,
     BenchmarkSeries,
+    DiversificationRun,
+    ModelConfig,
     MstNode,
     MstRun,
     Portfolio,
     PortfolioHolding,
     PortfolioRiskContribution,
     PortfolioRiskRun,
+    ScoreRun,
     Security,
+    StockRiskResult,
 )
 from backend.app.portfolio.covariance import (
     compute_covariance,
@@ -46,12 +50,14 @@ from backend.app.portfolio.schemas import (
     PortfolioImportResult,
     PortfolioOut,
     PortfolioRiskRunOut,
+    PortfolioRiskScoreOut,
     RiskContributionOut,
     RiskRunRequest,
     ShockRequest,
     ShockResultOut,
     ShockScenarioResponse,
 )
+from backend.app.portfolio.score import HoldingScoreInput, compute_portfolio_score
 
 
 def _canonical_hash(payload: Any) -> str:
@@ -759,6 +765,151 @@ def get_latest_risk_run(session: Session, portfolio_id: UUID) -> PortfolioRiskRu
         data_sufficiency=run.data_sufficiency,
         envelope=dict(run.envelope or {}),
         computed_at=run.computed_at,
+    )
+
+
+def get_latest_portfolio_risk_score(
+    session: Session, portfolio_id: UUID
+) -> PortfolioRiskScoreOut:
+    """Aggregate latest stock scores and structural diversification for a portfolio."""
+    portfolio = session.get(Portfolio, portfolio_id)
+    if portfolio is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=f"Portfolio {portfolio_id} not found",
+        )
+
+    stock_run = session.scalars(
+        select(ScoreRun)
+        .where(ScoreRun.status == "completed")
+        .order_by(desc(ScoreRun.completed_at))
+        .limit(1)
+    ).first()
+    if stock_run is None:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail="No completed stock risk score run is available",
+        )
+
+    holdings = session.scalars(
+        select(PortfolioHolding)
+        .where(
+            PortfolioHolding.portfolio_id == portfolio_id,
+            PortfolioHolding.as_of <= stock_run.as_of_date,
+        )
+        .order_by(desc(PortfolioHolding.as_of))
+    ).all()
+    if not holdings:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No portfolio holdings exist on or before the latest stock score date",
+        )
+    snapshot_date = holdings[0].as_of
+    active_holdings = [holding for holding in holdings if holding.as_of == snapshot_date]
+
+    stock_results = {
+        row.security_id: row
+        for row in session.scalars(
+            select(StockRiskResult).where(StockRiskResult.run_id == stock_run.id)
+        ).all()
+    }
+    scored_holdings: list[HoldingScoreInput] = []
+    missing_holdings: list[str] = []
+    total_weight = sum(max(0.0, float(holding.weight)) for holding in active_holdings)
+    scored_weight = 0.0
+    for holding in active_holdings:
+        weight = max(0.0, float(holding.weight))
+        if holding.symbol.upper() in {"CASH", "INR"}:
+            scored_holdings.append(HoldingScoreInput(holding.symbol.upper(), weight, 0.0, 100.0))
+            scored_weight += weight
+            continue
+        holding_result = (
+            stock_results.get(holding.security_id) if holding.security_id is not None else None
+        )
+        if holding_result is None:
+            missing_holdings.append(holding.symbol.upper())
+            continue
+        scored_holdings.append(
+            HoldingScoreInput(
+                symbol=holding.symbol.upper(),
+                weight=weight,
+                risk_score=float(holding_result.total_score),
+                confidence=float(holding_result.confidence),
+            )
+        )
+        scored_weight += weight
+
+    if not scored_holdings:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail="No current stock scores are available for the portfolio holdings",
+        )
+
+    diversification_pair = session.execute(
+        select(DiversificationRun, PortfolioRiskRun)
+        .join(
+            PortfolioRiskRun,
+            DiversificationRun.portfolio_risk_run_id == PortfolioRiskRun.id,
+        )
+        .where(
+            PortfolioRiskRun.portfolio_id == portfolio_id,
+            PortfolioRiskRun.as_of <= stock_run.as_of_date,
+        )
+        .order_by(desc(DiversificationRun.computed_at))
+        .limit(1)
+    ).first()
+    diversification = diversification_pair[0] if diversification_pair is not None else None
+    cluster_weights = dict(diversification.cluster_weights) if diversification is not None else {}
+    numeric_cluster_weights = [
+        float(value) for value in cluster_weights.values() if isinstance(value, (int, float))
+    ]
+    maximum_cluster_weight = max(numeric_cluster_weights) if numeric_cluster_weights else None
+    enb_risk_entropy = (
+        float(diversification.enb_risk_entropy) if diversification is not None else None
+    )
+
+    config_row = session.get(ModelConfig, stock_run.model_config_id)
+    config = dict(config_row.configuration) if config_row is not None else {}
+    portfolio_score = compute_portfolio_score(
+        scored_holdings,
+        enb_risk_entropy=enb_risk_entropy,
+        maximum_cluster_weight=maximum_cluster_weight,
+        config=config,
+    )
+    holding_coverage = scored_weight / total_weight if total_weight > 0 else 0.0
+    coverage = portfolio_score.coverage * holding_coverage
+    confidence = portfolio_score.confidence * holding_coverage
+    limitations: list[str] = []
+    if missing_holdings:
+        limitations.append("Some portfolio holdings have no score in the latest stock run.")
+    if diversification is None:
+        limitations.append("No completed diversification run is available; structure is missing.")
+    limitations.append(
+        "Portfolio scores are descriptive risk summaries, not forecasts or investment advice."
+    )
+
+    return PortfolioRiskScoreOut(
+        portfolio_id=portfolio_id,
+        as_of=stock_run.as_of_date,
+        stock_score_run_id=stock_run.id,
+        diversification_run_id=diversification.id if diversification is not None else None,
+        total_score=portfolio_score.total_score,
+        holding_risk_score=portfolio_score.holding_risk_score,
+        structure_score=portfolio_score.structure_score,
+        structure_components=portfolio_score.structure_components,
+        confidence=round(confidence, 2),
+        weighted_holding_confidence=portfolio_score.weighted_holding_confidence,
+        weakest_large_holding_confidence=portfolio_score.weakest_large_holding_confidence,
+        coverage=round(coverage, 4),
+        status=(
+            "partial" if missing_holdings or portfolio_score.status == "partial" else "ok"
+        ),
+        missing_holdings=missing_holdings,
+        contributions=portfolio_score.contributions,
+        limitations=limitations,
+        method_version="portfolio-risk-score-v2-draft",
+        config_version=stock_run.config_version,
+        computed_at=datetime.now(UTC),
     )
 
 

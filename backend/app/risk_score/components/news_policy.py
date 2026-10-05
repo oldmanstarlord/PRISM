@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from uuid import UUID
 
 from sqlalchemy import select
 
-from backend.app.db.models import PolicyEvent, PolicyRule
+from backend.app.db.models import NewsItem, PolicyEvent, PolicyRule
 from backend.app.risk_score.components.base import ComponentValue, RiskContext
 
 
@@ -29,7 +29,18 @@ class NewsPolicyPressureComponent:
         session = context.session
         cfg = context.config.get("news_policy_pressure", {})
         half_life_days = float(cfg.get("recency_half_life_days", 14))
+        lookback_days = int(cfg.get("lookback_days", 90))
         tailwind_cap = float(cfg.get("tailwind_mitigation_cap", 0.30))
+
+        latest_news_at = session.scalars(
+            select(NewsItem.published_at)
+            .where(
+                NewsItem.published_at <= context.data_cutoff,
+                NewsItem.ingested_at <= context.data_cutoff,
+            )
+            .order_by(NewsItem.published_at.desc())
+            .limit(1)
+        ).first()
 
         # Query all policy events up to data_cutoff and as_of
         stmt = (
@@ -37,6 +48,8 @@ class NewsPolicyPressureComponent:
             .join(PolicyRule, PolicyEvent.rule_id == PolicyRule.id)
             .where(
                 PolicyEvent.matched_at <= context.data_cutoff,
+                PolicyEvent.matched_at
+                >= context.data_cutoff - timedelta(days=lookback_days),
             )
             .order_by(PolicyEvent.matched_at.desc())
         )
@@ -55,6 +68,24 @@ class NewsPolicyPressureComponent:
             items = events_by_industry.get(industry, [])
 
             if not items:
+                if latest_news_at is None:
+                    results.append(
+                        ComponentValue(
+                            security_id=sec_id,
+                            symbol=symbol,
+                            component_id=self.key,
+                            raw_value=None,
+                            status="missing",
+                            data_as_of=None,
+                            data_age_days=None,
+                            evidence_ref={
+                                "reason": "no_point_in_time_news_source_coverage",
+                                "matched_policy_count": 0,
+                            },
+                        )
+                    )
+                    continue
+                news_date = latest_news_at.date()
                 results.append(
                     ComponentValue(
                         security_id=sec_id,
@@ -62,8 +93,8 @@ class NewsPolicyPressureComponent:
                         component_id=self.key,
                         raw_value=0.0,
                         status="ok",
-                        data_as_of=as_of,
-                        data_age_days=0,
+                        data_as_of=news_date,
+                        data_age_days=max(0, (as_of - news_date).days),
                         evidence_ref={
                             "industry": industry,
                             "matched_policy_count": 0,

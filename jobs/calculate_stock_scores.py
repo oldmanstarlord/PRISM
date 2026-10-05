@@ -38,6 +38,18 @@ def main() -> None:
         action="store_true",
         help="Force recomputation even if reproducible run exists",
     )
+    parser.add_argument(
+        "--exclude-component",
+        action="append",
+        default=[],
+        help="Exclude a registered component for validation; may be repeated",
+    )
+    parser.add_argument(
+        "--exclude-dimension",
+        action="append",
+        default=[],
+        help="Exclude an entire dimension for validation; may be repeated",
+    )
     args = parser.parse_args()
 
     with SessionLocal() as session:
@@ -51,6 +63,8 @@ def main() -> None:
             data_cutoff=data_cutoff,
             config_version=args.config_version,
             force=args.force,
+            exclude_components=set(args.exclude_component),
+            exclude_dimensions=set(args.exclude_dimension),
         )
 
     action = "Created new" if summary.is_new else "Reused existing"

@@ -1,6 +1,8 @@
 # PRISM
 
-PRISM is an explainable portfolio-risk and market-intelligence platform for the NIFTY 200 universe.
+PRISM is a local-first, explainable portfolio-risk and market-intelligence platform
+for the NIFTY 200 universe. It uses end-of-day prices. It is not a price predictor or
+investment adviser; correlations are non-causal and shocks are scenarios.
 
 The authoritative requirements are in [PRISM_SRS.md](PRISM_SRS.md). Current implementation state and every material project update are recorded in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
@@ -11,10 +13,11 @@ backend/app/api/   FastAPI routes
 backend/app/core/  Application configuration
 backend/app/db/    Database connection and models
 backend/app/market_data/  Daily prices, corporate actions and quality checks
+backend/app/operations/   Scheduler, freshness, alerts and watchlists
 frontend/          React and TypeScript dashboard
 jobs/              Runnable ingestion and maintenance jobs
 tests/             Tests grouped by the component they cover
-data/              Ignored local raw, processed and model artifacts
+data/demo/         Explicitly synthetic demonstration portfolios
 ```
 
 ## Local development
@@ -38,6 +41,22 @@ data/              Ignored local raw, processed and model artifacts
 10. Start the API with `uv run uvicorn backend.app.main:app --reload`.
 11. In `frontend`, run `pnpm install` and `pnpm dev`. The dashboard reads the API from
     `VITE_API_URL`, defaulting to `http://localhost:8000/api/v1`.
+
+## Operations and demonstration
+
+- One daily DAG: `uv run python -m jobs.run_scheduler --once`
+- Long-running scheduler: `uv run python -m jobs.run_scheduler`
+- Seven-day soak: `uv run python -m jobs.run_scheduler --soak-days 7`
+- Key-table export: `uv run python -m jobs.export_key_tables`
+- Demo fixtures: `uv run python -m jobs.load_demo_portfolios`
+- Demo flow: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
+- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Honest limitations: [docs/SRS_FINAL_AUDIT.md](docs/SRS_FINAL_AUDIT.md)
+
+## Verification
+
+Run `uv run ruff check .`, `uv run mypy`, and `uv run pytest`. In `frontend`, run
+`pnpm lint`, `pnpm test`, `pnpm build`, and `pnpm test:e2e`.
 
 Backend, frontend and jobs run as native local processes; PostgreSQL is managed by Supabase.
 

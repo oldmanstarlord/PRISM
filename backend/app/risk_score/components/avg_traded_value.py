@@ -25,6 +25,9 @@ class AvgTradedValueComponent:
         context: RiskContext,
     ) -> list[ComponentValue]:
         lookback = int(context.config.get("adv_lookback_days", 20))
+        minimums = context.config.get("minimum_observations", {})
+        minimum = int(minimums.get(self.key, 5)) if isinstance(minimums, dict) else 5
+        stale_days = int(context.config.get("stale_price_days_cap_threshold", 5))
         raw_map = get_raw_prices_map(context, universe, lookback_days=lookback)
 
         results: list[ComponentValue] = []
@@ -48,10 +51,10 @@ class AvgTradedValueComponent:
 
             last_date = df.index[-1]
             age_days = (as_of - last_date).days
-            status = "stale" if age_days > 5 else "ok"
+            status = "stale" if age_days > stale_days else "ok"
 
             tail_df = df.tail(lookback)
-            if len(tail_df) < 5:
+            if len(tail_df) < minimum:
                 results.append(
                     ComponentValue(
                         security_id=sec_id,
@@ -61,7 +64,7 @@ class AvgTradedValueComponent:
                         status="insufficient",
                         data_as_of=last_date,
                         data_age_days=age_days,
-                        evidence_ref={"observations": len(tail_df), "required": 5},
+                        evidence_ref={"observations": len(tail_df), "required": minimum},
                     )
                 )
                 continue

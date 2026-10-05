@@ -119,6 +119,28 @@ class PortfolioRiskRunOut(BaseModel):
     computed_at: datetime
 
 
+class PortfolioRiskScoreOut(BaseModel):
+    portfolio_id: UUID
+    as_of: date
+    stock_score_run_id: UUID
+    diversification_run_id: UUID | None = None
+    total_score: float
+    holding_risk_score: float
+    structure_score: float | None = None
+    structure_components: dict[str, float | None] = Field(default_factory=dict)
+    confidence: float
+    weighted_holding_confidence: float
+    weakest_large_holding_confidence: float | None = None
+    coverage: float
+    status: str
+    missing_holdings: list[str] = Field(default_factory=list)
+    contributions: list[dict[str, Any]] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    method_version: str
+    config_version: str
+    computed_at: datetime
+
+
 class DiversificationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

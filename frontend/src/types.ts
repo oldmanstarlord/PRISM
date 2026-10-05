@@ -225,10 +225,21 @@ export interface ResultEnvelope {
   units?: string;
   thresholds?: Record<string, unknown> | Array<{ name: string; value: number | string }>;
   data_sufficiency?: string;
-  confidence?: number | { score: number; factors?: Record<string, number>; caps?: string[] };
+  confidence?: number | {
+    score: number;
+    factors?: Record<string, ConfidenceFactor>;
+    caps?: string[];
+  };
   limitations?: string[];
   computed_at?: string;
   reason?: string;
+}
+
+export interface ConfidenceFactor {
+  value: number;
+  weight: number;
+  description: string;
+  cap_applied?: string | null;
 }
 
 export interface BreakdownItem {
@@ -379,7 +390,25 @@ export interface StockRiskComponent {
   status_label: string;
   data_as_of: string | null;
   data_age_days: number | null;
+  weight: number;
   evidence_ref: Record<string, unknown>;
+}
+
+export interface MissingRiskComponent {
+  component_id: string;
+  name: string;
+  dimension: string;
+  status: string;
+  reason: string;
+}
+
+export interface ComponentChange {
+  component_id: string;
+  name: string;
+  dimension: string | null;
+  point_change: number;
+  percentile_change: number;
+  text: string;
 }
 
 export interface StockRiskEnvelope extends ResultEnvelope {
@@ -399,6 +428,43 @@ export interface StockRiskEnvelope extends ResultEnvelope {
     text: string;
   }>;
   components: StockRiskComponent[];
+  missing_components: MissingRiskComponent[];
+  change_explanation: {
+    previous_score: number | null;
+    total_score_change: number | null;
+    top_component_changes: ComponentChange[];
+  };
+}
+
+export interface PortfolioRiskScore {
+  portfolio_id: string;
+  as_of: string;
+  stock_score_run_id: string;
+  diversification_run_id: string | null;
+  total_score: number;
+  holding_risk_score: number;
+  structure_score: number | null;
+  structure_components: {
+    cluster_concentration?: number | null;
+    effective_bets?: number | null;
+  };
+  confidence: number;
+  weighted_holding_confidence: number;
+  weakest_large_holding_confidence: number | null;
+  coverage: number;
+  status: string;
+  missing_holdings: string[];
+  contributions: Array<{
+    symbol: string;
+    weight: number;
+    risk_score: number;
+    confidence: number;
+    weighted_risk_points: number;
+  }>;
+  limitations: string[];
+  method_version: string;
+  config_version: string;
+  computed_at: string;
 }
 
 export interface CandidateSuggestion {
@@ -766,6 +832,95 @@ export interface RecentPolicyEventsResponse {
   events: PolicyEvent[];
   total_count: number;
   disclaimer: string;
+}
+
+export interface ValidationMetric {
+  metric_key: string;
+  component_key: string;
+  value: number | null;
+  baseline_value: number | null;
+  n: number;
+  period: string;
+}
+
+export interface ValidationRunSummary {
+  id: string;
+  kind: string;
+  config_fingerprint: string;
+  period: string;
+  started_at: string;
+  completed_at: string | null;
+  status: string;
+  notes: {
+    failures?: string[];
+    survivorship_warning?: string;
+    limitations?: string[];
+    labelled_observation_count?: number;
+    score_run_count?: number;
+    evaluation_score_run_count?: number;
+    walk_forward_fold_count?: number;
+    ablation_recommendations?: Record<string, "keep" | "does_not_help">;
+    method_version?: string;
+    multiple_testing?: string;
+  };
+}
+
+export interface ValidationRunDetail extends ValidationRunSummary {
+  results: ValidationMetric[];
+}
+
+export interface OperationsFreshness {
+  source_key: string;
+  last_success_at: string | null;
+  last_data_date: string | null;
+  expected_cadence: number;
+  grace: number;
+  status: "fresh" | "stale" | "unknown";
+}
+
+export interface OperationsPipelineRun {
+  id: string;
+  workflow: string;
+  status: string;
+  started_at: string;
+  completed_at: string | null;
+  error_summary: string | null;
+}
+
+export interface ExplainableAlert {
+  id: string;
+  created_at: string;
+  subject_type: string;
+  subject_id: string;
+  alert_type: string;
+  reason: string;
+  inputs_ref: Record<string, unknown>;
+  score: number | null;
+  status: string;
+  config_version: string;
+  config_fingerprint: string;
+}
+
+export interface WatchlistItem {
+  id: string;
+  security_id: string;
+  symbol: string;
+  thresholds: Record<string, number>;
+}
+
+export interface Watchlist {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+  items: WatchlistItem[];
+}
+
+export interface LimitationsResponse {
+  method_version: string;
+  price_frequency_label: string;
+  filings_news_poll_minutes: number;
+  limitations: string[];
 }
 
 

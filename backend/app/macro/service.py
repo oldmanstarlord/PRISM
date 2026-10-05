@@ -109,6 +109,7 @@ def get_macro_series_detail(
             obs_date=r.obs_date,
             value=r.value,
             published_at=r.published_at,
+            source=r.source,
             version=r.version,
         )
         for r in reversed(rows)

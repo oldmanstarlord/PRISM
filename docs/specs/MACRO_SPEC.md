@@ -10,13 +10,15 @@
 
 Per SRS Section 14 and requirement FR-D9 (replaceable adapters, point-in-time timestamps, no look-ahead), the 5 approved macro series for PRISM are specified below:
 
-| Series Key | Name | Primary Source & Adapter | Fallback | Update Frequency | Publication Lag | Unit | Licensing Note |
+| Series Key | Name | Production source | Explicit import only | Update Frequency | Publication Lag | Unit | Licensing Note |
 |---|---|---|---|---|---|---|---|
-| `crude_oil` | Brent Crude Oil Continuous | Yahoo Finance (`BZ=F`) / EIA Adapter | CSV Import (`data/macro/crude_oil.csv`) | Daily (Trading days) | T+0 at market close (EOD) | USD/bbl | Open evaluation/academic; EIA public domain. |
-| `usd_inr` | USD / INR Reference Exchange Rate | FBIL / Yahoo Finance (`INR=X`) | CSV Import (`data/macro/usd_inr.csv`) | Daily (Working days) | T+0 at 13:30 IST (FBIL) / EOD | INR per USD | FBIL reference rates are public statistical data. |
-| `in_10y_yield` | India 10-Year Benchmark G-Sec Yield | CCIL / RBI NDS-OM / Yahoo (`^IN10YT=RR`) | CSV Import (`data/macro/in_10y_yield.csv`) | Daily (Trading days) | T+0 at 17:30 IST (EOD) | % (Annualised) | CCIL/RBI market statistics (public domain). |
-| `india_vix` | NSE India Volatility Index (India VIX) | NSE India / Yahoo (`^INDIAVIX`) | CSV Import (`data/macro/india_vix.csv`) | Daily (Trading days) | T+0 at 16:00 IST (EOD) | Index points (%) | NSE public index market data. |
-| `fii_dii_net_flows` | FII & DII Cash Market Net Investment | NSE / BSE / NSDL Daily Reports | CSV Import (`data/macro/fii_dii_net_flows.csv`) | Daily (Trading days) | T+0 at 18:30 IST (EOD) | INR Crores | Exchange public regulatory turnover disclosures. |
+| `crude_oil` | Brent Crude Oil Continuous | Yahoo Finance (`BZ=F`) | `--source csv --file PATH` | Daily (Trading days) | T+0 at market close (EOD) | USD/bbl | Yahoo market quote; single-source limitation. |
+| `usd_inr` | USD / INR Exchange Rate | Yahoo Finance (`INR=X`) | `--source csv --file PATH` | Daily (Working days) | Provider timestamp | INR per USD | Yahoo market quote; single-source limitation. |
+| `in_10y_yield` | India 10-Year Benchmark G-Sec Yield | Yahoo (`^IN10YT=RR`) if verified; otherwise TBD | `--source csv --file PATH` | Daily (Trading days) | Provider timestamp | % (Annualised) | Live availability must be verified before use. |
+| `india_vix` | India VIX | Yahoo (`^INDIAVIX`) if verified; otherwise TBD | `--source csv --file PATH` | Daily (Trading days) | Provider timestamp | Index points (%) | Live availability must be verified before use. |
+| `fii_dii_net_flows` | FII & DII Cash Market Net Investment | TBD | `--source csv --file PATH` | Daily (Trading days) | TBD | INR Crores | No verified live adapter is configured. |
+
+CSV is never a fallback. A failed Yahoo series is logged and left stale; no substitute rows are written.
 
 ### Data Model & Point-in-Time Schema
 All macro data is persisted in `macro_observation` with:

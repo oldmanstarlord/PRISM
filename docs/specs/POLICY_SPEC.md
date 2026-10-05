@@ -12,9 +12,10 @@
 PRISM strictly tracks official regulatory and government policy announcements impacting Indian capital markets.
 
 ### Approved Primary Sources
-1. **Reserve Bank of India (RBI)**: Official Press Releases (`https://www.rbi.org.in/pressreleases_rss.xml`). Terms: Public domain official communication; informational fair-use.
+1. **Reserve Bank of India (RBI)**: Official Press Releases (`https://rbi.org.in/pressreleases_rss.xml`). Terms: Public domain official communication; informational fair-use.
 2. **Securities and Exchange Board of India (SEBI)**: Public Regulatory Press Releases (`https://www.sebi.gov.in/sebirss.xml`). Terms: Official statutory regulator notices; public fair-use.
-3. **Press Information Bureau (PIB - Finance / Commerce)**: Official Government of India Press Releases (`https://pib.gov.in/rss/RssFinance.xml`). Terms: Open government data under GoI National Data Sharing and Accessibility Policy (NDSAP).
+
+The previously configured PIB URL returned HTTP 403 during verification on 2026-10-06 and is disabled. No replacement URL is guessed; a verified official PIB feed remains TBD.
 
 ### Strict Content Storage & Copyright Guardrails
 Per PRISM design requirements and fair-use boundaries:

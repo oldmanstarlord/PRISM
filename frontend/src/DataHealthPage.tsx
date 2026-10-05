@@ -16,7 +16,13 @@ import {
 } from "@mui/material";
 import { useApi } from "./api";
 import { FreshnessBadge, StatusChip } from "./components";
-import type { CrosscheckLatestResponse, FreshnessResponse, QualitySummaryResponse } from "./types";
+import type {
+  CrosscheckLatestResponse,
+  FreshnessResponse,
+  OperationsFreshness,
+  OperationsPipelineRun,
+  QualitySummaryResponse,
+} from "./types";
 
 export default function DataHealthPage() {
   const {
@@ -36,6 +42,8 @@ export default function DataHealthPage() {
     isLoading: loadingCrosscheck,
     error: crosscheckError,
   } = useApi<CrosscheckLatestResponse>("/data/crosscheck/latest");
+  const { data: sourceFreshness = [] } = useApi<OperationsFreshness[]>("/ops/freshness");
+  const { data: pipelineRuns = [] } = useApi<OperationsPipelineRun[]>("/ops/pipeline-runs");
 
   const isLoading = loadingQuality || loadingFreshness || loadingCrosscheck;
 
@@ -56,6 +64,36 @@ export default function DataHealthPage() {
             <CircularProgress />
           </Box>
         )}
+
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 650, mb: 1.5 }}>
+            Source traffic lights
+          </Typography>
+          <Grid container spacing={2}>
+            {sourceFreshness.map((item) => (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.source_key}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Stack direction="row" sx={{ justifyContent: "space-between" }}>
+                    <Typography sx={{ fontWeight: 700 }}>{item.source_key}</Typography>
+                    <StatusChip status={item.status} />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    Last success: {item.last_success_at ? new Date(item.last_success_at).toLocaleString() : "Never"}
+                  </Typography>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 650, mb: 1.5 }}>Latest pipeline runs</Typography>
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small"><TableHead><TableRow><TableCell>Workflow</TableCell><TableCell>Status</TableCell><TableCell>Started</TableCell><TableCell>Error</TableCell></TableRow></TableHead>
+              <TableBody>{pipelineRuns.slice(0, 20).map((run) => <TableRow key={run.id}><TableCell>{run.workflow}</TableCell><TableCell><StatusChip status={run.status} /></TableCell><TableCell>{new Date(run.started_at).toLocaleString()}</TableCell><TableCell>{run.error_summary ?? "—"}</TableCell></TableRow>)}</TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
 
         {(qualityError || freshnessError || crosscheckError) && (
           <Alert severity="warning">

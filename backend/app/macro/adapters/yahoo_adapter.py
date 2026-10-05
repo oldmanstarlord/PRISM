@@ -34,7 +34,7 @@ class YahooMacroAdapter:
 
     @property
     def source_name(self) -> str:
-        return "YAHOO_FINANCE"
+        return "YAHOO"
 
     def fetch_observations(
         self,
