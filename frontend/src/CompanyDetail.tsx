@@ -15,6 +15,7 @@ import { Link, useParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useApi } from "./api";
 import ComparisonChart from "./ComparisonChart";
+import { DivergenceExplanationPanel } from "./components/DivergenceExplanationPanel";
 import type { CompanyResponse, Horizon } from "./types";
 
 function residualDirection(value: number) {
@@ -65,6 +66,7 @@ export function CompanyDetailContent() {
                   {data.company.name} / {data.company.industry}
                 </Typography>
               </Box>
+              <DivergenceExplanationPanel symbol={data.company.symbol} />
               <Stack direction={{ xs: "column", md: "row" }} sx={{ gap: 2 }}>
                 {data.scores.map((score) => (
                   <Paper

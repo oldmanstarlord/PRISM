@@ -10,6 +10,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.app.data_sources.service import mark_source_success
 from backend.app.db.models import ModelConfig, NewsItem, NewsSecurityLink, Security
 from backend.app.db.session import SessionLocal
 from backend.app.policy.adapters.base import NewsAdapter, RawNewsItem
@@ -142,6 +143,18 @@ def run_ingest_news(
         stats["inserted_news"] += 1
 
     if not dry_run:
+        if isinstance(adapter, RssNewsAdapter):
+            for result in adapter.feed_results:
+                if result["status"] != "success":
+                    continue
+                source_key = result.get("source_key")
+                if isinstance(source_key, str) and source_key != "custom_test_feed":
+                    mark_source_success(
+                        session,
+                        source_key,
+                        succeeded_at=now_utc,
+                        verified=True,
+                    )
         session.commit()
 
     logger.info(
@@ -161,7 +174,6 @@ def main() -> None:
         default="rss",
         help="Source adapter type (default: rss)",
     )
-    parser.add_argument("--rss-url", default=None, help="RSS feed URL for regulatory releases")
     parser.add_argument("--dry-run", action="store_true", help="Dry run without DB commits")
     parser.add_argument("--limit", type=int, default=None, help="Max items to fetch")
 
@@ -171,7 +183,7 @@ def main() -> None:
         stats = run_ingest_news(
             session=session,
             source_type=args.source,
-            rss_url=args.rss_url,
+            rss_url=None,
             dry_run=args.dry_run,
             limit=args.limit,
         )

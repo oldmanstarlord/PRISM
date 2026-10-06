@@ -1,0 +1,2 @@
+symbol,person_category,txn_type,quantity,value,txn_date,published_at,source_doc_id
+TEST,Director,sell,1000,1250000,2026-09-30,2026-10-01T09:15:00+0530,official-export-row-2

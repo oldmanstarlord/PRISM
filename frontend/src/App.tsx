@@ -19,6 +19,8 @@ const ValidationPage = lazy(() => import("./ValidationPage"));
 const AlertsPage = lazy(() => import("./AlertsPage"));
 const WatchlistsPage = lazy(() => import("./WatchlistsPage"));
 const LimitationsPage = lazy(() => import("./LimitationsPage"));
+const SectorsPage = lazy(() => import("./SectorsPage"));
+const NewsPage = lazy(() => import("./NewsPage"));
 
 function LoadingFallback() {
   return (
@@ -34,6 +36,14 @@ export function AppRoutes() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/sector-divergence" element={<Navigate to="/" replace />} />
+        <Route
+          path="/sectors"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <SectorsPage />
+            </Suspense>
+          }
+        />
         <Route path="/companies/:symbol" element={<CompanyDetail />} />
         <Route
           path="/mst"
@@ -92,6 +102,10 @@ export function AppRoutes() {
           }
         />
 
+        <Route
+          path="/news"
+          element={<Suspense fallback={<LoadingFallback />}><NewsPage /></Suspense>}
+        />
         <Route
           path="/validation"
           element={

@@ -18,6 +18,7 @@ import { useApi } from "./api";
 import { FreshnessBadge, StatusChip } from "./components";
 import type {
   CrosscheckLatestResponse,
+  DataSourceRegistryItem,
   FreshnessResponse,
   OperationsFreshness,
   OperationsPipelineRun,
@@ -43,6 +44,8 @@ export default function DataHealthPage() {
     error: crosscheckError,
   } = useApi<CrosscheckLatestResponse>("/data/crosscheck/latest");
   const { data: sourceFreshness = [] } = useApi<OperationsFreshness[]>("/ops/freshness");
+  const { data: sourceRegistry = [], error: sourceRegistryError } =
+    useApi<DataSourceRegistryItem[]>("/data/sources");
   const { data: pipelineRuns = [] } = useApi<OperationsPipelineRun[]>("/ops/pipeline-runs");
 
   const isLoading = loadingQuality || loadingFreshness || loadingCrosscheck;
@@ -57,6 +60,59 @@ export default function DataHealthPage() {
           <Typography color="text.secondary">
             Continuous point-in-time auditing, freshness tracking, and multi-source price cross-checks.
           </Typography>
+        </Box>
+
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 650, mb: 1.5 }}>
+            Permitted source registry
+          </Typography>
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small" aria-label="data source registry">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Dataset / owner</TableCell>
+                  <TableCell>Access</TableCell>
+                  <TableCell>Registry</TableCell>
+                  <TableCell>Freshness</TableCell>
+                  <TableCell>Last verified / success</TableCell>
+                  <TableCell>Terms and limitations</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sourceRegistry.map((source) => (
+                  <TableRow key={source.source_key}>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {source.dataset}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {source.owner} · {source.source_key}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{source.access_method.replace(/_/g, " ")}</TableCell>
+                    <TableCell><StatusChip status={source.status} label={source.status.toUpperCase()} /></TableCell>
+                    <TableCell><StatusChip status={source.freshness_status} /></TableCell>
+                    <TableCell>
+                      <Typography variant="caption" sx={{ display: "block" }}>
+                        Verified: {source.last_verified_at ? new Date(source.last_verified_at).toLocaleString() : "Not verified"}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Success: {source.last_success_at ? new Date(source.last_success_at).toLocaleString() : "Never"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ maxWidth: 320 }}>
+                      <a href={source.terms_url} target="_blank" rel="noreferrer">Terms/source page</a>
+                      <Typography variant="caption" sx={{ display: "block" }} color="text.secondary">
+                        {source.license_note}
+                      </Typography>
+                      {source.notes && <Typography variant="caption" sx={{ display: "block" }}>{source.notes}</Typography>}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          {sourceRegistryError && <Alert severity="warning">Source registry is unavailable.</Alert>}
         </Box>
 
         {isLoading && (
@@ -95,7 +151,7 @@ export default function DataHealthPage() {
           </TableContainer>
         </Box>
 
-        {(qualityError || freshnessError || crosscheckError) && (
+        {(qualityError || freshnessError || crosscheckError || sourceRegistryError) && (
           <Alert severity="warning">
             Some data quality feeds are temporarily unavailable.
           </Alert>

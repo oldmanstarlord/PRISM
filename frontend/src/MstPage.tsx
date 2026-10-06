@@ -18,6 +18,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
@@ -27,6 +28,7 @@ import { Link } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useApi } from "./api";
 import { ExplainPanel } from "./ExplainPanel";
+import { ExplainDrawer, GlossaryTerm } from "./components";
 import type { MstResponse } from "./types";
 
 const industryPalette = [
@@ -83,6 +85,9 @@ export function MstPageContent() {
   const [colorMode, setColorMode] = useState<"industry" | "cluster">("industry");
   const [selectedNode, setSelectedNode] = useState<SelectedNodeState | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<{ title: string; detail: string } | null>(null);
+  const [explainPath, setExplainPath] = useState("");
+  const [pairA, setPairA] = useState("");
+  const [pairB, setPairB] = useState("");
 
   const {
     data,
@@ -184,6 +189,7 @@ export function MstPageContent() {
         cluster_id: nodeData.cluster_id ?? null,
       });
       setSelectedEdge(null);
+      setExplainPath(`/explain/mst/node/${encodeURIComponent(nodeData.symbol)}`);
     });
 
     graph.current.on("tap", "edge", (event) => {
@@ -192,6 +198,9 @@ export function MstPageContent() {
         title: `${edge.symbol_a} - ${edge.symbol_b}`,
         detail: `Correlation ${Number(edge.correlation).toFixed(3)} / distance ${Number(edge.distance).toFixed(3)} / ${edge.paired_observations} paired returns (Rank #${edge.edge_rank})`,
       });
+      setExplainPath(
+        `/explain/mst/edge?run_id=${encodeURIComponent(data.run.id)}&a=${encodeURIComponent(edge.symbol_a)}&b=${encodeURIComponent(edge.symbol_b)}`
+      );
     });
 
     return () => {
@@ -317,6 +326,35 @@ export function MstPageContent() {
               <ToggleButton value="cluster">Cluster (k-cut forest)</ToggleButton>
             </ToggleButtonGroup>
           </Box>
+
+          <Box sx={{ minWidth: { xs: "100%", md: 430 } }}>
+            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: "bold" }}>
+              RELATIONSHIP BETWEEN TWO STOCKS
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <TextField
+                size="small"
+                label="Stock A"
+                value={pairA}
+                onChange={(event) => setPairA(event.target.value.toUpperCase())}
+              />
+              <TextField
+                size="small"
+                label="Stock B"
+                value={pairB}
+                onChange={(event) => setPairB(event.target.value.toUpperCase())}
+              />
+              <Button
+                variant="contained"
+                disabled={!pairA.trim() || !pairB.trim() || pairA.trim() === pairB.trim()}
+                onClick={() => setExplainPath(
+                  `/explain/mst/pair?a=${encodeURIComponent(pairA.trim())}&b=${encodeURIComponent(pairB.trim())}`
+                )}
+              >
+                Explain
+              </Button>
+            </Stack>
+          </Box>
         </Paper>
 
         {isLoading && (
@@ -366,6 +404,35 @@ export function MstPageContent() {
                 </Typography>
               </Paper>
             </Stack>
+
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                How to read edge weights
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                <GlossaryTerm termKey="correlation">Correlation</GlossaryTerm> is transformed into
+                <GlossaryTerm termKey="correlation_distance"> distance</GlossaryTerm> using
+                d = √(2 × (1 − ρ)). Smaller distance means stronger historical co-movement.
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ mt: 1, flexWrap: "wrap" }}>
+                {(data.distance_scale ?? []).map((item) => (
+                  <Chip
+                    key={item.correlation}
+                    label={`ρ ${item.correlation.toFixed(1)} → d ${item.distance.toFixed(2)} (${item.label})`}
+                    size="small"
+                    variant="outlined"
+                  />
+                ))}
+              </Stack>
+              <Stack direction="row" spacing={2} sx={{ mt: 1, alignItems: "center" }}>
+                {(data.edge_thickness_legend ?? []).map((item) => (
+                  <Box key={item.correlation} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <Box sx={{ width: 40, borderTop: `${item.width}px solid`, borderColor: "grey.600" }} />
+                    <Typography variant="caption">ρ {item.correlation.toFixed(1)}</Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Paper>
 
             {/* Edge details prompt */}
             {selectedEdge && (
@@ -512,6 +579,11 @@ export function MstPageContent() {
               title="MST Methodology & Non-Causal Limitations"
               limitations={data.limitations}
               sparseEdgesCount={data.run.edge_count}
+            />
+            <ExplainDrawer
+              open={explainPath.length > 0}
+              path={explainPath}
+              onClose={() => setExplainPath("")}
             />
           </>
         )}

@@ -1,0 +1,171 @@
+INFO:     127.0.0.1:62555 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60411 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52131 - "GET /api/v1/portfolios HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64277 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60041 - "GET /api/v1/ops/freshness HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:52131 - "OPTIONS /api/v1/portfolios HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51724 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52131 - "POST /api/v1/portfolios HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52131 - "GET /api/v1/portfolios HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52131 - "OPTIONS /api/v1/portfolios/0fd4435f-3200-44a4-8922-b342a0cb188f/risk-runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64277 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52436 - "POST /api/v1/portfolios/0fd4435f-3200-44a4-8922-b342a0cb188f/risk-runs HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:55073 - "GET /api/v1/stocks/scores/latest?sort_by=risk&sort_order=desc&page=1&page_size=25 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50661 - "GET /api/v1/macro/series HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65199 - "GET /api/v1/macro/sensitivities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51346 - "GET /api/v1/macro/series/crude_oil HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64395 - "GET /api/v1/macro/series/fii_dii_net_flows HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53373 - "GET /api/v1/macro/series/in_10y_yield HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53373 - "GET /api/v1/macro/series/india_vix HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53373 - "GET /api/v1/macro/series/usd_inr HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49675 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59064 - "GET /api/v1/sector-divergence/latest/rankings?horizon=20&limit=25 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59814 - "GET /api/v1/validation/runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56980 - "GET /api/v1/ops/pipeline-runs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60309 - "GET /api/v1/data/crosscheck/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59100 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60798 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52376 - "GET /api/v1/sector-divergence/latest/rankings?horizon=20&limit=25 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55831 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52376 - "GET /api/v1/alerts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50904 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52376 - "GET /api/v1/watchlists HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53833 - "GET /api/v1/sector-divergence/latest/rankings?horizon=1&limit=25 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58428 - "GET /api/v1/sector-divergence/latest/companies/BAJAJ-AUTO HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60057 - "GET /api/v1/sector-divergence/latest/rankings?horizon=20&limit=25 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65325 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61867 - "GET /api/v1/macro/sensitivities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61345 - "GET /api/v1/macro/series HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55294 - "GET /api/v1/macro/series/crude_oil HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59610 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56586 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64060 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64814 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53361 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49671 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53439 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49671 - "GET /api/v1/sector-divergence/latest/rankings?horizon=20&limit=25 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50608 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49671 - "GET /api/v1/sector-divergence/latest/companies/ENRIN HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64014 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63395 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53251 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58550 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61515 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53154 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+     INFO:     127.0.0.1:59802 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51642 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55371 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63618 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60511 - "GET /api/v1/ops/freshness HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:63139 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63469 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56958 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56433 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58377 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63513 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52679 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57391 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59220 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59106 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62027 - "GET /api/v1/meta HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:64803 - "GET /api/v1/about/limitations HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:56145 - "GET /api/v1/macro/regime/latest HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:59958 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58974 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:65277 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61097 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64416 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49673 - "GET /api/v1/ops/freshness HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:50651 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+        INFO:     127.0.0.1:60006 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57647 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59419 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63584 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58940 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57607 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50305 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58573 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53674 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63461 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:53096 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51216 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49301 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61028 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:50930 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:50061 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50132 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55211 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52795 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:58479 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:59167 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60285 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58795 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51197 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:63555 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51051 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57558 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49940 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57111 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53134 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50953 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62584 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52473 - "GET /api/v1/macro/regime/latest HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:65522 - "GET /api/v1/ops/freshness HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:51340 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62206 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57705 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56727 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63347 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60571 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:63943 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55171 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49675 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56754 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:63540 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+      INFO:     127.0.0.1:49234 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49234 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54076 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52614 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60518 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+    INFO:     127.0.0.1:56266 - "GET /api/v1/about/limitations HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:58154 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53316 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60118 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:53570 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:53495 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:50673 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56896 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49975 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63071 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+   INFO:     127.0.0.1:62748 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57154 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56005 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58868 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52684 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65333 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65490 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65490 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62777 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64127 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57230 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56202 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+    INFO:     127.0.0.1:56109 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55428 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54103 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49709 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+    INFO:     127.0.0.1:55184 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63740 - "GET /api/v1/meta HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:50522 - "GET /api/v1/macro/regime/latest HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:62872 - "GET /api/v1/ops/freshness HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:52029 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52029 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55184 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50988 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56939 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+      INFO:     127.0.0.1:56877 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57651 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49255 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63745 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ 

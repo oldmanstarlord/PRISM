@@ -568,3 +568,88 @@ for regime/MST clusters; stale data uses source cadence plus grace. Cooldowns an
 watchlist defaults remain versioned in `operations_parameters:1.0.0`. These are
 operational defaults, not validated market thresholds, and must not be described as
 predictive.
+
+---
+
+## Proposed decisions from Step 11b (2026-10-06)
+
+### PD-28 — Permitted Manual Exchange Imports and Freshness Grace
+
+**Proposed by:** Step 11b Implementation
+
+**Date:** 2026-10-06
+
+**Status:** ASSUMPTION — pending owner review
+
+**Statement:**
+Use only human-downloaded official NSE exports for announcements, shareholding, and
+insider disclosures; never automate exchange pages or use undocumented endpoints.
+Imports are strict, transactional, point-in-time, content-hashed, and preserve
+restatements. Daily sources receive a two-calendar-day operational grace and
+quarterly disclosures a 45-day grace, stored in approved
+`data_source_policy:1.0.0`. These values handle weekends/reporting variability and
+are not claimed as exchange or regulatory deadlines. BSE support remains TBD until
+an official export layout is supplied and verified.
+
+---
+
+## Proposed decisions from Step E1 (2026-10-06)
+
+### PD-29 — Explanation Template and Glossary Wording v1
+
+**Proposed by:** Step E1 Implementation
+
+**Date:** 2026-10-06
+
+**Status:** DRAFT — explicit owner wording review required
+
+**Statement:**
+Use `explain_templates:1.0.0` for deterministic, evidence-bound component
+explanations and glossary version `1.0.0` for the 25 seeded plain-language terms.
+Every rendered sentence must cite stored evidence, unsafe wording fails closed,
+unsupported sentences are omitted, and the shared limitation/disclaimer is always
+present. The configuration remains draft and must not become the approved default
+until the owner reviews the user-facing wording.
+
+---
+
+## Proposed decisions from Step E2 (2026-10-06)
+
+### PD-30 — MST Explanation Wording and Node Labels
+
+**Proposed by:** Step E2 Implementation
+
+**Date:** 2026-10-06
+
+**Status:** DRAFT — explicit owner wording review required
+
+**Statement:**
+Use the latest immutable draft `mst_explain_templates:1.2.0` for deterministic MST
+edge, pair, and node explanations. Earlier draft versions remain stored. Describe
+rho only with the required “moves together with” wording, describe beta as a
+historical average with R-squared and observation count, and never calculate a new
+impact score. For display only, call degree-one nodes leaves and degree-greater-than-
+one nodes hubs; this is not a causal or systemic-risk classification. Optional
+evidence is omitted with a limitation rather than inferred. Owner approval is
+required before any draft wording becomes the default.
+
+---
+
+## Proposed decisions from Step E3 (2026-10-06)
+
+### PD-31 — Sector Trend and Conditional Risk-Reading Rules
+
+**Proposed by:** Step E3 Implementation
+
+**Date:** 2026-10-06
+
+**Status:** DRAFT — explicit owner review required
+
+**Statement:**
+Use immutable draft `explain_sector_rules:1.0.0`. Label cumulative returns flat
+inside ±0.25%, ±0.75%, ±1.5%, and ±3.0% for 1/5/20/60 trading-day windows. Permit
+an optional descriptive risk reading only for negative divergence accompanied by a
+stored fundamental-risk or historical-volatility percentile of at least 75. Use a
+60-calendar-day window for coincident publications. Always state that divergence
+alone is not a risk verdict. These are explanation thresholds, not changes to
+approved Layer 1 formulas or validated predictive thresholds.

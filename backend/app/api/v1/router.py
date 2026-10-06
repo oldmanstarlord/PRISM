@@ -9,6 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.app.correlation_mst.service import latest_completed_mst_query
+from backend.app.data_sources.schemas import DataSourceOut
+from backend.app.data_sources.service import list_data_sources
 from backend.app.db.models import (
     BenchmarkSeries,
     DataCrosscheck,
@@ -31,6 +33,20 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import engine, get_session
 from backend.app.events.schemas import RecentEventsResponse, StockEventsResponse
+from backend.app.explain.schemas import ExplanationPayload, GlossaryTermOut
+from backend.app.explain.sector import SectorOverviewResponse, build_sector_overview
+from backend.app.explain.service import (
+    get_glossary_term,
+    get_or_create_component_explanation,
+    get_or_create_divergence_explanation,
+    get_or_create_mst_edge_explanation,
+    get_or_create_mst_node_explanation,
+    get_or_create_mst_pair_explanation,
+    get_or_create_news_explanation,
+    get_or_create_sector_explanation,
+    list_glossary,
+    load_explain_config,
+)
 from backend.app.fundamentals.service import get_stock_fundamentals
 from backend.app.macro.schemas import (
     MacroSeriesDefinitionOut,
@@ -41,6 +57,8 @@ from backend.app.macro.schemas import (
 )
 from backend.app.mst_diagnostics.config import load_mst_diagnostics_config
 from backend.app.mst_diagnostics.stability import calculate_stability_grade
+from backend.app.news_impact.schemas import NewsInsightsResponse, PortfolioNewsOverlayOut
+from backend.app.news_impact.service import get_portfolio_news_overlay, list_news_insights
 from backend.app.operations.schemas import (
     AlertOut,
     FreshnessOut,
@@ -94,6 +112,185 @@ from backend.app.validation.service import get_validation_run, list_validation_r
 
 router = APIRouter()
 DatabaseSession = Annotated[Session, Depends(get_session)]
+
+
+@router.get("/data/sources", response_model=list[DataSourceOut], tags=["data quality"])
+def data_sources(session: DatabaseSession) -> list[DataSourceOut]:
+    """List live, manual, TBD, and disabled datasets with their visible status."""
+    return list_data_sources(session)
+
+
+@router.get("/news/insights", response_model=NewsInsightsResponse, tags=["news"])
+def news_insights(
+    session: DatabaseSession,
+    industry: str | None = None,
+    severity: Annotated[float | None, Query(ge=0, le=10)] = None,
+    portfolio_id: UUID | None = None,
+) -> NewsInsightsResponse:
+    """List evidence-backed news impacts from allowlisted live sources only."""
+    return list_news_insights(session, industry, severity, portfolio_id)
+
+
+@router.get(
+    "/explain/news/{news_id}",
+    response_model=ExplanationPayload,
+    tags=["explanations", "news"],
+)
+def explain_news(news_id: UUID, session: DatabaseSession) -> ExplanationPayload:
+    try:
+        return get_or_create_news_explanation(session, news_id)[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/explain/portfolio/{portfolio_id}/news/{news_id}",
+    response_model=PortfolioNewsOverlayOut,
+    tags=["explanations", "news", "portfolio"],
+)
+def explain_portfolio_news(
+    portfolio_id: UUID, news_id: UUID, session: DatabaseSession
+) -> PortfolioNewsOverlayOut:
+    try:
+        return get_portfolio_news_overlay(session, portfolio_id, news_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/explain/component/{symbol}/{component_key}",
+    response_model=ExplanationPayload,
+    tags=["explanations"],
+)
+def explain_component(
+    symbol: str,
+    component_key: str,
+    session: DatabaseSession,
+    as_of: date | None = None,
+) -> ExplanationPayload:
+    """Return or reuse a deterministic explanation of one stored component value."""
+    try:
+        payload, _, _ = get_or_create_component_explanation(
+            session, symbol, component_key, as_of=as_of
+        )
+        return payload
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get(
+    "/explain/divergence/{symbol}",
+    response_model=ExplanationPayload,
+    tags=["explanations"],
+)
+def explain_divergence(
+    symbol: str,
+    session: DatabaseSession,
+    as_of: date | None = None,
+) -> ExplanationPayload:
+    try:
+        return get_or_create_divergence_explanation(session, symbol, as_of)[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/explain/sector/{industry}",
+    response_model=ExplanationPayload,
+    tags=["explanations"],
+)
+def explain_sector(
+    industry: str,
+    session: DatabaseSession,
+    as_of: date | None = None,
+) -> ExplanationPayload:
+    try:
+        return get_or_create_sector_explanation(session, industry, as_of)[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/sectors/overview",
+    response_model=SectorOverviewResponse,
+    tags=["sector divergence"],
+)
+def sectors_overview(
+    session: DatabaseSession,
+    as_of: date | None = None,
+) -> SectorOverviewResponse:
+    try:
+        return build_sector_overview(session, as_of)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/glossary", response_model=list[GlossaryTermOut], tags=["explanations"])
+def glossary(session: DatabaseSession) -> list[GlossaryTermOut]:
+    return list_glossary(session)
+
+
+@router.get("/glossary/{term}", response_model=GlossaryTermOut, tags=["explanations"])
+def glossary_term(term: str, session: DatabaseSession) -> GlossaryTermOut:
+    result = get_glossary_term(session, term)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Glossary term '{term}' not found")
+    return result
+
+
+@router.get("/explain/mst/edge", response_model=ExplanationPayload, tags=["explanations"])
+def explain_mst_edge(
+    session: DatabaseSession,
+    run_id: UUID,
+    a: str = Query(min_length=1),
+    b: str = Query(min_length=1),
+    portfolio_id: UUID | None = None,
+) -> ExplanationPayload:
+    if a.upper() == b.upper():
+        raise HTTPException(status_code=400, detail="a and b must be different symbols")
+    try:
+        return get_or_create_mst_edge_explanation(session, run_id, a, b, portfolio_id)[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/explain/mst/node/{symbol}", response_model=ExplanationPayload, tags=["explanations"])
+def explain_mst_node(
+    symbol: str,
+    session: DatabaseSession,
+    as_of: date | None = None,
+    portfolio_id: UUID | None = None,
+) -> ExplanationPayload:
+    try:
+        return get_or_create_mst_node_explanation(session, symbol, as_of, portfolio_id)[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/explain/mst/pair", response_model=ExplanationPayload, tags=["explanations"])
+def explain_mst_pair(
+    session: DatabaseSession,
+    a: str = Query(min_length=1),
+    b: str = Query(min_length=1),
+    as_of: date | None = None,
+    portfolio_id: UUID | None = None,
+) -> ExplanationPayload:
+    if a.upper() == b.upper():
+        raise HTTPException(status_code=400, detail="a and b must be different symbols")
+    try:
+        return get_or_create_mst_pair_explanation(session, a, b, as_of, portfolio_id)[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("/ops/pipeline-runs", response_model=list[PipelineRunOut], tags=["operations"])
@@ -409,6 +606,11 @@ def latest_mst(
         if stability_row is not None
         else None
     )
+    try:
+        explain_config = load_explain_config(session, "1.2.0", "mst_explain_templates")[0]
+        distance_scale = explain_config.get("distance_scale", [])
+    except LookupError:
+        distance_scale = []
 
     return {
         "run": {
@@ -433,6 +635,12 @@ def latest_mst(
         if stability_row is not None
         else None,
         "clusters_count": len(set(clusters_map.values())) if clusters_map else None,
+        "distance_scale": distance_scale,
+        "edge_thickness_legend": [
+            {"correlation": -1.0, "width": 0.6},
+            {"correlation": 0.0, "width": 2.05},
+            {"correlation": 1.0, "width": 3.5},
+        ],
         "nodes": [
             {
                 "id": str(node.security_id),
@@ -465,9 +673,9 @@ def latest_mst(
         ],
         "limitations": [
             "Correlation measures co-movement, not causation.",
-            "The MST retains only N-1 relationships and omits many valid correlations.",
+            "The MST retains only N-1 relationships and omits many valid pairwise co-movements.",
             "The topology can change when the lookback window or eligible universe changes.",
-            "Edges are a sparse subset of all pairwise relationships.",
+            "Edges are a sparse subset of all pairwise co-movements.",
         ],
     }
 

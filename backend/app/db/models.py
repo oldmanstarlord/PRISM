@@ -1329,6 +1329,7 @@ class PolicyRule(Base):
     affected_industries: Mapped[list[object]] = mapped_column(
         JSONB, default=list, server_default="[]", nullable=False
     )
+    macro_series_links: Mapped[list[object] | None] = mapped_column(JSONB)
     direction: Mapped[str] = mapped_column(
         String(20), nullable=False
     )  # "headwind" | "tailwind" | "ambiguous"
@@ -1373,6 +1374,76 @@ class PolicyEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class NewsImpact(Base):
+    """One reproducible impact calculation for an allowlisted news item."""
+
+    __tablename__ = "news_impact"
+    __table_args__ = (
+        UniqueConstraint(
+            "news_item_id",
+            "config_fingerprint",
+            "input_fingerprint",
+            name="uq_news_impact_reproducible",
+        ),
+        Index("ix_news_impact_item_created", "news_item_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    news_item_id: Mapped[UUID] = mapped_column(
+        ForeignKey("news_item.id", ondelete="CASCADE"), nullable=False
+    )
+    config_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class NewsImpactItem(Base):
+    """Evidence-bearing direct, rule, macro, or spillover transmission path."""
+
+    __tablename__ = "news_impact_item"
+    __table_args__ = (
+        CheckConstraint(
+            "path_type IN ('direct', 'rule', 'macro', 'spillover')",
+            name="ck_news_impact_item_path",
+        ),
+        CheckConstraint(
+            "direction IN ('headwind', 'tailwind', 'ambiguous')",
+            name="ck_news_impact_item_direction",
+        ),
+        CheckConstraint(
+            "exposure_score >= 0 AND exposure_score <= 1",
+            name="ck_news_impact_item_exposure",
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_news_impact_item_confidence",
+        ),
+        Index("ix_news_impact_item_impact", "news_impact_id"),
+        Index("ix_news_impact_item_security", "security_id"),
+        Index("ix_news_impact_item_industry", "industry"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    news_impact_id: Mapped[UUID] = mapped_column(
+        ForeignKey("news_impact.id", ondelete="CASCADE"), nullable=False
+    )
+    security_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE")
+    )
+    industry: Mapped[str] = mapped_column(String(160), nullable=False)
+    path_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    transmission: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    direction: Mapped[str] = mapped_column(String(20), nullable=False)
+    severity: Mapped[float] = mapped_column(Float, nullable=False)
+    exposure_score: Mapped[float] = mapped_column(Float, nullable=False)
+    exposure_band: Mapped[str] = mapped_column(String(20), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    evidence: Mapped[list[object]] = mapped_column(JSONB, nullable=False)
 
 
 class ValidationRun(Base):
@@ -1452,6 +1523,90 @@ class DataFreshness(Base):
     expected_cadence: Mapped[int] = mapped_column(Integer, nullable=False)
     grace: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+
+
+class DataSource(Base):
+    """Auditable registry of every external dataset used or planned by PRISM."""
+
+    __tablename__ = "data_source"
+    __table_args__ = (
+        CheckConstraint(
+            "access_method IN ('api', 'rss', 'file_download', 'manual_import')",
+            name="ck_data_source_access_method",
+        ),
+        CheckConstraint(
+            "status IN ('live', 'manual', 'tbd', 'disabled')",
+            name="ck_data_source_status",
+        ),
+        CheckConstraint(
+            "expected_grace_days >= 0",
+            name="ck_data_source_grace_nonnegative",
+        ),
+        Index("ix_data_source_dataset", "dataset"),
+        Index("ix_data_source_status", "status"),
+    )
+
+    source_key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    dataset: Mapped[str] = mapped_column(String(100), nullable=False)
+    owner: Mapped[str] = mapped_column(String(180), nullable=False)
+    access_method: Mapped[str] = mapped_column(String(30), nullable=False)
+    terms_url: Mapped[str] = mapped_column(Text, nullable=False)
+    license_note: Mapped[str] = mapped_column(Text, nullable=False)
+    cadence: Mapped[str] = mapped_column(String(50), nullable=False)
+    expected_grace_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+
+class Explanation(Base):
+    """Immutable evidence-bound explanation payload cached by exact inputs."""
+
+    __tablename__ = "explanation"
+    __table_args__ = (
+        UniqueConstraint(
+            "subject_type",
+            "subject_key",
+            "as_of",
+            "template_version",
+            "input_fingerprint",
+            name="uq_explanation_reproducible",
+        ),
+        Index("ix_explanation_subject_latest", "subject_type", "subject_key", "as_of"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    subject_type: Mapped[str] = mapped_column(String(60), nullable=False)
+    subject_key: Mapped[str] = mapped_column(String(180), nullable=False)
+    as_of: Mapped[date] = mapped_column(Date, nullable=False)
+    template_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    config_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload: Mapped[dict[str, object]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class GlossaryTerm(Base):
+    """Versioned plain-language definition used by explanation interfaces."""
+
+    __tablename__ = "glossary_term"
+    __table_args__ = (
+        UniqueConstraint("term_key", "version", name="uq_glossary_term_version"),
+        Index("ix_glossary_term_key", "term_key"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    term_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    label: Mapped[str] = mapped_column(String(160), nullable=False)
+    plain_definition: Mapped[str] = mapped_column(Text, nullable=False)
+    formula_text: Mapped[str | None] = mapped_column(Text)
+    see_also: Mapped[list[object]] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False
+    )
+    version: Mapped[str] = mapped_column(String(40), nullable=False)
 
 
 class Alert(Base):

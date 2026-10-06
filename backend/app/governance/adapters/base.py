@@ -23,7 +23,8 @@ class ParsedShareholdingRecord:
     fii_pct: float | None = None
     dii_pct: float | None = None
     public_pct: float | None = None
-    source: str = "CSV_IMPORT"
+    shares_outstanding: int | None = None
+    source: str = "NSE_MANUAL_IMPORT"
     source_doc_id: str | None = None
 
 
@@ -37,7 +38,7 @@ class ParsedInsiderTradeRecord:
     published_at: datetime  # Actual exchange acceptance date
     quantity: int | None = None
     value: float | None = None  # INR
-    source: str = "CSV_IMPORT"
+    source: str = "NSE_MANUAL_IMPORT"
     source_doc_id: str | None = None
 
 

@@ -6,3 +6,5 @@ export * from "./ExplainPanel";
 export * from "./BreakdownBars";
 export * from "./Timeline";
 export * from "./NewsPolicyPanel";
+export * from "./ExplainDrawer";
+export * from "./GlossaryTerm";

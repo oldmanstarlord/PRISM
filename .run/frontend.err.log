@@ -1,0 +1,29 @@
+[2m2:30:19 am[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22mMUI: You have provided an out-of-range value `0fd4435f-3200-44a4-8922-b342a0cb188f` for the select component.
+Consider providing a value that matches one of the available options or ''.
+The available values are `bf35f8fb-7b16-442a-94aa-d9a121da65ca`, `43d68cc1-0278-4375-a25f-2000280fea5d`.
+[2m2:30:19 am[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22mMUI: You have provided an out-of-range value `0fd4435f-3200-44a4-8922-b342a0cb188f` for the select component.
+Consider providing a value that matches one of the available options or ''.
+The available values are `bf35f8fb-7b16-442a-94aa-d9a121da65ca`, `43d68cc1-0278-4375-a25f-2000280fea5d`.
+[2m2:31:28 am[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [31m[Unhandled error] [1mTypeError[22m: Cannot read properties of undefined (reading 'source_a')
+[39m > DataHealthPage src/DataHealthPage.tsx:232:62
+    230 |                  </Typography>
+    231 |                  <Typography variant="body2" color="text.secondary">
+    232 |  ...                Comparing primary feed ({crosscheck.sources.source_a}) against secondary feed ({crosscheck.sources...
+        |                                                                 ^
+    233 |                  </Typography>
+    234 |                </Box>
+ > Object.react_stack_bottom_frame node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/cjs/react-dom-client.development.js:28571:19
+ > renderWithHooks node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/cjs/react-dom-client.development.js:8030:21
+ > updateFunctionComponent node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/cjs/react-dom-client.development.js:10569:18
+ > beginWork node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/cjs/react-dom-client.development.js:12205:17
+ > runWithFiberInDEV node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/cjs/react-dom-client.development.js:1045:29
+ > performUnitOfWork node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/cjs/react-dom-client.development.js:19176:21
+ > workLoopSync node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/cjs/react-dom-client.development.js:19004:40
+ > renderRootSync node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/cjs/react-dom-client.development.js:18985:10
+ > performWorkOnRoot node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom/cjs/react-dom-client.development.js:18094:34
+
+[2m2:31:28 am[22m [33m[1m[vite][22m[39m [33m[2m(client)[22m[39m [2m[console.warn] [22mAn error occurred in the <DataHealthPage> component.
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries.
+

@@ -12,10 +12,12 @@ from uuid import UUID, uuid4
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
+from backend.app.data_sources.service import source_policy
 from backend.app.db.models import (
     Alert,
     BenchmarkSeries,
     DataFreshness,
+    DataSource,
     EventItem,
     MacroObservation,
     MarketRegime,
@@ -100,6 +102,15 @@ def evaluate_freshness(session: Session, now: datetime | None = None) -> list[Da
             select(func.max(MacroObservation.ingested_at), func.max(MacroObservation.obs_date))
         ).one(),
     }
+    registry_policies = source_policy(session)
+    registry_rows = {row.source_key: row for row in session.scalars(select(DataSource)).all()}
+    for source_key, policy in registry_policies.items():
+        sources[source_key] = policy
+        source_row = registry_rows.get(source_key)
+        observations[source_key] = (
+            source_row.last_success_at if source_row else None,
+            None,
+        )
     output: list[DataFreshness] = []
     for source_key, raw_policy in sorted(sources.items()):
         if not isinstance(raw_policy, dict):
@@ -113,6 +124,8 @@ def evaluate_freshness(session: Session, now: datetime | None = None) -> list[Da
         row.expected_cadence = cadence
         row.grace = grace
         row.status = freshness_status(current, success_at, cadence, grace)
+        if source_key in registry_rows and success_at is None:
+            row.status = "missing"
         session.add(row)
         output.append(row)
     session.commit()

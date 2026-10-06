@@ -11,10 +11,11 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.app.data_sources.service import mark_source_success
 from backend.app.db.models import EventItem, SourceDocument
 from backend.app.db.session import SessionLocal
 from backend.app.events.adapters.base import AnnouncementAdapter
-from backend.app.events.adapters.json_adapter import JsonAnnouncementAdapter
+from backend.app.events.adapters.csv_adapter import NseAnnouncementCsvAdapter
 from backend.app.events.importance import calculate_event_importance
 from backend.app.events.rules import (
     classify_announcement,
@@ -35,7 +36,7 @@ def run_ingest_announcements(
     """Ingest announcements into source_document and event_item tables idempotently (D4, D6)."""
     if not source_file:
         raise ValueError("--source-file is required; no live announcement source is configured")
-    adapter: AnnouncementAdapter = JsonAnnouncementAdapter(file_path=source_file)
+    adapter: AnnouncementAdapter = NseAnnouncementCsvAdapter(file_path=source_file)
 
     raw_announcements = adapter.fetch_announcements(limit=limit)
     logger.info("Retrieved %d raw announcements from adapter", len(raw_announcements))
@@ -92,7 +93,7 @@ def run_ingest_announcements(
             source_doc = SourceDocument(
                 id=uuid4(),
                 security_id=security.id,
-                source="ANNOUNCEMENT_FILE_IMPORT",
+                source="NSE_MANUAL_IMPORT",
                 source_doc_id=a.source_doc_id,
                 doc_type="announcement",
                 published_at=a.published_at,
@@ -147,7 +148,6 @@ def run_ingest_announcements(
 
         if not dry_run:
             session.add(event_item)
-            session.commit()
         stats["inserted_events"] += 1
 
         logger.info(
@@ -159,6 +159,16 @@ def run_ingest_announcements(
             importance,
         )
 
+    if not dry_run:
+        mark_source_success(
+            session,
+            NseAnnouncementCsvAdapter.source_key,
+            succeeded_at=now_utc,
+            verified=True,
+        )
+        session.commit()
+    else:
+        session.rollback()
     logger.info("Ingestion finished: %s", stats)
     return stats
 
@@ -169,7 +179,7 @@ def main() -> None:
         "--source-file",
         type=str,
         required=True,
-        help="Path to a verified real announcement export JSON file",
+        help="Path to a manually downloaded official NSE announcement CSV export",
     )
     parser.add_argument("--dry-run", action="store_true", help="Inspect without committing to DB")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of items")

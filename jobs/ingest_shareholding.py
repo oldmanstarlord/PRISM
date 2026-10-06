@@ -26,10 +26,12 @@ from pathlib import Path
 # Ensure project root is on the path when run directly
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from backend.app.data_sources.service import mark_source_success
 from backend.app.db.session import get_session
 from backend.app.governance.adapters.csv_adapter import CsvShareholdingAdapter
 from backend.app.governance.service import (
     _resolve_security,
+    ingest_security_share_counts,
     ingest_shareholding_records,
 )
 
@@ -54,6 +56,7 @@ def run(file_path: str, symbol: str | None = None) -> None:
         total_inserted = 0
         total_skipped = 0
         total_not_found = 0
+        total_share_counts = 0
 
         for sym in sorted(symbols_in_file):
             security = _resolve_security(session, sym)
@@ -72,14 +75,35 @@ def run(file_path: str, symbol: str | None = None) -> None:
                 )
                 total_inserted += counts["inserted"]
                 total_skipped += counts["skipped_duplicate"]
+                share_counts = ingest_security_share_counts(
+                    session,
+                    security_id=security.id,
+                    records=doc.records,
+                    ingested_at=now_utc,
+                )
+                total_share_counts += share_counts["inserted"]
                 print(
                     f"  {sym}: inserted={counts['inserted']} "
                     f"skipped_duplicate={counts['skipped_duplicate']}"
                 )
 
+        mark_source_success(
+            session,
+            "shareholding_nse_manual",
+            succeeded_at=now_utc,
+            verified=True,
+        )
+        if total_share_counts:
+            mark_source_success(
+                session,
+                "shares_outstanding_nse_manual",
+                succeeded_at=now_utc,
+                verified=True,
+            )
         session.commit()
         print(
-            f"\nDone. inserted={total_inserted} skipped={total_skipped} not_found={total_not_found}"
+            f"\nDone. inserted={total_inserted} share_counts={total_share_counts} "
+            f"skipped={total_skipped} not_found={total_not_found}"
         )
 
 

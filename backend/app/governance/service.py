@@ -22,6 +22,7 @@ from backend.app.db.models import (
     InsiderTrade,
     Security,
     SecurityAlias,
+    SecurityShareCount,
     ShareholdingPattern,
 )
 from backend.app.governance.adapters.base import (
@@ -174,6 +175,61 @@ def ingest_shareholding_records(
         session.add(row)
         inserted += 1
 
+    session.flush()
+    return {"inserted": inserted, "skipped_duplicate": skipped}
+
+
+def ingest_security_share_counts(
+    session: Session,
+    security_id: UUID,
+    records: list[ParsedShareholdingRecord],
+    ingested_at: datetime,
+) -> dict[str, int]:
+    """Persist real reported share counts while retaining every changed disclosure."""
+    inserted = 0
+    skipped = 0
+    for record in records:
+        if record.shares_outstanding is None:
+            continue
+        evidence = {
+            "security_id": str(security_id),
+            "quarter_end": record.quarter_end.isoformat(),
+            "shares_outstanding": record.shares_outstanding,
+            "published_at": record.published_at.isoformat(),
+            "source_doc_id": record.source_doc_id,
+        }
+        digest = hashlib.sha256(
+            json.dumps(evidence, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        source = f"NSE_MANUAL_IMPORT:{digest[:12]}"
+        existing = session.scalar(
+            select(SecurityShareCount).where(
+                SecurityShareCount.security_id == security_id,
+                SecurityShareCount.as_of == record.quarter_end,
+                SecurityShareCount.source == source,
+            )
+        )
+        if existing is not None:
+            skipped += 1
+            continue
+        session.add(
+            SecurityShareCount(
+                security_id=security_id,
+                as_of=record.quarter_end,
+                shares_outstanding=record.shares_outstanding,
+                source=source,
+                published_at=record.published_at,
+                ingested_at=ingested_at,
+                notes=json.dumps(
+                    {
+                        "content_hash": digest,
+                        "source_key": "shares_outstanding_nse_manual",
+                    },
+                    sort_keys=True,
+                ),
+            )
+        )
+        inserted += 1
     session.flush()
     return {"inserted": inserted, "skipped_duplicate": skipped}
 

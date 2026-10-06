@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import {
   Alert,
@@ -24,7 +24,9 @@ import { useApi } from "./api";
 import type { BreakdownItem, StockEventsResponse, StockRiskEnvelope } from "./types";
 import { BreakdownBars } from "./components/BreakdownBars";
 import { ConfidencePanel } from "./components/ConfidencePanel";
+import { DivergenceExplanationPanel } from "./components/DivergenceExplanationPanel";
 import { ExplainPanel } from "./components/ExplainPanel";
+import { ExplainDrawer } from "./components/ExplainDrawer";
 import { FreshnessBadge } from "./components/FreshnessBadge";
 import { FundamentalsPanel } from "./components/FundamentalsPanel";
 import { GovernancePanel } from "./components/GovernancePanel";
@@ -36,6 +38,7 @@ import { Timeline } from "./components/Timeline";
 export default function StockDetailPage() {
   const { symbol = "" } = useParams<{ symbol: string }>();
   const upperSymbol = symbol.toUpperCase();
+  const [explainComponentKey, setExplainComponentKey] = useState("");
 
   const { data: envelope, isLoading, error } = useApi<StockRiskEnvelope>(
     `/stocks/${encodeURIComponent(upperSymbol)}/risk/latest`
@@ -166,6 +169,8 @@ export default function StockDetailPage() {
       </Stack>
 
       <MissingDataBanner components={envelope.missing_components ?? []} />
+
+      <DivergenceExplanationPanel symbol={upperSymbol} />
 
       {/* Top Gauge Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
@@ -334,8 +339,15 @@ export default function StockDetailPage() {
         <BreakdownBars
           items={breakdownItems}
           title="Dynamic Component Breakdown & Directional Rank"
+          onExplain={(item) => setExplainComponentKey(item.key)}
         />
       </Box>
+      <ExplainDrawer
+        open={explainComponentKey.length > 0}
+        symbol={upperSymbol}
+        componentKey={explainComponentKey}
+        onClose={() => setExplainComponentKey("")}
+      />
 
       {/* Fundamentals Panel: Quarterly table, TTM metrics, and peer percentiles (Step 7) */}
       <FundamentalsPanel symbol={upperSymbol} />

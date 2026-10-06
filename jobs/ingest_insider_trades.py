@@ -26,6 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from backend.app.data_sources.service import mark_source_success
 from backend.app.db.session import get_session
 from backend.app.governance.adapters.csv_adapter import CsvInsiderTradeAdapter
 from backend.app.governance.service import (
@@ -76,6 +77,12 @@ def run(file_path: str, symbol: str | None = None) -> None:
                     f"skipped_duplicate={counts['skipped_duplicate']}"
                 )
 
+        mark_source_success(
+            session,
+            "insider_trades_nse_manual",
+            succeeded_at=now_utc,
+            verified=True,
+        )
         session.commit()
         print(
             f"\nDone. inserted={total_inserted} skipped={total_skipped} not_found={total_not_found}"

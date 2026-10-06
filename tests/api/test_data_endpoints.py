@@ -55,6 +55,19 @@ def test_data_freshness_endpoint() -> None:
         app.dependency_overrides.clear()
 
 
+def test_data_source_registry_endpoint(session) -> None:
+    client = TestClient(app)
+    response = client.get("/api/v1/data/sources")
+    assert response.status_code == 200
+    rows = response.json()
+    assert {row["source_key"] for row in rows} >= {
+        "news_rbi_rss",
+        "news_sebi_rss",
+        "shareholding_nse_manual",
+    }
+    assert all("freshness_status" in row for row in rows)
+
+
 def test_latest_crosscheck_endpoint() -> None:
     mock_session = MagicMock()
     run_id = uuid4()

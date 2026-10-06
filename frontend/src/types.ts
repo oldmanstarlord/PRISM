@@ -74,6 +74,8 @@ export interface MstResponse {
   stability_grade?: string | null;
   edge_persistence?: number | null;
   clusters_count?: number | null;
+  distance_scale?: Array<{ correlation: number; distance: number; label: string }>;
+  edge_thickness_legend?: Array<{ correlation: number; width: number }>;
   nodes: Array<{
     id: string;
     symbol: string;
@@ -878,6 +880,22 @@ export interface OperationsFreshness {
   status: "fresh" | "stale" | "unknown";
 }
 
+export interface DataSourceRegistryItem {
+  source_key: string;
+  dataset: string;
+  owner: string;
+  access_method: "api" | "rss" | "file_download" | "manual_import";
+  terms_url: string;
+  license_note: string;
+  cadence: string;
+  expected_grace_days: number;
+  status: "live" | "manual" | "tbd" | "disabled";
+  freshness_status: "fresh" | "stale" | "missing" | "unknown";
+  last_verified_at: string | null;
+  last_success_at: string | null;
+  notes: string | null;
+}
+
 export interface OperationsPipelineRun {
   id: string;
   workflow: string;
@@ -920,6 +938,118 @@ export interface LimitationsResponse {
   method_version: string;
   price_frequency_label: string;
   filings_news_poll_minutes: number;
+  limitations: string[];
+}
+
+export interface ExplanationEvidence {
+  evidence_id: string;
+  kind: "statistic" | "rule" | "event" | "config";
+  label: string;
+  value: string | number | boolean | null;
+  unit: string | null;
+  window: string | null;
+  source_table: string;
+  source_ref: string;
+  as_of: string;
+  data_age_days: number | null;
+}
+
+export interface ExplanationSentence {
+  text: string;
+  evidence_ids: string[];
+}
+
+export interface ExplanationPayload {
+  schema_version: "1.0";
+  headline: string;
+  summary_points: ExplanationSentence[];
+  sections: Array<{
+    key: string;
+    title: string;
+    sentences: ExplanationSentence[];
+    chart_spec?: Record<string, unknown> | null;
+  }>;
+  evidence: ExplanationEvidence[];
+  limitations: string[];
+  confidence: {
+    level: "high" | "medium" | "low";
+    reasons: ExplanationSentence[];
+  };
+  data_age: { days: number | null; as_of: string; status: string };
+  template_version: string;
+  subject: { type: string; key: string };
+  disclaimer: string;
+}
+
+export interface SectorOverviewItem {
+  industry: string;
+  trend: string;
+  return_20d: number | null;
+  breadth: number | null;
+  dispersion: number | null;
+  stock_count: number;
+  flagged_count: number;
+}
+
+export interface SectorOverviewResponse {
+  subject: string;
+  effective_time: string;
+  method: string;
+  method_version: string;
+  input_fingerprint: string;
+  config_fingerprint: string;
+  data_age_days: number;
+  computed_at: string;
+  items: SectorOverviewItem[];
+  limitations: string[];
+}
+
+export interface GlossaryTermItem {
+  term_key: string;
+  label: string;
+  plain_definition: string;
+  formula_text: string | null;
+  see_also: string[];
+  version: string;
+}
+
+export interface NewsImpactPath {
+  path_type: "direct" | "rule" | "macro" | "spillover";
+  direction: "headwind" | "tailwind" | "ambiguous";
+  severity: number;
+  exposure_score: number;
+  exposure_band: "low" | "medium" | "high";
+  confidence: number;
+  evidence: Array<Record<string, unknown>>;
+}
+
+export interface AffectedStock {
+  symbol: string | null;
+  security_id: string | null;
+  industry: string;
+  direction: string;
+  exposure_score: number;
+  exposure_band: string;
+  confidence: number;
+  paths: NewsImpactPath[];
+}
+
+export interface NewsInsight {
+  news_id: string;
+  headline: string;
+  source: string;
+  published_at: string;
+  url: string;
+  severity: number;
+  affected_industries: string[];
+  matched_rules: string[];
+  unreviewed: boolean;
+  affected_stocks: AffectedStock[];
+}
+
+export interface NewsInsightsResponse {
+  items: NewsInsight[];
+  source_statuses: DataSourceRegistryItem[];
   limitations: string[];
 }
 

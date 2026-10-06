@@ -21,7 +21,7 @@ class JsonAnnouncementAdapter(AnnouncementAdapter):
         limit: int | None = None,
     ) -> list[RawAnnouncement]:
         if not self.file_path.exists():
-            return []
+            raise FileNotFoundError(f"announcement export not found: {self.file_path}")
 
         with open(self.file_path, encoding="utf-8") as f:
             records = json.load(f)

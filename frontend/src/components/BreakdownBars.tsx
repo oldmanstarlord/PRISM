@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   LinearProgress,
   Paper,
   Stack,
@@ -19,12 +20,14 @@ export interface BreakdownBarsProps {
   items: BreakdownItem[];
   title?: string;
   showDimensions?: boolean;
+  onExplain?: (item: BreakdownItem) => void;
 }
 
 export function BreakdownBars({
   items,
   title = "Component Breakdown & Point Contributions",
   showDimensions = true,
+  onExplain,
 }: BreakdownBarsProps) {
   if (!items || items.length === 0) {
     return (
@@ -66,6 +69,7 @@ export function BreakdownBars({
               <TableCell align="right" sx={{ fontWeight: 700 }}>Weight</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Driver Reason</TableCell>
+              {onExplain && <TableCell sx={{ fontWeight: 700 }}>Explanation</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -136,6 +140,13 @@ export function BreakdownBars({
                       {item.reason ?? "No anomalies detected."}
                     </Typography>
                   </TableCell>
+                  {onExplain && (
+                    <TableCell>
+                      <Button size="small" onClick={() => onExplain(item)} aria-label={`Why ${item.display_name}?`}>
+                        Why?
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}

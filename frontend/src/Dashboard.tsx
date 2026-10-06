@@ -22,7 +22,7 @@ import {
 } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import { useApi } from "./api";
-import type { Horizon, RankingsResponse } from "./types";
+import type { Horizon, NewsInsightsResponse, RankingsResponse } from "./types";
 
 const bandColor = {
   normal: "default",
@@ -45,6 +45,12 @@ function formatTimestamp(value: string) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [horizon, setHorizon] = useState<Horizon>(20);
+  const { data: portfolios = [] } = useApi<Array<{ id: string; name: string }>>("/portfolios");
+  const firstPortfolioId = portfolios[0]?.id;
+  const { data: portfolioNews } = useApi<NewsInsightsResponse>(
+    firstPortfolioId ? `/news/insights?portfolio_id=${firstPortfolioId}` : "/news/insights?portfolio_id=00000000-0000-0000-0000-000000000000",
+    { enabled: Boolean(firstPortfolioId) },
+  );
 
   const {
     data,
@@ -57,6 +63,19 @@ export default function Dashboard() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={3}>
+        <Paper sx={{ p: 2.5 }}>
+          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", gap: 2 }}>
+            <Box>
+              <Typography variant="h6">News affecting your portfolio</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {firstPortfolioId
+                  ? `${portfolioNews?.items.length ?? 0} evidence-backed items match holdings in ${portfolios[0].name}.`
+                  : "Load a portfolio to see evidence-backed overlap."}
+              </Typography>
+            </Box>
+            <Button component={Link} to="/news">Open news insights</Button>
+          </Stack>
+        </Paper>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           sx={{ justifyContent: "space-between", gap: 2 }}

@@ -40,6 +40,14 @@ const mockMstResponse = {
   stability_grade: "HIGH",
   edge_persistence: 0.685,
   clusters_count: 2,
+  distance_scale: [
+    { correlation: 0.9, distance: 0.447214, label: "very close" },
+    { correlation: 0.5, distance: 1.0, label: "moderate" },
+  ],
+  edge_thickness_legend: [
+    { correlation: 0, width: 2.05 },
+    { correlation: 1, width: 3.5 },
+  ],
   nodes: [
     {
       id: "sec-1",
@@ -100,6 +108,24 @@ beforeEach(() => {
         return Promise.resolve({
           ok: true,
           json: async () => mockMstResponse,
+        });
+      }
+      if (url.includes("/explain/mst/pair")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            schema_version: "1.0",
+            headline: "Stored MST relationship between TCS and INFY",
+            summary_points: [],
+            sections: [],
+            evidence: [],
+            limitations: ["Statistical co-movement, not causation."],
+            confidence: { level: "high", reasons: [] },
+            data_age: { days: 0, as_of: "2026-01-15", status: "available" },
+            template_version: "1.0.0",
+            subject: { type: "mst_pair", key: "INFY:TCS" },
+            disclaimer: "Not investment advice.",
+          }),
         });
       }
       return Promise.resolve({
@@ -177,5 +203,22 @@ describe("MstPage Step 4 diagnostics and controls", () => {
 
     expect(await screen.findByText("2 Clusters")).toBeInTheDocument();
     expect(screen.getByText(/Formed via deterministic k-longest edge cuts/i)).toBeInTheDocument();
+  });
+
+  it("renders config-driven distance and thickness legends", async () => {
+    renderMstPage();
+    expect(await screen.findByText(/How to read edge weights/i)).toBeInTheDocument();
+    expect(screen.getByText(/ρ 0.9 → d 0.45/i)).toBeInTheDocument();
+    expect(screen.getByText(/ρ 1.0/i)).toBeInTheDocument();
+  });
+
+  it("opens the generic drawer from relationship search", async () => {
+    renderMstPage();
+    fireEvent.change(await screen.findByLabelText("Stock A"), { target: { value: "TCS" } });
+    fireEvent.change(screen.getByLabelText("Stock B"), { target: { value: "INFY" } });
+    fireEvent.click(screen.getByRole("button", { name: "Explain" }));
+    expect(
+      await screen.findByText("Stored MST relationship between TCS and INFY"),
+    ).toBeInTheDocument();
   });
 });

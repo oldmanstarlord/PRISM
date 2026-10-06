@@ -14,6 +14,8 @@
 - D5 API-DRIVEN UI: the frontend renders breakdowns, limitations, data-age and method info from API payloads using generic shared components. No component or dimension names hard-coded in UI code.
 - D6 IDEMPOTENT RUNS: input fingerprint + config fingerprint => identical outputs; a repeat run reuses the completed run and creates no new rows.
 - D7 EVERY STEP SHIPS: (1) additive Alembic migration, (2) backend module with typed code and tests, (3) API endpoints with response models, (4) frontend page/components with tests where the step has UI, (5) seed/config entries, (6) docs: PROJECT_STATUS.md update and any proposed SRS decision entries written to docs/specs/PROPOSED_DECISIONS.md (do not edit the SRS yourself).
+- D8 EXPLANATIONS ARE EVIDENCE-BOUND: every sentence in an explanation is produced from a template filled only with evidence items read from stored data (price tables, run tables, rules, config). Each sentence lists its evidence_ids. A sentence without evidence is dropped. No language model writes explanation text.
+- D9 NO ADVICE, NO CAUSAL CLAIMS: explanations describe risk, statistical relationships and possible transmission paths. Banned: buy/sell/hold recommendations, price targets, predictions of future prices, certainty words ("will", "guaranteed"). Correlation is worded "moves together with", never "because of". News effects are worded "possible effect". Every explanation carries limitations, data age and the disclaimer.
 
 ## AGENT PROTOCOL
 1. AUDIT first: read the relevant code, models, migrations and tests. List what already exists and what you will reuse. Do not duplicate or rename existing tables/modules without telling me.

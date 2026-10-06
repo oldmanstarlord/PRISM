@@ -7,11 +7,11 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Field | Value |
 |---|---|
 | Current phase | Phase 0 - Foundations |
-| Overall status | Steps 14 and 15 implemented; seven-day soak and clean empirical validation remain pending |
+| Overall status | Steps 11b, 14, and 15 implemented; manual exchange files, seven-day soak, and clean empirical validation remain pending |
 | Last updated | 2026-10-06 |
 | Requirements source | `PRISM_SRS.md` version 1.6 |
 | Initial universe | NIFTY 200 |
-| Active implementation focus | Approve cleanup of quarantined fixture rows, then run validation, the seven-day scheduler soak, and recovery sign-off |
+| Active implementation focus | Review E1/E2/E3 user-facing wording and thresholds; supply real NSE disclosure exports; approve quarantined-row cleanup; then run validation, scheduler soak, and recovery sign-off |
 
 ## Phase status
 
@@ -54,7 +54,7 @@ This is the living implementation record for PRISM. It must be updated after eve
 ## Known blockers
 
 1. Teammate sign-off for SRS item 16.
-2. Shares-outstanding data not yet loaded.
+2. Shares-outstanding data not yet loaded: the strict official NSE manual-import path is ready, but no real disclosure file has been supplied.
 3. Benchmark is single-source Yahoo Finance.
 4. Historical NIFTY 200 membership is not available.
 5. `risk_engine_parameters:2.0.0` is intentionally `draft`; explicit owner approval is required before it becomes the default.
@@ -73,15 +73,15 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Python environment | Python 3.12 provisioned by `uv` | 2026-10-05 |
 | Python dependency lock | `uv lock --check` passed; `pyarrow>=25.0.1` locked; optional `ml` extra | 2026-10-05 |
 | Ruff | Passed (0 errors across workspace) | 2026-10-06 |
-| mypy strict mode | Passed (146 source files checked in backend and jobs, 0 errors); default paths are configured so `uv run mypy` is the exact gate | 2026-10-06 |
-| pytest | Passed (235 tests, 0 failures, 1 dependency deprecation warning); DB-backed tests are transaction-isolated and rolled back | 2026-10-06 |
+| mypy strict mode | Passed (162 source files checked in backend and jobs, 0 errors); default paths are configured so `uv run mypy` is the exact gate | 2026-10-06 |
+| pytest | Passed (267 tests, 0 failures, 1 dependency deprecation warning); DB-backed tests are transaction-isolated and rolled back | 2026-10-06 |
 | ESLint | Passed (0 errors, 0 warnings across frontend) | 2026-10-06 |
-| Vitest | Passed (47 tests across 15 suites, 0 failures) | 2026-10-06 |
+| Vitest | Passed (55 tests across 18 suites, 0 failures) | 2026-10-06 |
 | TypeScript/Vite production build | Passed; pre-existing Plotly chunk-size advisory remains | 2026-10-06 |
 | Frontend frozen lockfile | `pnpm install --frozen-lockfile` passed with exact pinned versions | 2026-10-05 |
 | Layer 1 and Layer 2 Immutability | Passed (0 git diff on `backend/app/correlation_mst` and `backend/app/sector_divergence`) | 2026-10-05 |
 | Playwright smoke | Passed (1 end-to-end demo flow in Chromium) | 2026-10-06 |
-| Alembic head | Exactly one head/current: `c5d6e7f8a914`; additive Step 14 SQL inspected and applied successfully | 2026-10-06 |
+| Alembic head | Exactly one head/current: `c1d2e3f4a520`; additive Step E3 config SQL inspected and applied successfully | 2026-10-06 |
 | NIFTY 200 Benchmark Ingestion | Dry-run passed; all 7 PASS RULES passed; single source `^CNX200` verified (`docs/evidence/benchmark_check.md`) | 2026-10-05 |
 | Step 5 Risk & Confidence Engine | Audited against RISK_SCORE_SPEC and CONFIDENCE_SPEC; no silent fallback on missing benchmark; all 145 tests green | 2026-10-05 |
 | Step 6 Shock & Diversification | Shock scenarios, diversification run engine, MST-cluster HHI and portfolio diversification cards implemented; API and frontend verified | 2026-10-05 |
@@ -90,6 +90,10 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Step 13 Honest Validation | Persistence, PIT backfill job, forward labels, time-ordered metrics/baselines, ablation, calibration, Layer 1 bands, API and UI implemented; empirical run blocked by quarantined fixture inputs | 2026-10-06 |
 | Step 14 Operations | Configured DAG, retries/failure isolation, freshness, explainable alerts, watchlists, incremental rescoring, APIs/UI and export/backup procedure implemented; seven-day soak not started | 2026-10-06 |
 | Step 15 Demonstration | Three fixture portfolios, one-command loader, Playwright smoke, limitations page, demo/viva/architecture/recovery docs and final SRS audit implemented | 2026-10-06 |
+| Step 11b Permitted Sources | 18-row source registry, verified RBI/SEBI RSS metadata ingestion, strict manual NSE importers, source-aware freshness API/UI, and refresh documentation implemented; real governance exports remain pending | 2026-10-06 |
+| Step E1 Explanation Framework | Evidence-bound component explanations, deterministic guardrails, draft templates/glossary, APIs, generic drawer/tooltips, and Why actions implemented; wording approval pending | 2026-10-06 |
+| Step E2 MST Explanations | Evidence-bound edge/pair/node explainers, deterministic MST math, APIs, interactive drawer/search/legends, and tests implemented; wording approval and production diagnostics remain pending | 2026-10-06 |
+| Step E3 Sector Explanations | Evidence-bound stock/industry divergence explainers, read-only peer reconstruction, APIs, stock panels, and sectors overview implemented; draft thresholds await review | 2026-10-06 |
 
 ## Update protocol
 
@@ -625,5 +629,119 @@ After every material update:
   non-failing observations.
 - Final audit does not claim Phase 0 completion: teammate recovery sign-off, a real
   restore drill, clean historical validation, and the seven-day soak remain open.
+
+### 2026-10-06 - Step 11b: Permitted Production Data Sources
+
+- Added and applied additive migration `d6e7f8a9b015`, creating `data_source`,
+  seeding 18 dataset/source rows, and adding checksummed approved
+  `data_source_policy:1.0.0` cadence/grace configuration. Offline SQL was inspected
+  before application and contained only create/index/seed operations.
+- All pre-existing domain table row counts were unchanged by the migration;
+  `model_config` changed 15 -> 16 and the new registry contains 18 rows.
+- Enabled only the verified official RBI and SEBI RSS feeds. The authorized job
+  inserted 40 newly fetched metadata-only items across two idempotent runs (the
+  second skipped the first run's 10 duplicates). PIB and Finance Ministry feeds
+  remain plainly TBD because a reliable timestamped permitted feed was not verified.
+- Replaced the announcement production path with a strict official NSE CSV adapter;
+  missing files, missing columns, and unreadable rows fail before persistence. No
+  automated NSE/BSE collection or browser impersonation was added.
+- Tightened shareholding and insider adapters for mandatory schemas, real
+  publication timestamps, quarter alignment, percentage/unit bounds, no-look-ahead,
+  content-hash deduplication, and all-or-nothing parsing. Real reported total shares
+  populate immutable `security_share_count` revisions; no real disclosure file was
+  supplied or invented, so governance imports remain pending.
+- Added `GET /api/v1/data/sources`, source-aware freshness rows, source-success
+  tracking, a generic data-health registry table, strict importer/API/static-guard
+  tests, `docs/DATA_SOURCES.md`, and proposed decision PD-28.
+- Verification: Ruff passed; mypy passed 150 files; pytest passed 244 tests; ESLint
+  passed; Vitest passed 47 tests; production build passed. A first parallel Vitest
+  attempt had three 5-second timing failures on Windows/OneDrive; the exact rerun
+  passed all suites, and the focused data-health route passed independently.
+- No scoring formulas, Layer 1, Layer 2, SRS text, secrets, or quarantined historical
+  rows were modified. Changes remain uncommitted.
+
+### 2026-10-06 - Step E1: Shared Evidence-Bound Explanation Framework
+
+- Confirmed D8 and D9 were already present in `docs/agent/MASTER_CONTEXT.md`; no
+  duplicate rules were appended.
+- Added and applied additive migration `e7f8a9b0c116`, creating `explanation` and
+  `glossary_term`, seeding 25 versioned glossary terms and checksummed draft
+  `explain_templates:1.0.0`. Offline SQL was inspected before application.
+- Added typed evidence/payload schemas, deterministic config templates, fail-closed
+  language guardrails, an explainer registry, and fingerprint-idempotent storage.
+- Implemented the first explainer from stored component value, percentile,
+  direction, weight, points, window, age, and status rows. Point-in-time lookup
+  excludes later score runs and missing values do not create unsupported sentences.
+- Added component explanation and glossary APIs, plus a generic ExplainDrawer,
+  provenance popovers, GlossaryTerm tooltip, useExplain hook, and a Why action on
+  every component-breakdown row.
+- Added tests for unsupported evidence, banned/correlation wording, source-value
+  equality, no-look-ahead, missing data, cache idempotency, API contracts, unknown
+  UI sections, glossary tooltip rendering, and per-row Why actions.
+- Database evidence: every pre-existing domain-table count remained unchanged;
+  `model_config` changed 16 -> 17, while `glossary_term` began with 25 rows and
+  `explanation` with 0. Template/glossary wording remains draft pending owner review.
+- Verification: Ruff passed; mypy passed 158 source files; pytest passed 250;
+  ESLint passed; Vitest passed 50; production build passed. Alembic current and
+  head both report `e7f8a9b0c116`. The existing Starlette/httpx deprecation and
+  large frontend chunk advisory remain non-failing observations.
+
+### 2026-10-06 - Step E2: Evidence-Bound MST Explanations
+
+- Added immutable draft MST explanation configs `1.0.0`, `1.1.0`, and corrective
+  `1.2.0`; all remain draft pending owner wording approval. Offline SQL was
+  inspected before each authorized config-only migration and contained only an
+  additive `model_config` insert and Alembic revision update.
+- Added deterministic edge, arbitrary-pair, and node explainers using stored MST
+  outputs and point-in-time prices. Evidence includes rho/distance, replayed
+  Kruskal step and group sizes, reciprocal ranks, optional clusters/residual tree,
+  rolling persistence, macro similarity, historical beta/R-squared, optional
+  event overlap, node diagnostics, and optional portfolio exposure.
+- Added D3 fields to the shared explanation payload, generic explanation caching,
+  the three E2 APIs, chart specs, and omission-with-limitation behavior for absent
+  optional evidence. No composite impact score was introduced.
+- Added MST edge/node drawer actions, arbitrary pair search, glossary-backed
+  distance scale, edge-thickness legend, stability display, and generic chart-spec
+  rendering.
+- Added hand-calculated distance/beta, deterministic Kruskal replay, path,
+  persistence, no-look-ahead, guardrail, API, cache-idempotency, stored-distance,
+  UI, and Layer 2 zero-diff tests. Ruff passed; strict mypy passed 160 files;
+  pytest passed 259; ESLint passed; Vitest passed 52; the production build passed.
+- Database evidence: `model_config` changed 17 -> 20 for the three immutable draft
+  config rows; recorded comparisons show every other pre-existing table unchanged.
+  `explanation` remains at 0 because integration tests roll back. Alembic current
+  and head are `b0c1d2e3f419`.
+- Production observation: the current raw MST run has persisted nodes/edges but no
+  cluster, node-metric, or stability diagnostics, so those optional sections are
+  honestly omitted with limitations. Running diagnostics was not authorized by E2.
+
+### 2026-10-06 - Step E3: Evidence-Bound Sector-Divergence Explanations
+
+- Audited the approved Layer 1 contract and confirmed persisted scores contain
+  alpha, beta, residual, residual volatility, 1/5/20-day z-scores, bands, Industry,
+  observations, and percentiles. R-squared and peer count are not persisted and are
+  therefore recomputed read-only from the stored point-in-time price envelope.
+- Added and applied config-only migration `c1d2e3f4a520` for immutable draft
+  `explain_sector_rules:1.0.0`. Offline SQL contained one additive model-config
+  insert and the Alembic revision update; no table was added.
+- Added stock and Industry explainers for peer/stock 1/5/20/60-day trends, breadth,
+  dispersion, regression expectation/R-squared, stored residual horizons/band,
+  absolute-score percentiles, persistence, point-in-time publications, conditional
+  risk context, and score contribution. The mandatory divergence-not-verdict line
+  is always present.
+- Added the three E3 APIs, stock dossier and Layer 1 explanation panels, rebased
+  stock/peer chart with separation shading and publication markers, and `/sectors`
+  overview with sector-explanation click-through.
+- Added hand-calculated peer median/trend, percentile, persistence, contribution,
+  missing-data, no-look-ahead, deterministic, stored-z recomputation, idempotency,
+  risk-evidence gating, API, UI, and Layer 1 zero-diff tests. Ruff passed; strict
+  mypy passed 162 files; pytest passed 267; ESLint passed; Vitest passed 55; and the
+  production frontend build passed.
+- Database evidence: `model_config` changed 20 -> 21. The exact row-count hash for
+  all 64 other tables remained
+  `99338065d2350f8622ba7b6618cfc000656c55d5fa8fc05cad51693f2b6752a7`.
+  Alembic current and head both report `c1d2e3f4a520`.
+- PD-31 records the unapproved trend/risk/publication thresholds. No Layer 1 source
+  file, formula, window, threshold, or tie-break was changed.
 
 

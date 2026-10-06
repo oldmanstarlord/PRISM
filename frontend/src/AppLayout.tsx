@@ -22,11 +22,13 @@ const DEFAULT_DISCLAIMER =
 
 const NAV_ITEMS = [
   { label: "Sector Divergence", path: "/" },
+  { label: "Industries", path: "/sectors" },
   { label: "MST", path: "/mst" },
   { label: "Portfolio", path: "/portfolio" },
   { label: "Stocks", path: "/stocks" },
   { label: "Macro", path: "/macro" },
   { label: "Policy Rules", path: "/policy-rules" },
+  { label: "News", path: "/news" },
   { label: "Shock", path: "/shock" },
   { label: "Validation", path: "/validation" },
   { label: "Data Health", path: "/data-health" },

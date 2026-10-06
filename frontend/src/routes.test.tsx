@@ -76,6 +76,26 @@ beforeEach(() => {
           }),
         });
       }
+      if (url.includes("/data/sources")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ([{
+            source_key: "news_rbi_rss",
+            dataset: "news_policy",
+            owner: "Reserve Bank of India",
+            access_method: "rss",
+            terms_url: "https://www.rbi.org.in/Scripts/rss.aspx",
+            license_note: "Metadata only",
+            cadence: "event-driven-polled-30m",
+            expected_grace_days: 1,
+            status: "live",
+            freshness_status: "fresh",
+            last_verified_at: "2026-10-06T00:00:00Z",
+            last_success_at: "2026-10-06T00:00:00Z",
+            notes: null,
+          }]),
+        });
+      }
       if (url.includes("/data/crosscheck/latest")) {
         return Promise.resolve({
           ok: true,
@@ -286,6 +306,7 @@ describe("AppRoutes across all views", () => {
   const routesToTest = [
     { path: "/", expectedTitle: /sector divergence/i },
     { path: "/mst", expectedTitle: /correlation minimum spanning tree/i },
+    { path: "/sectors", expectedTitle: /industry trend overview/i },
     { path: "/portfolio", expectedTitle: /portfolio risk & holdings/i },
     { path: "/stocks", expectedTitle: /stock risk explorer/i },
     { path: "/macro", expectedTitle: /macroeconomic series & sector sensitivity/i },

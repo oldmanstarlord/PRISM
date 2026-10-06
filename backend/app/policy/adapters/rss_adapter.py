@@ -1,4 +1,4 @@
-"""Official RSS/Atom feed adapter for regulatory agencies and ministries (Step 11)."""
+"""Official RSS/Atom adapter that stores metadata only, never article bodies."""
 
 from __future__ import annotations
 
@@ -13,39 +13,92 @@ from backend.app.policy.adapters.base import RawNewsItem
 
 logger = logging.getLogger(__name__)
 
-OFFICIAL_FEEDS: list[dict[str, str]] = [
+OFFICIAL_FEEDS: tuple[dict[str, str], ...] = (
     {
         "source": "RBI",
+        "source_key": "news_rbi_rss",
         "name": "Reserve Bank of India Press Releases",
         "url": "https://rbi.org.in/pressreleases_rss.xml",
-        "terms": (
-            "Public regulatory releases published by Reserve Bank of India "
-            "for public dissemination."
-        ),
+        "terms_url": "https://www.rbi.org.in/Scripts/rss.aspx",
     },
     {
         "source": "SEBI",
-        "name": "Securities and Exchange Board of India",
+        "source_key": "news_sebi_rss",
+        "name": "Securities and Exchange Board of India RSS",
         "url": "https://www.sebi.gov.in/sebirss.xml",
-        "terms": "Public regulatory orders and circulars published by SEBI.",
+        "terms_url": "https://www.sebi.gov.in/rss.html",
     },
-]
+)
+
+
+def _text(element: ET.Element, names: tuple[str, ...]) -> str:
+    for name in names:
+        child = element.find(name)
+        if child is not None and child.text:
+            return child.text.strip()
+    return ""
+
+
+def _published_at(value: str) -> datetime:
+    try:
+        parsed = parsedate_to_datetime(value)
+    except (TypeError, ValueError, OverflowError):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            parsed = datetime.strptime(value, "%d %b, %Y %z")
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+def _parse_items(content: bytes, source: str) -> list[RawNewsItem]:
+    root = ET.fromstring(content)
+    entries = root.findall(".//item")
+    if not entries:
+        entries = root.findall(".//{http://www.w3.org/2005/Atom}entry")
+    output: list[RawNewsItem] = []
+    for entry in entries:
+        headline = _text(entry, ("title", "{http://www.w3.org/2005/Atom}title"))
+        url = _text(entry, ("link",))
+        if not url:
+            atom_link = entry.find("{http://www.w3.org/2005/Atom}link")
+            if atom_link is not None:
+                url = atom_link.attrib.get("href", "").strip()
+        timestamp = _text(
+            entry,
+            (
+                "pubDate",
+                "{http://www.w3.org/2005/Atom}published",
+                "{http://www.w3.org/2005/Atom}updated",
+            ),
+        )
+        if not headline or not url or not timestamp:
+            continue
+        try:
+            published_at = _published_at(timestamp)
+        except ValueError:
+            logger.warning("RSS feed %s contains an unreadable item timestamp", source)
+            continue
+        output.append(
+            RawNewsItem.create(
+                headline=headline,
+                url=url,
+                source=source,
+                published_at=published_at,
+            )
+        )
+    return output
 
 
 class RssNewsAdapter:
-    """Fetches public announcements and press releases from official regulatory RSS feeds."""
+    """Fetch only the verified feed allowlist unless explicitly injected in a test."""
 
-    def __init__(
-        self,
-        timeout_seconds: float = 10.0,
-        rss_url: str | None = None,
-    ) -> None:
+    def __init__(self, timeout_seconds: float = 10.0, rss_url: str | None = None) -> None:
         self.timeout = timeout_seconds
         self.rss_url = rss_url
         self.feed_results: list[dict[str, str | int | None]] = []
         self.session = requests.Session()
         self.session.headers.update(
-            {"User-Agent": "PRISM-Risk-System/1.0 (+https://prism.local; research/regulatory-feed)"}
+            {"User-Agent": "PRISM-Risk-System/1.0 (official-feed metadata reader)"}
         )
 
     def fetch_news(
@@ -53,110 +106,57 @@ class RssNewsAdapter:
         since: datetime | None = None,
         limit: int | None = None,
     ) -> list[RawNewsItem]:
-        items: list[RawNewsItem] = []
         feeds = (
-            [{"source": "CUSTOM", "name": "Custom", "url": self.rss_url, "terms": "Custom"}]
+            (
+                {
+                    "source": "CUSTOM",
+                    "source_key": "custom_test_feed",
+                    "name": "Injected feed",
+                    "url": self.rss_url,
+                    "terms_url": "",
+                },
+            )
             if self.rss_url
             else OFFICIAL_FEEDS
         )
-
-        successful_feeds = 0
+        items: list[RawNewsItem] = []
         self.feed_results = []
+        successful_feeds = 0
         for feed in feeds:
             source = feed["source"]
-            url = feed["url"]
             try:
-                resp = self.session.get(url, timeout=self.timeout)
-                resp.raise_for_status()
-                root = ET.fromstring(resp.content)
-                feed_items: list[RawNewsItem] = []
-                # Standard RSS 2.0 channel/item structure
-                for item_elem in root.findall(".//item"):
-                        title_elem = item_elem.find("title")
-                        link_elem = item_elem.find("link")
-                        pub_elem = item_elem.find("pubDate")
-
-                        headline = (
-                            title_elem.text.strip()
-                            if title_elem is not None and title_elem.text
-                            else ""
-                        )
-                        item_url = (
-                            link_elem.text.strip()
-                            if link_elem is not None and link_elem.text
-                            else ""
-                        )
-                        pub_str = (
-                            pub_elem.text.strip()
-                            if pub_elem is not None and pub_elem.text
-                            else ""
-                        )
-
-                        if not headline or not item_url or not pub_str:
-                            continue
-
-                        # Parse pubDate (RFC 822 format or ISO)
-                        try:
-                            pub_dt = parsedate_to_datetime(pub_str)
-                        except (TypeError, ValueError, OverflowError):
-                            try:
-                                pub_dt = datetime.fromisoformat(pub_str)
-                            except ValueError:
-                                try:
-                                    pub_dt = datetime.strptime(pub_str, "%d %b, %Y %z")
-                                except ValueError:
-                                    logger.warning(
-                                        "RSS feed %s item has invalid date; skipping", source
-                                    )
-                                    continue
-
-                        if pub_dt.tzinfo is None:
-                            pub_dt = pub_dt.replace(tzinfo=UTC)
-
-                        if since and pub_dt < since:
-                            continue
-
-                        feed_items.append(
-                            RawNewsItem.create(
-                                headline=headline,
-                                url=item_url,
-                                source=source,
-                                published_at=pub_dt,
-                            )
-                        )
+                response = self.session.get(feed["url"], timeout=self.timeout)
+                response.raise_for_status()
+                parsed_items = _parse_items(response.content, source)
+                if not parsed_items:
+                    raise ValueError("feed returned no complete timestamped items")
                 successful_feeds += 1
-                items.extend(feed_items)
-                newest = max((item.published_at for item in feed_items), default=None)
+                visible_items = [
+                    item for item in parsed_items if since is None or item.published_at >= since
+                ]
+                items.extend(visible_items)
+                newest = max(item.published_at for item in parsed_items)
                 self.feed_results.append(
                     {
                         "source": source,
+                        "source_key": feed["source_key"],
                         "status": "success",
-                        "item_count": len(feed_items),
-                        "newest_published_at": newest.isoformat() if newest else None,
+                        "item_count": len(visible_items),
+                        "newest_published_at": newest.isoformat(),
                     }
                 )
-                logger.info(
-                    "RSS feed %s succeeded: %d items; newest=%s",
-                    source,
-                    len(feed_items),
-                    newest.isoformat() if newest else "none",
-                )
-            except Exception as exc:
+            except (requests.RequestException, ET.ParseError, ValueError) as exc:
                 self.feed_results.append(
                     {
                         "source": source,
+                        "source_key": feed["source_key"],
                         "status": "failed",
                         "item_count": 0,
                         "newest_published_at": None,
                     }
                 )
                 logger.error("RSS feed %s failed: %s", source, exc)
-
         if successful_feeds == 0:
-            raise RuntimeError("Every configured RSS feed failed; no news rows were written")
-
-        if items:
-            items.sort(key=lambda x: x.published_at, reverse=True)
-            return items[:limit] if limit else items
-
-        return []
+            raise RuntimeError("every configured RSS feed failed; no news rows were written")
+        items.sort(key=lambda item: item.published_at, reverse=True)
+        return items[:limit] if limit is not None else items
