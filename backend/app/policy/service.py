@@ -17,6 +17,7 @@ from backend.app.db.models import (
     Security,
     SecurityAlias,
 )
+from backend.app.policy.provenance import VERIFIED_NEWS_SOURCES
 from backend.app.policy.rules import create_or_version_rule, get_rules
 from backend.app.policy.schemas import (
     NewsItemOut,
@@ -70,7 +71,11 @@ def get_stock_news(
         event_query = event_query.where(
             func.lower(PolicyEvent.affected_industry).in_(stock_industries)
         )
-    event_query = event_query.order_by(desc(PolicyEvent.matched_at)).limit(limit)
+    event_query = (
+        event_query.where(NewsItem.source.in_(VERIFIED_NEWS_SOURCES))
+        .order_by(desc(PolicyEvent.matched_at))
+        .limit(limit)
+    )
 
     matched_event_rows = session.execute(event_query).all()
 
@@ -108,7 +113,10 @@ def get_stock_news(
     # Also include direct links if not already present
     if linked_news_ids:
         direct_items = session.scalars(
-            select(NewsItem).where(NewsItem.id.in_(linked_news_ids))
+            select(NewsItem).where(
+                NewsItem.id.in_(linked_news_ids),
+                NewsItem.source.in_(VERIFIED_NEWS_SOURCES),
+            )
         ).all()
         for d_item in direct_items:
             if d_item.id not in news_items_dict:
@@ -173,6 +181,7 @@ def list_recent_policy_events(
         select(PolicyEvent, NewsItem, PolicyRule)
         .join(NewsItem, NewsItem.id == PolicyEvent.news_item_id)
         .join(PolicyRule, PolicyRule.id == PolicyEvent.rule_id)
+        .where(NewsItem.source.in_(VERIFIED_NEWS_SOURCES))
     )
     if industry:
         stmt = stmt.where(PolicyEvent.affected_industry == industry.strip().lower())
@@ -239,11 +248,7 @@ def update_policy_rule(
         dir_val = update.direction or "headwind"
         sev_val = update.severity if update.severity is not None else 5.0
     else:
-        desc_val = (
-            update.description
-            if update.description is not None
-            else latest_rule.description
-        )
+        desc_val = update.description if update.description is not None else latest_rule.description
         kw_val = (
             update.match_keywords
             if update.match_keywords is not None

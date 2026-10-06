@@ -7,11 +7,11 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Field | Value |
 |---|---|
 | Current phase | Phase 0 - Foundations |
-| Overall status | Steps 11b, 14, and 15 implemented; manual exchange files, seven-day soak, and clean empirical validation remain pending |
+| Overall status | Real Yahoo fundamentals/macro and official NSE announcements plus RBI/SEBI news loaded; governance, benchmark, FII/DII, India 10Y, PIB and Finance Ministry coverage remain explicit gaps |
 | Last updated | 2026-10-06 |
 | Requirements source | `PRISM_SRS.md` version 1.6 |
 | Initial universe | NIFTY 200 |
-| Active implementation focus | Review E1/E2/E3 user-facing wording and thresholds; supply real NSE disclosure exports; approve quarantined-row cleanup; then run validation, scheduler soak, and recovery sign-off |
+| Active implementation focus | Supply normalized official governance/FII-DII inputs and sufficient benchmark history; approve quarantined-row cleanup; then run historical validation, scheduler soak, and recovery sign-off |
 
 ## Phase status
 
@@ -54,17 +54,39 @@ This is the living implementation record for PRISM. It must be updated after eve
 ## Known blockers
 
 1. Teammate sign-off for SRS item 16.
-2. Shares-outstanding data not yet loaded: the strict official NSE manual-import path is ready, but no real disclosure file has been supplied.
-3. Benchmark is single-source Yahoo Finance.
+2. Shareholding and shares-outstanding remain unloaded: supplied NSE search exports omit required symbol, FII/DII, pledge, total-share and normalized publication fields.
+3. Benchmark remains unloaded. Yahoo history failed the strict calendar/correlation/freshness gate; supplied official history starts only in 2023 and cannot satisfy the 2015 coverage rule.
 4. Historical NIFTY 200 membership is not available.
 5. `risk_engine_parameters:2.0.0` is intentionally `draft`; explicit owner approval is required before it becomes the default.
-6. Previously imported fixture announcement/news/macro rows remain quarantined pending the exact cleanup approval phrase `APPROVE CLEANUP`; no production Step 12 score run has been executed against them.
-7. Step 13 historical backfill/validation must not run on those contaminated inputs;
-   empirical score, confidence, ablation, and Layer 1 conclusions remain unproven.
-8. The Step 14 seven-day soak has not started: running the scheduler would score
-   the quarantined fixture-derived inputs. The soak report records this plainly.
+6. Previously imported fixture announcement/news/macro rows remain quarantined pending the exact cleanup approval phrase `APPROVE CLEANUP`; production components now filter them by permitted source and the 2026-10-01 approved-v1 run excludes them.
+7. Step 13 historical backfill/validation has not been rerun against the new source-filtered inputs; historical empirical conclusions remain pending.
+8. The Step 14 seven-day soak has not started.
 9. A real Supabase restore drill and teammate recovery sign-off remain external,
    destructive/coordination-sensitive checks and have not been claimed complete.
+
+## Data-source coverage snapshot
+
+| Dataset | Source | Status | Rows / coverage | Last date | Blocker or limitation |
+|---|---|---|---:|---|---|
+| Universe | NSE Indices | Real | 200/200 | Current only | Historical membership unavailable |
+| Prices | Yahoo/yfinance | Real | 503,227; 200/200 | 2026-10-01 | Registry success timestamp predates registry tracking |
+| Corporate actions | Yahoo/yfinance | Real | 2,864; global feed | 2026-09-30 | No row expected when no action occurred |
+| Benchmark | Yahoo candidate / supplied NSE files | Missing | 0 | N/A | Yahoo failed strict gate; supplied official files cover only 2023 onward |
+| Fundamentals | Yahoo | Real | 1,074 periods; 200/200 | 2026-06-30 | Publication dates are estimated; VAML has only two quarters |
+| Announcements | Supplied official NSE CSV | Real, insufficient | 3 events; 2/200 | 2026-10-06 | Supplied export is a partial one-day window |
+| Shareholding | Supplied official NSE search export | Missing | 0 | N/A | Required normalized ownership fields absent |
+| Shares outstanding | Official disclosure required | Missing | 0 | N/A | Total shares absent from supplied export |
+| Insider trades | Supplied official NSE search export | Missing | 0 | N/A | Normalized transaction fields absent; XBRL links alone are insufficient |
+| Crude oil | Yahoo | Real | 1,701 | 2026-10-05 | Prototype research source |
+| USD/INR | Yahoo | Real | 1,759 | 2026-10-05 | Prototype research source |
+| India VIX | Yahoo | Real | 1,655 | 2026-10-05 | Not an official NSE distribution feed |
+| India 10Y yield | Yahoo | Missing | 0 | N/A | Yahoo ticker returned HTTP 404; RBI/CCIL export required |
+| FII/DII net flows | Supplied NSE files | Missing | 0 | N/A | Only one day supplied; actual publication timestamps and history required |
+| RBI news | RBI RSS | Real | 10 | 2026-10-06 | Metadata only; re-observed on official feed |
+| SEBI news | SEBI RSS | Real | 30 | 2026-10-04 | Metadata only; re-observed on official feed |
+| PIB / Finance Ministry | Official feed or manual export required | Missing | 0 | N/A | No verified accessible production feed |
+
+Full dataset and risk-dimension tables are in `docs/evidence/DATA_COVERAGE.md`.
 
 ## Verification status
 
@@ -73,24 +95,24 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Python environment | Python 3.12 provisioned by `uv` | 2026-10-05 |
 | Python dependency lock | `uv lock --check` passed; `pyarrow>=25.0.1` locked; optional `ml` extra | 2026-10-05 |
 | Ruff | Passed (0 errors across workspace) | 2026-10-06 |
-| mypy strict mode | Passed (162 source files checked in backend and jobs, 0 errors); default paths are configured so `uv run mypy` is the exact gate | 2026-10-06 |
-| pytest | Passed (267 tests, 0 failures, 1 dependency deprecation warning); DB-backed tests are transaction-isolated and rolled back | 2026-10-06 |
+| mypy strict mode | Passed (176 source files checked in backend and jobs, 0 errors); default paths are configured so `uv run mypy` is the exact gate | 2026-10-06 |
+| pytest | Passed (297 local tests plus 2 read-only hosted-DB API tests, 0 failures; 32 DB-isolated tests skipped because `PRISM_TEST_DATABASE_URL` was not set; 1 dependency deprecation warning) | 2026-10-06 |
 | ESLint | Passed (0 errors, 0 warnings across frontend) | 2026-10-06 |
-| Vitest | Passed (55 tests across 18 suites, 0 failures) | 2026-10-06 |
+| Vitest | Passed (59 tests across 19 suites, 0 failures) | 2026-10-06 |
 | TypeScript/Vite production build | Passed; pre-existing Plotly chunk-size advisory remains | 2026-10-06 |
 | Frontend frozen lockfile | `pnpm install --frozen-lockfile` passed with exact pinned versions | 2026-10-05 |
 | Layer 1 and Layer 2 Immutability | Passed (0 git diff on `backend/app/correlation_mst` and `backend/app/sector_divergence`) | 2026-10-05 |
 | Playwright smoke | Passed (1 end-to-end demo flow in Chromium) | 2026-10-06 |
 | Alembic head | Exactly one head/current: `c1d2e3f4a520`; additive Step E3 config SQL inspected and applied successfully | 2026-10-06 |
-| NIFTY 200 Benchmark Ingestion | Dry-run passed; all 7 PASS RULES passed; single source `^CNX200` verified (`docs/evidence/benchmark_check.md`) | 2026-10-05 |
+| NIFTY 200 Benchmark Ingestion | Current Yahoo candidate blocked: calendar alignment, proxy-correlation confirmation band, and freshness rules failed; zero rows written (`docs/evidence/benchmark_check.md`) | 2026-10-06 |
 | Step 5 Risk & Confidence Engine | Audited against RISK_SCORE_SPEC and CONFIDENCE_SPEC; no silent fallback on missing benchmark; all 145 tests green | 2026-10-05 |
 | Step 6 Shock & Diversification | Shock scenarios, diversification run engine, MST-cluster HHI and portfolio diversification cards implemented; API and frontend verified | 2026-10-05 |
 | Step 7 Fundamentals as Components | 4 fundamental components (leverage, coverage, profit trend, cash flow quality) registered; FundamentalsPanel rendered and tested | 2026-10-05 |
-| Step 12 Full Score | Eight-dimension coverage contract, draft v2 config, real-input confidence, portfolio synthesis, change explanations, ablation, APIs and UI implemented; activation pending approval | 2026-10-06 |
+| Step 12 Full Score | Approved v1 run `9c681f61-1490-4736-a604-68dea745e307` scored 200/200 using explicit verified-news provenance and an identical second call reused it; v2 remains draft | 2026-10-06 |
 | Step 13 Honest Validation | Persistence, PIT backfill job, forward labels, time-ordered metrics/baselines, ablation, calibration, Layer 1 bands, API and UI implemented; empirical run blocked by quarantined fixture inputs | 2026-10-06 |
 | Step 14 Operations | Configured DAG, retries/failure isolation, freshness, explainable alerts, watchlists, incremental rescoring, APIs/UI and export/backup procedure implemented; seven-day soak not started | 2026-10-06 |
 | Step 15 Demonstration | Three fixture portfolios, one-command loader, Playwright smoke, limitations page, demo/viva/architecture/recovery docs and final SRS audit implemented | 2026-10-06 |
-| Step 11b Permitted Sources | 18-row source registry, verified RBI/SEBI RSS metadata ingestion, strict manual NSE importers, source-aware freshness API/UI, and refresh documentation implemented; real governance exports remain pending | 2026-10-06 |
+| Step 11b Permitted Sources | Coverage API/UI/report added; Yahoo fundamentals and three macro series, official NSE announcements, and RBI/SEBI news loaded; incompatible supplied governance/FII-DII files remain visible gaps | 2026-10-06 |
 | Step E1 Explanation Framework | Evidence-bound component explanations, deterministic guardrails, draft templates/glossary, APIs, generic drawer/tooltips, and Why actions implemented; wording approval pending | 2026-10-06 |
 | Step E2 MST Explanations | Evidence-bound edge/pair/node explainers, deterministic MST math, APIs, interactive drawer/search/legends, and tests implemented; wording approval and production diagnostics remain pending | 2026-10-06 |
 | Step E3 Sector Explanations | Evidence-bound stock/industry divergence explainers, read-only peer reconstruction, APIs, stock panels, and sectors overview implemented; draft thresholds await review | 2026-10-06 |
@@ -107,6 +129,17 @@ After every material update:
 5. Change a phase to complete only when its SRS exit criteria are satisfied.
 
 ## Change log
+
+### 2026-10-06 - Real-source ingestion and honest coverage report
+
+- Preserved all supplied originals under ignored `data/raw/` source folders; imported only files that satisfied strict schemas and source terms.
+- Loaded 1,074 Yahoo quarterly fundamental periods for 200 stocks and generated a per-stock audit; 199 stocks have at least four quarters and VAML has two.
+- Dry-ran and imported the supplied NSE announcement export: 20 rows parsed, 3 events linked to 2 universe stocks, and 17 non-universe rows skipped.
+- Loaded Yahoo crude-oil, USD/INR and India-VIX histories; left India 10Y and FII/DII explicitly missing.
+- Refreshed RBI/SEBI RSS metadata, promoted only 40 items re-observed on official feeds to verified production provenance, and excluded legacy fixture/PIB rows from production components.
+- Added `/api/v1/data/coverage`, Data Health coverage tables, constructed-data coverage tests, and `docs/evidence/DATA_COVERAGE.md`.
+- Calculated approved v1 scores for 200/200 stocks and verified the identical second invocation reused the existing run. Draft v2 was not executed.
+- Attempted the Yahoo NIFTY 200 benchmark import; the strict gate failed and wrote zero benchmark rows.
 
 ### 2026-09-29 - Repository bootstrap
 

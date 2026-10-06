@@ -7,9 +7,10 @@ import logging
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from backend.app.data_sources.service import mark_source_success
 from backend.app.db.models import MacroObservation, MacroSeriesDefinition
 from backend.app.db.session import SessionLocal
 from backend.app.macro.adapters.base import MacroSeriesAdapter, ParsedObservation
@@ -82,18 +83,26 @@ def ingest_macro_series(
         if selected_source not in {"YAHOO", "CSV_IMPORT"}:
             raise ValueError(f"Unsupported macro observation source: {selected_source}")
 
-        # Load existing (obs_date, version) for idempotency (D6)
+        # Load existing source/version state. Historical fixture rows are retained
+        # but never allowed to block a real Yahoo observation for the same date.
         existing_rows = session.execute(
-            select(MacroObservation.obs_date, MacroObservation.version).where(
-                MacroObservation.series_key == key
-            )
+            select(
+                MacroObservation.obs_date,
+                MacroObservation.version,
+                MacroObservation.source,
+            ).where(MacroObservation.series_key == key)
         ).all()
-        existing: set[tuple[date, int]] = {(r[0], r[1]) for r in existing_rows}
+        yahoo_dates = {r[0] for r in existing_rows if r[2] == "YAHOO"}
+        max_version_by_date: dict[date, int] = {}
+        for obs_date, version, _source in existing_rows:
+            max_version_by_date[obs_date] = max(max_version_by_date.get(obs_date, 0), version)
 
         inserted_count = 0
         for o in observations:
-            if (o.obs_date, o.version) in existing:
+            if selected_source == "YAHOO" and o.obs_date in yahoo_dates:
                 continue
+
+            version = max(max_version_by_date.get(o.obs_date, 0) + 1, o.version)
 
             row = MacroObservation(
                 series_key=o.series_key,
@@ -102,12 +111,16 @@ def ingest_macro_series(
                 published_at=o.published_at,
                 ingested_at=o.ingested_at,
                 source=selected_source,
-                version=o.version,
+                version=version,
             )
             session.add(row)
-            existing.add((o.obs_date, o.version))
+            max_version_by_date[o.obs_date] = version
+            if selected_source == "YAHOO":
+                yahoo_dates.add(o.obs_date)
             inserted_count += 1
 
+        if selected_source == "YAHOO":
+            mark_source_success(session, f"macro_{key}_yahoo", verified=True)
         session.commit()
         results[key] = inserted_count
         logger.info("Committed %d new observations for %s", inserted_count, key)
@@ -147,6 +160,14 @@ def main() -> None:
     try:
         counts = ingest_macro_series(session, series_keys=series_keys, adapters=adapters)
         logger.info("Macro ingestion finished: %s", counts)
+        latest_dates = dict(
+            session.execute(
+                select(MacroObservation.series_key, func.max(MacroObservation.obs_date))
+                .where(MacroObservation.source == "YAHOO")
+                .group_by(MacroObservation.series_key)
+            ).all()
+        )
+        logger.info("Yahoo macro latest dates: %s", latest_dates)
     finally:
         session.close()
 

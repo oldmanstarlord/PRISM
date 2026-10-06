@@ -97,7 +97,10 @@ def get_macro_series_detail(
     if not series_def:
         return None
 
-    obs_query = select(MacroObservation).where(MacroObservation.series_key == series_key)
+    obs_query = select(MacroObservation).where(
+        MacroObservation.series_key == series_key,
+        MacroObservation.source.in_(("YAHOO", "CSV_IMPORT")),
+    )
     if as_of:
         obs_query = obs_query.where(MacroObservation.obs_date <= as_of)
 

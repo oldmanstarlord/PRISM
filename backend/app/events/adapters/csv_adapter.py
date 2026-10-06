@@ -7,6 +7,7 @@ import hashlib
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from backend.app.events.adapters.base import RawAnnouncement
 
@@ -24,6 +25,8 @@ _HEADER_ALIASES = {
     "isin": ("ISIN", "isin"),
     "body": ("DETAILS", "Details", "body"),
 }
+
+_NSE_TIMEZONE = ZoneInfo("Asia/Kolkata")
 
 
 def _column(fieldnames: Sequence[str], logical_name: str, *, required: bool) -> str | None:
@@ -49,7 +52,13 @@ def _parse_published_at(value: str) -> datetime:
     ):
         try:
             parsed = datetime.strptime(clean, fmt)
-            return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+            # NSE's official export displays naive broadcast times in Indian
+            # Standard Time. Persist UTC while retaining actual-source semantics.
+            return (
+                parsed.astimezone(UTC)
+                if parsed.tzinfo
+                else parsed.replace(tzinfo=_NSE_TIMEZONE).astimezone(UTC)
+            )
         except ValueError:
             continue
     raise ValueError(f"unreadable broadcast timestamp: {value!r}")

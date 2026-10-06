@@ -42,7 +42,7 @@ def test_recency_decay_and_offset_cap_math(session) -> None:
     doc = SourceDocument(
         id=uuid4(),
         security_id=sec.id,
-        source="NSE",
+        source="NSE_MANUAL_IMPORT",
         doc_type="announcement",
         published_at=datetime(2024, 3, 20, 10, 0, tzinfo=IST),
         ingested_at=datetime(2024, 3, 20, 10, 5, tzinfo=IST),
@@ -181,7 +181,7 @@ def test_no_look_ahead_event_filtering(session) -> None:
     doc = SourceDocument(
         id=uuid4(),
         security_id=sec.id,
-        source="NSE",
+        source="NSE_MANUAL_IMPORT",
         doc_type="announcement",
         published_at=datetime(2024, 3, 15, 10, 0, tzinfo=IST),
         ingested_at=datetime(2024, 3, 15, 10, 5, tzinfo=IST),

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import pytest
+
 from backend.app.macro.adapters.csv_adapter import CsvMacroAdapter
 
 
@@ -74,3 +76,18 @@ def test_versioning_support(tmp_path: Path) -> None:
     assert len(obs_v2) == 2
     assert obs_v2[1].value == 83.15
     assert obs_v2[1].version == 2
+
+
+def test_manual_macro_import_requires_actual_timezone_aware_publication(tmp_path: Path) -> None:
+    missing = tmp_path / "missing_publication.csv"
+    missing.write_text("date,value\n2026-10-01,12.3\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="actual published_at"):
+        CsvMacroAdapter(file_path=missing).fetch_observations("fii_dii_net_flows")
+
+    naive = tmp_path / "naive_publication.csv"
+    naive.write_text(
+        "date,value,published_at\n2026-10-01,12.3,2026-10-01T18:00:00\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="must include a timezone"):
+        CsvMacroAdapter(file_path=naive).fetch_observations("fii_dii_net_flows")

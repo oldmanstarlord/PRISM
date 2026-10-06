@@ -96,6 +96,19 @@ beforeEach(() => {
           }]),
         });
       }
+      if (url.includes("/data/coverage")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            generated_at: "2026-10-06T12:00:00Z",
+            universe_size: 200,
+            datasets: [],
+            dimensions: [],
+            previous_score: null,
+            latest_score: null,
+          }),
+        });
+      }
       if (url.includes("/data/crosscheck/latest")) {
         return Promise.resolve({
           ok: true,

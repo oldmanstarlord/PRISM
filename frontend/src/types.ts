@@ -896,6 +896,49 @@ export interface DataSourceRegistryItem {
   notes: string | null;
 }
 
+export interface DatasetCoverageItem {
+  source_key: string;
+  dataset: string;
+  source: string;
+  data_status: "real" | "missing";
+  coverage_status: "ok" | "stale" | "missing" | "insufficient";
+  rows: number;
+  first_date: string | null;
+  last_date: string | null;
+  universe_covered: number;
+  universe_total: number;
+  universe_share: number;
+  staleness: string;
+  limitations: string | null;
+}
+
+export interface DimensionCoverageItem {
+  dimension: string;
+  total_stocks: number;
+  ok: number;
+  stale: number;
+  missing: number;
+  insufficient: number;
+  shares: Record<"ok" | "stale" | "missing" | "insufficient", number>;
+}
+
+export interface CoverageScoreSummary {
+  run_id: string;
+  as_of_date: string;
+  config_version: string;
+  median_risk: number;
+  median_confidence: number;
+}
+
+export interface DataCoverageReport {
+  generated_at: string;
+  universe_size: number;
+  datasets: DatasetCoverageItem[];
+  dimensions: DimensionCoverageItem[];
+  previous_score: CoverageScoreSummary | null;
+  latest_score: CoverageScoreSummary | null;
+}
+
 export interface OperationsPipelineRun {
   id: string;
   workflow: string;

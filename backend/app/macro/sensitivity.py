@@ -157,6 +157,7 @@ def calculate_sector_macro_sensitivities(
                 MacroObservation.obs_date <= as_of,
                 MacroObservation.obs_date >= min_calendar_date,
                 MacroObservation.published_at <= cutoff_time,
+                MacroObservation.source == "YAHOO",
             )
             .order_by(MacroObservation.obs_date.asc())
         ).all()

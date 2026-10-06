@@ -47,6 +47,7 @@ from backend.app.news_impact.schemas import (
     PortfolioHoldingImpactOut,
     PortfolioNewsOverlayOut,
 )
+from backend.app.policy.provenance import VERIFIED_NEWS_SOURCE_MAP, base_news_source
 from backend.app.portfolio.covariance import get_adjusted_returns_panel
 from backend.app.portfolio.shock import calculate_regression_betas
 
@@ -85,7 +86,7 @@ def load_news_impact_config(session: Session) -> tuple[dict[str, Any], str]:
 
 def _source_is_live(session: Session, news: NewsItem, config: dict[str, Any]) -> bool:
     mapping = config.get("live_source_map", {})
-    source_key = mapping.get(news.source) if isinstance(mapping, dict) else None
+    source_key = mapping.get(base_news_source(news.source)) if isinstance(mapping, dict) else None
     if not isinstance(source_key, str):
         return False
     source = session.get(DataSource, source_key)
@@ -395,7 +396,11 @@ def run_incremental_news_impact(
             DataSource.status == "live", DataSource.last_success_at.is_not(None)
         )
     ).all()
-    allowed_sources = sorted(source for source, key in mapping.items() if key in live_keys)
+    allowed_sources = sorted(
+        VERIFIED_NEWS_SOURCE_MAP.get(source, source)
+        for source, key in mapping.items()
+        if key in live_keys
+    )
     statement = (
         select(NewsItem).where(NewsItem.source.in_(allowed_sources)).order_by(NewsItem.published_at)
     )

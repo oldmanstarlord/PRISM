@@ -22,7 +22,7 @@ def test_official_announcement_export_is_strict_and_deterministic() -> None:
     assert first == second
     assert first[0].symbol == "TEST"
     assert first[0].source_doc_id == second[0].source_doc_id
-    assert first[0].published_at == datetime(2026, 10, 5, 18, 15, tzinfo=UTC)
+    assert first[0].published_at == datetime(2026, 10, 5, 12, 45, tzinfo=UTC)
 
 
 def test_missing_announcement_file_fails_loudly_before_any_write(tmp_path: Path) -> None:

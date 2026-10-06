@@ -10,16 +10,21 @@ Quality checks:
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import logging
 import sys
+import time
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.core.model_config import FundamentalAnalysisConfig, load_model_config
+from backend.app.data_sources.service import mark_source_success
 from backend.app.db.models import (
     FundamentalPeriod,
     PipelineRun,
@@ -45,13 +50,35 @@ def ingest_results_for_security(
     config: FundamentalAnalysisConfig,
     as_of: date,
     apply: bool = False,
-) -> dict[str, int]:
+) -> dict[str, Any]:
     """Ingest results for a single security idempotently."""
-    counts = {"documents": 0, "periods_created": 0, "periods_skipped": 0, "metrics_saved": 0}
+    counts: dict[str, Any] = {
+        "documents": 0,
+        "periods_created": 0,
+        "periods_skipped": 0,
+        "metrics_saved": 0,
+        "quarters_available": 0,
+        "estimated_publication_dates": [],
+        "status": "missing",
+        "failure": None,
+    }
     docs = adapter.fetch_results(symbol=symbol, isin=security.isin)
     if not docs:
+        counts["failure"] = getattr(adapter, "last_error", None) or "No documents returned"
         logger.info("No documents returned for %s (%s)", symbol, adapter.source_tag)
         return counts
+
+    periods = [period for doc in docs for period in doc.periods]
+    quarter_count = sum(period.period_type == "quarter" for period in periods)
+    counts["quarters_available"] = quarter_count
+    counts["estimated_publication_dates"] = sorted(
+        {
+            period.published_at.isoformat()
+            for period in periods
+            if period.published_at_method == "estimated"
+        }
+    )
+    counts["status"] = "ok" if quarter_count >= 4 else "insufficient"
 
     for doc in docs:
         content_hash = doc.content_hash
@@ -80,7 +107,10 @@ def ingest_results_for_security(
                     raw_path=doc.raw_path,
                 )
                 session.add(new_doc)
-            counts["documents"] += 1
+                # No ORM relationship is declared between these models, so make
+                # the parent visible before inserting periods that reference it.
+                session.flush()
+            counts["documents"] = int(counts["documents"]) + 1
 
         for p in doc.periods:
             # Quality checks
@@ -117,7 +147,7 @@ def ingest_results_for_security(
                     and latest.cash_from_operations == p.cash_from_operations
                 )
                 if matches:
-                    counts["periods_skipped"] += 1
+                    counts["periods_skipped"] = int(counts["periods_skipped"]) + 1
                     continue
                 # Restatement: increment version row, never overwrite!
                 version = latest.version + 1
@@ -146,7 +176,7 @@ def ingest_results_for_security(
                     extra=extra if extra else None,
                 )
                 session.add(period_row)
-            counts["periods_created"] += 1
+            counts["periods_created"] = int(counts["periods_created"]) + 1
 
     if apply:
         session.flush()
@@ -180,6 +210,29 @@ def main() -> None:
         help="Fundamentals source adapter (default: yahoo)",
     )
     parser.add_argument(
+        "--request-delay",
+        type=float,
+        default=0.75,
+        help="Delay before each Yahoo request in seconds (default: 0.75)",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=20,
+        help="Commit/pause after this many securities (default: 20)",
+    )
+    parser.add_argument(
+        "--batch-pause",
+        type=float,
+        default=5.0,
+        help="Pause between Yahoo batches in seconds (default: 5)",
+    )
+    parser.add_argument(
+        "--report-file",
+        type=Path,
+        help="Optional JSON path for the per-stock audit report",
+    )
+    parser.add_argument(
         "--file",
         type=Path,
         help="Path to CSV or JSON file (required if source is csv or json)",
@@ -211,7 +264,7 @@ def main() -> None:
     try:
         # Load config
         try:
-            cfg_envelope = load_model_config(session, "fundamental_analysis", approved_only=False)
+            cfg_envelope = load_model_config(session, "fundamental_analysis", approved_only=True)
             config = FundamentalAnalysisConfig(**cfg_envelope.configuration)
         except Exception:
             config = FundamentalAnalysisConfig()
@@ -232,6 +285,7 @@ def main() -> None:
             adapter = YfinanceFundamentalsAdapter(
                 quarterly_lag_days=config.quarterly_reporting_lag_days,
                 annual_lag_days=config.annual_reporting_lag_days,
+                request_delay=args.request_delay,
             )
 
         # Resolve target securities
@@ -248,7 +302,11 @@ def main() -> None:
             stmt = (
                 select(Security, SecurityAlias.symbol)
                 .join(SecurityAlias, SecurityAlias.security_id == Security.id)
-                .where(Security.is_active.is_(True))
+                .where(
+                    Security.is_active.is_(True),
+                    SecurityAlias.exchange == "NSE",
+                    SecurityAlias.valid_to.is_(None),
+                )
             )
             rows = session.execute(stmt).all()
             sec_pairs = [(r[0], r[1]) for r in rows]
@@ -263,38 +321,117 @@ def main() -> None:
             "APPLY" if args.apply else "DRY-RUN",
         )
 
-        total_counts = {
+        started_at = datetime.now(UTC)
+        total_counts: dict[str, int] = {
             "documents": 0,
             "periods_created": 0,
             "periods_skipped": 0,
             "metrics_saved": 0,
         }
-        for sec, sym in sec_pairs:
-            c = ingest_results_for_security(
-                session=session,
-                security=sec,
-                symbol=sym,
-                adapter=adapter,
-                config=config,
-                as_of=as_of_date,
-                apply=args.apply,
+        stock_reports: list[dict[str, Any]] = []
+        for index, (sec, sym) in enumerate(sec_pairs, start=1):
+            try:
+                with session.begin_nested():
+                    c = ingest_results_for_security(
+                        session=session,
+                        security=sec,
+                        symbol=sym,
+                        adapter=adapter,
+                        config=config,
+                        as_of=as_of_date,
+                        apply=args.apply,
+                    )
+            except Exception as exc:
+                logger.exception("Fundamentals ingestion failed for %s", sym)
+                c = {
+                    "documents": 0,
+                    "periods_created": 0,
+                    "periods_skipped": 0,
+                    "metrics_saved": 0,
+                    "quarters_available": 0,
+                    "estimated_publication_dates": [],
+                    "status": "missing",
+                    "failure": f"{type(exc).__name__}: {exc}",
+                }
+            for key in total_counts:
+                total_counts[key] += int(c[key])
+            stock_reports.append(
+                {
+                    "symbol": sym,
+                    "isin": sec.isin,
+                    "quarters_available": c["quarters_available"],
+                    "estimated_publication_dates": c["estimated_publication_dates"],
+                    "status": c["status"],
+                    "failure": c["failure"],
+                }
             )
-            for k in total_counts:
-                total_counts[k] += c[k]
+
+            if index % args.batch_size == 0 or index == len(sec_pairs):
+                if args.apply:
+                    session.commit()
+                logger.info(
+                    "Completed Yahoo fundamentals batch through %d/%d", index, len(sec_pairs)
+                )
+                if index < len(sec_pairs) and args.batch_pause > 0:
+                    time.sleep(args.batch_pause)
+
+        report = {
+            "source": adapter.source_tag,
+            "mode": "apply" if args.apply else "dry-run",
+            "as_of": as_of_date.isoformat(),
+            "target_count": len(sec_pairs),
+            "counts": total_counts,
+            "status_counts": {
+                status: sum(row["status"] == status for row in stock_reports)
+                for status in ("ok", "insufficient", "missing")
+            },
+            "stocks": stock_reports,
+        }
+        report_path = args.report_file or Path(
+            f"artifacts/fundamentals_ingestion_{as_of_date.isoformat()}.json"
+        )
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+        logger.info("Wrote per-stock fundamentals audit report to %s", report_path)
 
         if args.apply:
-            # Record PipelineRun
+            successful_fetches = sum(int(row["quarters_available"]) for row in stock_reports)
+            if successful_fetches:
+                mark_source_success(session, "fundamentals_yahoo", verified=True)
+            failed_stocks = sum(bool(row["failure"]) for row in stock_reports)
+            run_status = (
+                "failed"
+                if failed_stocks == len(stock_reports)
+                else "partial"
+                if failed_stocks
+                else "completed"
+            )
+            config_payload = {
+                "source": adapter.source_tag,
+                "as_of": as_of_date.isoformat(),
+                "request_delay": args.request_delay,
+                "batch_size": args.batch_size,
+                "batch_pause": args.batch_pause,
+            }
             run = PipelineRun(
-                pipeline_name="ingest_results",
-                status="completed",
-                started_at=datetime.now(UTC),
+                workflow="ingest_results",
+                code_version="working-tree",
+                configuration_hash=hashlib.sha256(
+                    json.dumps(config_payload, sort_keys=True).encode()
+                ).hexdigest(),
+                status=run_status,
+                started_at=started_at,
                 completed_at=datetime.now(UTC),
-                manifest={
-                    "source": adapter.source_tag,
-                    "target_count": len(sec_pairs),
-                    "counts": total_counts,
-                    "as_of": as_of_date.isoformat(),
+                row_counts=total_counts,
+                quality_summary={
+                    "report_file": str(report_path),
+                    "status_counts": report["status_counts"],
+                    "stocks": stock_reports,
                 },
+                error_summary="; ".join(
+                    f"{row['symbol']}: {row['failure']}" for row in stock_reports if row["failure"]
+                )
+                or None,
             )
             session.add(run)
             session.commit()

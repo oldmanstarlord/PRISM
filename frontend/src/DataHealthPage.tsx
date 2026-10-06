@@ -18,6 +18,7 @@ import { useApi } from "./api";
 import { FreshnessBadge, StatusChip } from "./components";
 import type {
   CrosscheckLatestResponse,
+  DataCoverageReport,
   DataSourceRegistryItem,
   FreshnessResponse,
   OperationsFreshness,
@@ -47,6 +48,8 @@ export default function DataHealthPage() {
   const { data: sourceRegistry = [], error: sourceRegistryError } =
     useApi<DataSourceRegistryItem[]>("/data/sources");
   const { data: pipelineRuns = [] } = useApi<OperationsPipelineRun[]>("/ops/pipeline-runs");
+  const { data: coverage, error: coverageError } =
+    useApi<DataCoverageReport>("/data/coverage");
 
   const isLoading = loadingQuality || loadingFreshness || loadingCrosscheck;
 
@@ -61,6 +64,57 @@ export default function DataHealthPage() {
             Continuous point-in-time auditing, freshness tracking, and multi-source price cross-checks.
           </Typography>
         </Box>
+
+        {coverage && (
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 650, mb: 1.5 }}>
+              Real-data coverage
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Missing means no permitted production rows are loaded; it is never replaced with fixture data.
+            </Typography>
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small" aria-label="dataset coverage table">
+                <TableHead><TableRow>
+                  <TableCell>Dataset / source</TableCell><TableCell>Data</TableCell>
+                  <TableCell>Coverage</TableCell><TableCell align="right">Rows</TableCell>
+                  <TableCell>First / last date</TableCell><TableCell>Universe</TableCell>
+                  <TableCell>Staleness</TableCell><TableCell>Limitations</TableCell>
+                </TableRow></TableHead>
+                <TableBody>{coverage.datasets.map((item) => (
+                  <TableRow key={item.source_key}>
+                    <TableCell><Typography variant="body2" sx={{ fontWeight: 700 }}>{item.dataset}</Typography>
+                      <Typography variant="caption" color="text.secondary">{item.source}</Typography></TableCell>
+                    <TableCell><StatusChip status={item.data_status} /></TableCell>
+                    <TableCell><StatusChip status={item.coverage_status} /></TableCell>
+                    <TableCell align="right">{item.rows.toLocaleString()}</TableCell>
+                    <TableCell>{item.first_date ?? "—"} / {item.last_date ?? "—"}</TableCell>
+                    <TableCell>{item.universe_covered}/{item.universe_total} ({(item.universe_share * 100).toFixed(1)}%)</TableCell>
+                    <TableCell><StatusChip status={item.staleness} /></TableCell>
+                    <TableCell sx={{ maxWidth: 280 }}>{item.limitations ?? "—"}</TableCell>
+                  </TableRow>
+                ))}</TableBody>
+              </Table>
+            </TableContainer>
+
+            <TableContainer component={Paper} variant="outlined" sx={{ mt: 2 }}>
+              <Table size="small" aria-label="risk dimension coverage table">
+                <TableHead><TableRow><TableCell>Risk dimension</TableCell><TableCell>OK</TableCell>
+                  <TableCell>Stale</TableCell><TableCell>Missing</TableCell><TableCell>Insufficient</TableCell></TableRow></TableHead>
+                <TableBody>{coverage.dimensions.map((item) => (
+                  <TableRow key={item.dimension}><TableCell sx={{ textTransform: "capitalize", fontWeight: 700 }}>{item.dimension}</TableCell>
+                    {(["ok", "stale", "missing", "insufficient"] as const).map((status) => (
+                      <TableCell key={status}>{item[status]} ({(item.shares[status] * 100).toFixed(1)}%)</TableCell>
+                    ))}
+                  </TableRow>
+                ))}</TableBody>
+              </Table>
+            </TableContainer>
+            <Typography variant="body2" sx={{ mt: 1.5 }}>
+              Median risk / confidence — before: {coverage.previous_score ? `${coverage.previous_score.median_risk.toFixed(2)} / ${coverage.previous_score.median_confidence.toFixed(2)}` : "not available"}; after: {coverage.latest_score ? `${coverage.latest_score.median_risk.toFixed(2)} / ${coverage.latest_score.median_confidence.toFixed(2)}` : "not available"}.
+            </Typography>
+          </Box>
+        )}
 
         <Box>
           <Typography variant="h6" sx={{ fontWeight: 650, mb: 1.5 }}>
@@ -151,7 +205,7 @@ export default function DataHealthPage() {
           </TableContainer>
         </Box>
 
-        {(qualityError || freshnessError || crosscheckError || sourceRegistryError) && (
+        {(qualityError || freshnessError || crosscheckError || sourceRegistryError || coverageError) && (
           <Alert severity="warning">
             Some data quality feeds are temporarily unavailable.
           </Alert>

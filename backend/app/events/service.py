@@ -68,7 +68,11 @@ def get_stock_events(
         select(EventItem, SourceDocument, TextScore)
         .outerjoin(SourceDocument, EventItem.source_document_id == SourceDocument.id)
         .outerjoin(TextScore, EventItem.id == TextScore.item_id)
-        .where(EventItem.security_id == sec.id)
+        .where(
+            EventItem.security_id == sec.id,
+            SourceDocument.source == "NSE_MANUAL_IMPORT",
+            SourceDocument.doc_type == "announcement",
+        )
         .order_by(desc(EventItem.effective_trading_date), desc(EventItem.published_at))
         .limit(limit)
     )
@@ -100,6 +104,10 @@ def get_recent_events(
         .outerjoin(TextScore, EventItem.id == TextScore.item_id)
         .join(Security, EventItem.security_id == Security.id)
         .outerjoin(SecurityAlias, Security.id == SecurityAlias.security_id)
+        .where(
+            SourceDocument.source == "NSE_MANUAL_IMPORT",
+            SourceDocument.doc_type == "announcement",
+        )
     )
 
     if event_type:

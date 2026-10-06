@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from backend.app.db.models import NewsItem, PolicyEvent, PolicyRule
 from backend.app.db.session import SessionLocal
 from backend.app.policy.matcher import match_headline_to_rules
+from backend.app.policy.provenance import VERIFIED_NEWS_SOURCES
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("match_policy")
@@ -38,7 +39,11 @@ def run_match_policy(
     logger.info("Loaded %d policy rules (include_draft=%s)", len(rules), include_draft)
 
     # 2. Query news items
-    news_query = select(NewsItem).order_by(NewsItem.published_at.desc())
+    news_query = (
+        select(NewsItem)
+        .where(NewsItem.source.in_(VERIFIED_NEWS_SOURCES))
+        .order_by(NewsItem.published_at.desc())
+    )
     if limit:
         news_query = news_query.limit(limit)
 

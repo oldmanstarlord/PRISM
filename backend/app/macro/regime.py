@@ -199,6 +199,7 @@ def classify_market_regime(
         select(MacroObservation)
         .where(
             MacroObservation.series_key == "india_vix",
+            MacroObservation.source == "YAHOO",
             MacroObservation.obs_date <= as_of,
             MacroObservation.published_at <= cutoff_time,
         )
@@ -271,6 +272,7 @@ def classify_market_regime(
             select(MacroObservation.value)
             .where(
                 MacroObservation.series_key == "india_vix",
+                MacroObservation.source == "YAHOO",
                 MacroObservation.obs_date <= as_of,
                 MacroObservation.published_at <= cutoff_time,
             )

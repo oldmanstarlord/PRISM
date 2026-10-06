@@ -15,6 +15,7 @@ from backend.app.db.models import ModelConfig, NewsItem, NewsSecurityLink, Secur
 from backend.app.db.session import SessionLocal
 from backend.app.policy.adapters.base import NewsAdapter, RawNewsItem
 from backend.app.policy.adapters.rss_adapter import RssNewsAdapter
+from backend.app.policy.provenance import VERIFIED_NEWS_SOURCE_MAP
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("ingest_news")
@@ -94,7 +95,7 @@ def run_ingest_news(
     logger.info("Fetched %d raw news items from adapter (%s)", len(raw_items), source_type)
 
     # 3. Query existing content hashes for deduplication
-    existing_hashes = set(session.scalars(select(NewsItem.content_hash)).all())
+    existing_by_hash = {row.content_hash: row for row in session.scalars(select(NewsItem)).all()}
 
     # Pre-fetch active securities and symbols for ticker linking
     from backend.app.db.models import SecurityAlias
@@ -110,19 +111,26 @@ def run_ingest_news(
         "total_fetched": len(raw_items),
         "inserted_news": 0,
         "skipped_duplicate": 0,
+        "verified_existing": 0,
         "security_links_created": 0,
     }
 
     now_utc = datetime.now(UTC)
 
     for item in raw_items:
-        if item.content_hash in existing_hashes:
+        verified_source = VERIFIED_NEWS_SOURCE_MAP.get(item.source, item.source)
+        existing_item = existing_by_hash.get(item.content_hash)
+        if existing_item is not None:
+            if not dry_run and existing_item.source != verified_source:
+                existing_item.source = verified_source
+                session.add(existing_item)
+                stats["verified_existing"] += 1
             stats["skipped_duplicate"] += 1
             continue
 
         news_row = NewsItem(
             id=uuid4(),
-            source=item.source,
+            source=verified_source,
             published_at=item.published_at,
             ingested_at=now_utc,
             headline=item.headline,
@@ -132,7 +140,7 @@ def run_ingest_news(
 
         if not dry_run:
             session.add(news_row)
-            existing_hashes.add(item.content_hash)
+            existing_by_hash[item.content_hash] = news_row
 
             # Security links
             links = link_news_to_securities(session, news_row, securities)

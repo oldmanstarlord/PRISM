@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import select
 
 from backend.app.db.models import NewsItem, PolicyEvent, PolicyRule
+from backend.app.policy.provenance import VERIFIED_NEWS_SOURCES
 from backend.app.risk_score.components.base import ComponentValue, RiskContext
 
 
@@ -35,6 +36,7 @@ class NewsPolicyPressureComponent:
         latest_news_at = session.scalars(
             select(NewsItem.published_at)
             .where(
+                NewsItem.source.in_(VERIFIED_NEWS_SOURCES),
                 NewsItem.published_at <= context.data_cutoff,
                 NewsItem.ingested_at <= context.data_cutoff,
             )
@@ -46,10 +48,11 @@ class NewsPolicyPressureComponent:
         stmt = (
             select(PolicyEvent, PolicyRule)
             .join(PolicyRule, PolicyEvent.rule_id == PolicyRule.id)
+            .join(NewsItem, PolicyEvent.news_item_id == NewsItem.id)
             .where(
+                NewsItem.source.in_(VERIFIED_NEWS_SOURCES),
                 PolicyEvent.matched_at <= context.data_cutoff,
-                PolicyEvent.matched_at
-                >= context.data_cutoff - timedelta(days=lookback_days),
+                PolicyEvent.matched_at >= context.data_cutoff - timedelta(days=lookback_days),
             )
             .order_by(PolicyEvent.matched_at.desc())
         )

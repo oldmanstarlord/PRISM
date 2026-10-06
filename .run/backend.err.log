@@ -9574,3 +9574,147 @@ INFO:     Started server process [24688]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 WARNING:  WatchFiles detected changes in 'tests\explain\test_faithfulness.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [24688]
+WARNING:  WatchFiles detected changes in 'tests\explain\test_golden_explanations.py', 'tests\explain\test_faithfulness.py', 'tests\explain\test_coverage_matrix.py', 'tests\explain\test_performance_budgets.py', 'tests\explain\test_wording_guards.py'. Reloading...
+INFO:     Started server process [32376]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [32376]
+INFO:     Started server process [8068]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend\app\fundamentals\adapters\yfinance_adapter.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [8068]
+WARNING:  WatchFiles detected changes in 'backend\app\data_sources\coverage.py', 'jobs\score_events.py', 'backend\app\api\v1\router.py', 'tests\data_sources\test_importers.py', 'backend\app\events\adapters\csv_adapter.py', 'tests\events\test_event_risk_component.py', 'backend\app\data_sources\schemas.py', 'backend\app\risk_score\components\news_policy.py', 'tests\data_sources\test_coverage.py', 'backend\app\risk_score\components\events.py', 'jobs\generate_data_coverage.py', 'jobs\ingest_macro.py', 'backend\app\risk_score\components\macro.py', 'jobs\ingest_results.py', 'backend\app\fundamentals\adapters\yfinance_adapter.py'. Reloading...
+INFO:     Started server process [23760]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [23760]
+INFO:     Started server process [26860]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'jobs\ingest_benchmark.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [26860]
+INFO:     Started server process [15792]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend\app\market_data\benchmark_check.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [15792]
+WARNING:  WatchFiles detected changes in 'backend\app\macro\regime.py', 'jobs\match_policy.py', 'backend\app\macro\sensitivity.py'. Reloading...
+INFO:     Started server process [30504]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [30504]
+INFO:     Started server process [35532]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend\app\data_sources\coverage.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [35532]
+WARNING:  WatchFiles detected changes in 'jobs\generate_data_coverage.py'. Reloading...
+INFO:     Started server process [31332]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [31332]
+WARNING:  WatchFiles detected changes in 'backend\app\macro\adapters\csv_adapter.py', 'tests\macro\test_macro_point_in_time.py'. Reloading...
+INFO:     Started server process [24844]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [24844]
+INFO:     Started server process [32288]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend\app\correlation_mst\calculator.py', 'backend\app\risk_score\components\news_policy.py', 'tests\explain\test_faithfulness.py', 'tests\api\test_operations_endpoints.py', 'tests\explain\test_coverage_matrix.py', 'backend\app\market_data\benchmark_check.py', 'backend\app\validation\metrics.py', 'backend\app\governance\adapters\csv_adapter.py', 'backend\app\policy\rules.py', 'backend\app\api\v1\router.py', 'backend\app\validation\service.py', 'backend\app\risk_score\confidence.py', 'backend\app\db\models.py', 'tests\operations\test_operations.py', 'backend\app\portfolio\service.py', 'tests\risk_score\test_step12_full_score.py', 'jobs\ingest_macro.py', 'backend\app\explain\service.py', 'backend\app\explain\diversification.py', 'backend\app\portfolio\score.py', 'tests\explain\test_performance_budgets.py', 'backend\app\correlation_mst\service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [32288]
+WARNING:  WatchFiles detected changes in 'backend\app\macro\adapters\csv_adapter.py', 'backend\app\market_data\benchmark_check.py', 'backend\app\explain\shock.py', 'backend\app\risk_score\confidence.py', 'backend\app\explain\diversification.py', 'tests\api\test_validation_endpoints.py', 'tests\api\test_operations_endpoints.py', 'tests\risk_score\test_confidence.py', 'tests\news_impact\test_math.py', 'backend\app\policy\rules.py', 'tests\api\test_portfolio_endpoints.py', 'tests\operations\test_operations.py', 'tests\validation\test_score_validation.py', 'tests\risk_score\test_coverage_matrix.py', 'jobs\precompute_explanations.py', 'tests\explain\test_coverage_matrix.py', 'backend\app\governance\adapters\csv_adapter.py', 'backend\app\portfolio\service.py', 'tests\news_impact\test_api.py', 'tests\risk_score\test_step12_full_score.py', 'backend\app\explain\service.py', 'tests\explain\test_performance_budgets.py', 'backend\app\validation\service.py', 'backend\app\policy\service.py', 'backend\app\db\models.py', 'jobs\ingest_macro.py', 'tests\explain\test_wording_guards.py'. Reloading...
+INFO:     Started server process [18280]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [18280]
+INFO:     Started server process [32856]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend\app\correlation_mst\calculator.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [32856]
+WARNING:  WatchFiles detected changes in 'tests\risk_score\test_coverage_matrix.py', 'jobs\precompute_explanations.py', 'tests\explain\test_faithfulness.py', 'tests\api\test_operations_endpoints.py', 'tests\risk_score\test_confidence.py', 'tests\explain\test_coverage_matrix.py', 'backend\app\explain\shock.py', 'backend\app\validation\metrics.py', 'backend\app\governance\adapters\csv_adapter.py', 'tests\news_impact\test_math.py', 'backend\app\policy\rules.py', 'backend\app\validation\service.py', 'backend\app\policy\service.py', 'tests\api\test_portfolio_endpoints.py', 'backend\app\risk_score\confidence.py', 'backend\app\db\models.py', 'tests\operations\test_operations.py', 'backend\app\portfolio\service.py', 'tests\news_impact\test_api.py', 'tests\risk_score\test_step12_full_score.py', 'backend\app\explain\service.py', 'backend\app\explain\diversification.py', 'tests\explain\test_wording_guards.py', 'backend\app\portfolio\score.py', 'tests\api\test_validation_endpoints.py', 'tests\explain\test_performance_budgets.py', 'backend\app\correlation_mst\service.py', 'tests\validation\test_score_validation.py'. Reloading...
+INFO:     Started server process [26612]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [26612]
+INFO:     Started server process [19860]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend\app\policy\provenance.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [19860]
+WARNING:  WatchFiles detected changes in 'jobs\ingest_news.py', 'backend\app\news_impact\service.py', 'backend\app\risk_score\components\news_policy.py', 'backend\app\policy\service.py', 'jobs\match_policy.py', 'backend\app\data_sources\coverage.py'. Reloading...
+INFO:     Started server process [27632]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [27632]
+INFO:     Started server process [25756]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend\app\data_sources\coverage.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [25756]
+WARNING:  WatchFiles detected changes in 'jobs\ingest_news.py', 'backend\app\policy\service.py'. Reloading...
+INFO:     Started server process [34092]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [34092]
+INFO:     Started server process [4032]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'backend\app\policy\service.py'. Reloading...

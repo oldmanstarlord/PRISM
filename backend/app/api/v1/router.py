@@ -9,7 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.app.correlation_mst.service import latest_completed_mst_query
-from backend.app.data_sources.schemas import DataSourceOut
+from backend.app.data_sources.coverage import build_data_coverage
+from backend.app.data_sources.schemas import DataCoverageOut, DataSourceOut
 from backend.app.data_sources.service import list_data_sources
 from backend.app.db.models import (
     BenchmarkSeries,
@@ -129,6 +130,12 @@ DatabaseSession = Annotated[Session, Depends(get_session)]
 def data_sources(session: DatabaseSession) -> list[DataSourceOut]:
     """List live, manual, TBD, and disabled datasets with their visible status."""
     return list_data_sources(session)
+
+
+@router.get("/data/coverage", response_model=DataCoverageOut, tags=["data quality"])
+def data_coverage(session: DatabaseSession) -> DataCoverageOut:
+    """Return row/date/universe and risk-dimension coverage from permitted real sources."""
+    return build_data_coverage(session)
 
 
 @router.get("/news/insights", response_model=NewsInsightsResponse, tags=["news"])

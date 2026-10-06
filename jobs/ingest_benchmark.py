@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from backend.app.correlation_mst.service import _canonical_hash
+from backend.app.data_sources.service import mark_source_success
 from backend.app.db.models import PipelineRun
 from backend.app.db.session import SessionLocal
 from backend.app.market_data.benchmark import (
@@ -176,6 +177,8 @@ def main() -> None:
             },
         )
         session.add(run)
+        if source_tag == "YAHOO":
+            mark_source_success(session, "benchmark_yahoo", verified=True)
         session.commit()
 
         print(

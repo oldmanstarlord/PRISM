@@ -84,6 +84,21 @@ uv run python jobs/ingest_insider_trades.py --file data/raw/insider_trades/nse_i
 Missing files, missing columns, invalid units, impossible percentages, invalid
 quarter ends, negative quantities/values, and unreadable rows abort the import.
 
+### FII/DII net flows
+
+The importer can accept a user-supplied official daily or monthly export only after
+it is normalized to `data/raw/macro/fii_dii_net_flows.csv` with these exact columns:
+`date,value,published_at,version`. `value` is the combined FII/DII net flow in INR
+crores for that observation period; `published_at` must be the actual publication
+timestamp with a timezone; `version` starts at `1`. Do not infer a publication time
+or expand one daily row into a monthly history.
+
+Run the strict import with:
+
+```powershell
+uv run python jobs/ingest_macro.py --source csv --series fii_dii_net_flows --file data/raw/macro/fii_dii_net_flows.csv
+```
+
 ## Freshness and source status
 
 Cadence and grace are versioned in approved `model_config` key

@@ -36,6 +36,8 @@ class EventRiskPressureComponent:
         source_rows = session.execute(
             select(SourceDocument.security_id, SourceDocument.published_at).where(
                 SourceDocument.security_id.in_(sec_ids),
+                SourceDocument.source == "NSE_MANUAL_IMPORT",
+                SourceDocument.doc_type == "announcement",
                 SourceDocument.published_at <= context.data_cutoff,
                 SourceDocument.ingested_at <= context.data_cutoff,
             )
@@ -50,9 +52,12 @@ class EventRiskPressureComponent:
         # Query all relevant announcements up to cutoff
         query = (
             select(EventItem, TextScore)
+            .join(SourceDocument, EventItem.source_document_id == SourceDocument.id)
             .outerjoin(TextScore, EventItem.id == TextScore.item_id)
             .where(
                 EventItem.security_id.in_(sec_ids),
+                SourceDocument.source == "NSE_MANUAL_IMPORT",
+                SourceDocument.doc_type == "announcement",
                 EventItem.published_at <= context.data_cutoff,
                 EventItem.effective_trading_date <= as_of,
                 EventItem.effective_trading_date >= as_of - timedelta(days=lookback_days),

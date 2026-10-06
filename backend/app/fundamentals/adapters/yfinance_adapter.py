@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import time
 from datetime import UTC, date, datetime, timedelta
@@ -38,6 +39,7 @@ class YfinanceFundamentalsAdapter(ResultAdapter):
         self.annual_lag_days = annual_lag_days
         self.request_delay = request_delay
         self.max_retries = max_retries
+        self.last_error: str | None = None
 
     @property
     def source_tag(self) -> str:
@@ -62,9 +64,8 @@ class YfinanceFundamentalsAdapter(ResultAdapter):
         isin: str | None = None,
         as_of: datetime | None = None,
     ) -> list[ParsedDocument]:
+        self.last_error = None
         ticker_sym = f"{symbol}.NS" if not symbol.endswith(".NS") else symbol
-        ingested_at = datetime.now(UTC)
-
         income_df: pd.DataFrame | None = None
         balance_df: pd.DataFrame | None = None
         cashflow_df: pd.DataFrame | None = None
@@ -87,6 +88,7 @@ class YfinanceFundamentalsAdapter(ResultAdapter):
                     e,
                 )
                 if attempt == self.max_retries:
+                    self.last_error = f"{type(e).__name__}: {e}"
                     return []
                 time.sleep(attempt * 1.0)
 
@@ -104,6 +106,7 @@ class YfinanceFundamentalsAdapter(ResultAdapter):
                             pass
 
         if not period_dates:
+            self.last_error = "Yahoo returned no quarterly statement periods"
             return []
 
         periods: list[ParsedPeriod] = []
@@ -198,9 +201,33 @@ class YfinanceFundamentalsAdapter(ResultAdapter):
         if not periods:
             return []
 
-        doc_hash = hashlib.sha256(
-            f"{symbol}:{ticker_sym}:{len(periods)}:{ingested_at.isoformat()}".encode()
-        ).hexdigest()
+        # Hash only source content. Ingestion time must never make an identical
+        # Yahoo response look like a restatement (D6 idempotency).
+        canonical_periods = [
+            {
+                "period_end": p.period_end.isoformat(),
+                "period_type": p.period_type,
+                "basis": p.basis,
+                "published_at": p.published_at.isoformat(),
+                "published_at_method": p.published_at_method,
+                "revenue": p.revenue,
+                "operating_profit": p.operating_profit,
+                "pat": p.pat,
+                "interest_expense": p.interest_expense,
+                "total_debt": p.total_debt,
+                "total_equity": p.total_equity,
+                "total_assets": p.total_assets,
+                "cash_from_operations": p.cash_from_operations,
+                "extra": p.extra,
+            }
+            for p in periods
+        ]
+        canonical = json.dumps(
+            {"symbol": symbol, "ticker": ticker_sym, "periods": canonical_periods},
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        doc_hash = hashlib.sha256(canonical.encode()).hexdigest()
 
         doc = ParsedDocument(
             source=self.source_tag,

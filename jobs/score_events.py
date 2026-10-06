@@ -10,7 +10,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.db.models import EventItem, ModelConfig, TextScore
+from backend.app.db.models import EventItem, ModelConfig, SourceDocument, TextScore
 from backend.app.db.session import SessionLocal
 from backend.app.events.finbert import score_announcement_text
 
@@ -38,7 +38,14 @@ def run_score_events(
     config = cfg_row.configuration if cfg_row else {}
 
     # 2. Query event items
-    query = select(EventItem)
+    query = (
+        select(EventItem)
+        .join(SourceDocument, EventItem.source_document_id == SourceDocument.id)
+        .where(
+            SourceDocument.source == "NSE_MANUAL_IMPORT",
+            SourceDocument.doc_type == "announcement",
+        )
+    )
     if not recompute:
         # Exclude items that already have a text_score
         scored_subq = select(TextScore.item_id).scalar_subquery()

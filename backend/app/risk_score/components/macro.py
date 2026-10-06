@@ -71,6 +71,7 @@ class MacroExposureComponent:
                 MacroObservation.obs_date <= as_of,
                 MacroObservation.obs_date >= min_date,
                 MacroObservation.published_at <= cutoff,
+                MacroObservation.source == "YAHOO",
             )
             .order_by(MacroObservation.series_key, MacroObservation.obs_date.asc())
         ).all()

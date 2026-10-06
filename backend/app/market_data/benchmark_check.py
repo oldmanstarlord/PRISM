@@ -297,18 +297,23 @@ def run_benchmark_checks(
                 PriceDailyAdjusted.security_id,
                 PriceDailyAdjusted.trade_date,
                 PriceDailyAdjusted.adjusted_close,
+                PriceDailyAdjusted.computed_at,
             )
             .where(
                 PriceDailyAdjusted.trade_date >= b_rets.index[0],
                 PriceDailyAdjusted.trade_date <= b_rets.index[-1],
             )
-            .order_by(PriceDailyAdjusted.trade_date)
+            .order_by(PriceDailyAdjusted.trade_date, PriceDailyAdjusted.computed_at)
         ).all()
 
         if stock_rows:
             stock_df = pd.DataFrame(
-                stock_rows, columns=["security_id", "trade_date", "adjusted_close"]
+                stock_rows,
+                columns=["security_id", "trade_date", "adjusted_close", "computed_at"],
             )
+            # Adjusted prices are revisioned by method_version. The benchmark
+            # proxy must use only the latest point for each security/date.
+            stock_df = stock_df.drop_duplicates(subset=["security_id", "trade_date"], keep="last")
             # Pivot table: date x security_id
             pivot = stock_df.pivot(
                 index="trade_date", columns="security_id", values="adjusted_close"
