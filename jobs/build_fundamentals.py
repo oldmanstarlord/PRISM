@@ -480,7 +480,12 @@ def xbrl_row(path: Path) -> dict[str, Any]:
     fp_names = [
         k
         for k in contexts
-        if k.startswith("InstitutionsForeignPortfolioInvestorCategory")
+        if k.startswith(
+            (
+                "InstitutionsForeignPortfolioInvestorCategory",
+                "InstitutionsForeignPortfolioInvestorCatergory",
+            )
+        )
         or k in {"ForeignPortfolioInvestors", "ForeignInstitutionalInvestors"}
     ]
     fp_values = [pct(k) for k in fp_names]
@@ -493,7 +498,22 @@ def xbrl_row(path: Path) -> dict[str, Any]:
     total_shares = number(total.get("NumberOfShares"))
     pledged = number(promoter.get("NumberOfSharesEncumberedUnderPledged"))
     encumbered = number(promoter.get("NumberOfSharesEncumbered"))
-    main = facts.get("MainI", {})
+    main = {**facts.get("OneI", {}), **facts.get("MainI", {})}
+    # Legacy filings combine pledges with other encumbrances. A combined zero
+    # proves zero pledges; a positive combined number cannot establish exact pledges.
+    legacy_encumbered = number(promoter.get("PledgedOrEncumberedNumberOfShares"))
+    if encumbered is None:
+        encumbered = legacy_encumbered
+    if pledged is None and legacy_encumbered == 0:
+        pledged = 0
+    if (
+        main.get(
+            "WhetherAnySharesHeldByPromotersArePledgeOrOtherwiseEncumberedForPromoterAndPromoterGroup"
+        )
+        == "false"
+    ):
+        pledged = 0 if pledged is None else pledged
+        encumbered = 0 if encumbered is None else encumbered
     if (
         pledged is None
         and main.get(
@@ -559,6 +579,7 @@ def xbrl_row(path: Path) -> dict[str, Any]:
         else None
     )
     result["_scale"] = scale
+    result["_total_shares"] = total_shares
     return result
 
 

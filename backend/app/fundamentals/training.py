@@ -54,6 +54,7 @@ from backend.app.fundamentals.data import (
     sha256,
     table_payload,
 )
+from backend.app.fundamentals.scores import bounded_scores, score_codes
 
 SEED = 20261006
 
@@ -205,6 +206,43 @@ def predict_rows(bundle: dict[str, Any], rows: list[dict[str, Any]]) -> list[dic
     if list(frame.columns) != bundle["input_features"]:
         raise ValueError("Prediction feature schema differs from training")
     eligible = [i for i, r in enumerate(rows) if r["Fundamental"] != LIMITED]
+    if bundle.get("task") == "score_regression":
+        if bundle.get("target") != "Fundamental_Score":
+            raise ValueError("Regression model target must be Fundamental_Score")
+        learned_scores = {}
+        if eligible:
+            scores = bounded_scores(bundle["pipeline"].predict(frame.iloc[eligible]))
+            if len(scores) != len(eligible):
+                raise ValueError("Regression prediction count differs from eligible rows")
+            codes = score_codes(scores)
+            learned_scores = {
+                i: (float(score), CLASSES[int(code)])
+                for i, score, code in zip(eligible, scores, codes, strict=True)
+            }
+        results = []
+        for i, row in enumerate(rows):
+            score, label = learned_scores.get(i, (None, LIMITED))
+            agrees = None if score is None else label == row["Fundamental"]
+            results.append(
+                {
+                    "Symbol": row["Symbol"],
+                    "Company": row["Company"],
+                    "Fundamental": label,
+                    "Fundamental_Score": score,
+                    "Rule_Fundamental": row["Fundamental"],
+                    "Rule_Fundamental_Score": row["Fundamental_Score"],
+                    "Model_Label": label,
+                    "Model_Score": score,
+                    "Model_Probability": None,
+                    "Model_Agrees": agrees,
+                    "Assessment_Status": "Insufficient data"
+                    if score is None
+                    else "Regression estimate; rule label agrees"
+                    if agrees
+                    else "Regression estimate; rule label differs",
+                }
+            )
+        return results
     learned: dict[int, tuple[str, float]] = {}
     if eligible:
         estimator = bundle["pipeline"]

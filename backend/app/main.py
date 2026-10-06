@@ -23,4 +23,3 @@ app.include_router(v1_router, prefix="/api/v1")
 @app.get("/health", tags=["operations"])
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "prism-api"}
-

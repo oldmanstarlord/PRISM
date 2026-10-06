@@ -1,1 +1,1 @@
-"""Fundamental data preparation, classification experiments and daily publication."""
+"""Fundamental preparation, score regression, legacy classifiers and daily publication."""

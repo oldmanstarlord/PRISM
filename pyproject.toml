@@ -8,6 +8,7 @@ dependencies = [
   "alembic>=1.16",
   "apscheduler>=3.11",
   "arch>=7.2",
+  "catboost>=1.2.8,<1.3",
   "fastapi>=0.116",
   "httpx>=0.28",
   "joblib>=1.4",
@@ -46,6 +47,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-ra --strict-markers"
 markers = [
   "integration: requires an explicitly configured PostgreSQL test database",
@@ -64,7 +66,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["sklearn.*", "joblib.*", "lxml.*"]
+module = ["sklearn.*", "joblib.*", "lxml.*", "catboost.*"]
 ignore_missing_imports = true
 
 [build-system]

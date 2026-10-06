@@ -8,7 +8,7 @@ This is the living implementation record for PRISM. It must be updated after eve
 |---|---|
 | Current phase | Phase 1 - Portfolio insight |
 | Overall status | In progress |
-| Last updated | 2026-10-05 |
+| Last updated | 2026-10-06 |
 | Requirements source | `PRISM_SRS.md` version 1.6 |
 | Initial universe | NIFTY 200 |
 | Active implementation focus | Session-only portfolio performance, risk, diversification, MST diagnostics and stress testing |
@@ -98,6 +98,8 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Frontend verification | ESLint passed; 7 Vitest tests passed across 4 files; TypeScript/Vite production build passed | 2026-10-06 |
 | Portfolio analytics verification | Ruff passed; strict mypy passed across 52 source files; 48 tests passed and 2 approved database integration tests skipped | 2026-10-06 |
 | Portfolio browser rehearsal | Prepared sample, performance, risk, MST, stress and JSON download passed in headless Chrome with zero console errors | 2026-10-06 |
+| Backend startup recovery | Root/backend import and root `.env` regression checks passed; 125 tests passed, 2 database integration tests skipped; Uvicorn reload and database readiness verified | 2026-10-06 |
+| Fundamental historical regression | 149 tests passed, 2 integration tests deselected; Ruff and strict mypy passed across 75 source files; 1,124 configurations and 8,262 blends evaluated; 93.55% category accuracy on 155 held-out stocks, score MAE 1.2972 and R² 0.9005 | 2026-10-06 |
 | Company-detail API check | BAJAJ-AUTO returned three scores, 13 exact peers and 61 comparison points | 2026-10-04 |
 | Persisted Layer 1 run | 556 scores, 14 exclusions and 2 calculation issues available through the API | 2026-10-04 |
 | Layer 2 engine tests | Determinism, tie-breaking, no-look-ahead, missing-data exclusion and topology invariants passed | 2026-10-04 |
@@ -121,6 +123,26 @@ After every material update:
 5. Change a phase to complete only when its SRS exit criteria are satisfied.
 
 ## Change log
+
+### 2026-10-06 - Historical fundamental score regression and blends
+
+- Added reproducible Yahoo/NSE historical acquisition, delayed quarterly reconstruction, continuous-score regression searches and median/weighted model blends for the exact 200-stock universe.
+- Reconstructed 3,000 quarterly rows with 1,794 assessable changed states, split into 1,639 development rows and 155 September holdout rows. The latest 45 Limited Assessment stocks retain blank scores.
+- Tested all 1,124 declared finite-grid configurations and 8,262 blends using four earlier forward-validation periods; locked model selection before evaluating the latest holdout.
+- Selected median aggregation of Extra Trees, random forest and SVR score predictions: holdout category accuracy 145/155 (93.55%), score MAE 1.2972 and R² 0.9005. Previous settings on the same historical cohort achieved the same category accuracy with slightly higher score MAE.
+- Verified saved-model reloads, original input hashes, fixed score bands, legacy ownership parsing and partial fiscal-year durations. The existing source CSV and production model remain unchanged because Yahoo and Screener inputs differ.
+- Recorded methodology, parameter grids, results and data-quality limits in `FUNDAMENTALS.md`; downloaded data, generated reports and model binaries remain ignored local artifacts.
+- Verification: 149 tests passed with two integration tests deselected; Ruff, strict mypy, `uv lock --check`, repository policy and `git diff --check` passed.
+
+### 2026-10-06 - Backend startup and pip requirements fixed
+
+- Preserved project-root `.env` loading from any launch directory and added a regression test using a disposable configuration file.
+- Moved backend-directory import setup into the application package so `uvicorn app.main:app` resolves canonical `backend.app` imports without module-import lint errors.
+- Added `backend/run.sh` to start Uvicorn with the locked Python 3.12 project environment, including when Conda base is active; pinned the development Python version in `.python-version`.
+- Exported runtime dependencies from `uv.lock` to root `requirements.txt` and added `backend/requirements.txt` as an include for backend-directory pip installs.
+- Installed the missing Psycopg binary driver and pool in the local Anaconda environment used by the reported command.
+- Verified root/backend startup regression checks, targeted Ruff checks, targeted strict mypy checks, and installed-dependency compatibility. Full pytest result: 125 passed and 2 database integration tests skipped.
+- Verified real Uvicorn reload startup through both the launcher and the reported Anaconda command. Health and Supabase database readiness returned HTTP 200; test servers were stopped afterward.
 
 ### 2026-09-29 - Repository bootstrap
 

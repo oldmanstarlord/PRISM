@@ -1,14 +1,17 @@
 from functools import lru_cache
+from pathlib import Path
 from urllib.parse import quote, unquote
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(_PROJECT_ROOT / ".env", ".env"),
         env_prefix="PRISM_",
         case_sensitive=False,
         extra="ignore",

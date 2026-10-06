@@ -15,6 +15,7 @@ from typing import Any
 import joblib
 
 from backend.app.fundamentals.data import BASE_NUMERIC, POLICY_VERSION, clean_rows, sha256
+from backend.app.fundamentals.scores import SCORE_BANDS, SCORE_DECIMALS
 from backend.app.fundamentals.training import predict_rows
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -24,7 +25,7 @@ ACTIVE_MODEL_POINTER = ROOT / "data/models/fundamentals/active_model.json"
 
 
 def resolve_model_path(requested: Path, pointer: Path = ACTIVE_MODEL_POINTER) -> Path:
-    """Use a verified active advisory model; explicit model overrides remain explicit."""
+    """Use the verified active model; explicit model overrides remain explicit."""
     if requested != DEFAULT_MODEL or not pointer.exists():
         return requested
     metadata = json.loads(pointer.read_text())
@@ -119,7 +120,9 @@ def publish(
                 "Business_Type": row.get("Business_Type"),
                 "Financial_Period": row.get("Annual_Financial_Period"),
                 "Shareholding_Period": row.get("Shareholding_Period"),
-                "Reason": "; ".join(
+                (
+                    "Rule_Reason" if bundle.get("task") == "score_regression" else "Reason"
+                ): "; ".join(
                     row["_quality_limits"]
                     + row["_assessment"]["reasons"]
                     + row["_assessment"]["limits"]
@@ -132,7 +135,15 @@ def publish(
         "policy_version": POLICY_VERSION,
         "model_sha256": sha256(model_path),
         "model_training_date": bundle["snapshot_date"],
-        "classification_method": "Contextual rules; model prediction is advisory",
+        "classification_method": (
+            "Regression predicts Fundamental_Score; rounded score determines Fundamental; "
+            "contextual rules retained as comparison; insufficient evidence gated"
+            if bundle.get("task") == "score_regression"
+            else "Contextual rules; model prediction is advisory"
+        ),
+        "model_task": bundle.get("task", "classification"),
+        "score_bands": SCORE_BANDS,
+        "score_decimals": SCORE_DECIMALS,
         "stock_count": len(records),
         "data_audit": audit,
         "stocks": records,

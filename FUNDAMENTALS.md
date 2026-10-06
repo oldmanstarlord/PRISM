@@ -1,12 +1,321 @@
-# Fundamental classification and model operations
+# Fundamental score regression and model operations
 
-The final `Fundamental` label is the contextual financial policy. `Model_Label` is a learned
-approximation of that policy, retained separately because the current validation does not support
-using it as the authority. `Limited Assessment` means insufficient relevant evidence; it is not
-included as a sixth health class in training. Banks/lenders/insurers remain limited until their
-specialist asset-quality, capital, liquidity or solvency inputs are collected.
+The active model predicts `Fundamental_Score` as a continuous 0–100 value. Its rounded predicted
+score determines the published `Fundamental` label. `Rule_Fundamental_Score` and `Rule_Fundamental`
+retain the contextual financial assessment for comparison; `Rule_Reason` explains that assessment.
+`Limited Assessment` means insufficient relevant evidence. Those stocks have blank scores and
+bypass regression. Banks/lenders/insurers remain limited until specialist asset-quality, capital,
+liquidity or solvency inputs are collected. The historical source CSV remains unchanged.
 
-## Current experiment
+## Historical Yahoo/NSE regression experiment
+
+The historical experiment is separate from the active Screener-based production model. Yahoo
+prices and statement tables were retrieved for the exact 200-symbol input universe, using `.NS`
+tickers. The raw cache is `data/raw/fundamentals/history-yahoo-2026-10-06/`. Price history starts
+in January 2021; annual/quarterly statement coverage varies by issuer. Yahoo returned no quarterly
+cash-flow statements for 188 issuers. Annual cash statements supply the cash-flow checks.
+
+Yahoo does not provide the required historical Indian ownership categories. There are 2,772
+dated NSE ownership filings in the supplemental cache. Actual broadcast/submission dates gate
+ownership availability, including revisions. Legacy combined pledged/encumbered shares establish
+zero pledges only when their combined count is zero; positive combined counts cannot establish
+the exact pledge amount. Missing values remain missing. Current ownership, scores and labels are
+never copied backward into historical price rows.
+
+The reconstructed panel contains 3,000 rows: all 200 symbols at 15 quarterly snapshots from
+March 2023 through September 2026. There are 1,794 assessable changed fundamental states:
+1,639 earlier-period training/development rows and 155 September 2026 holdout stocks. All 200
+latest rows remain in the panel; 45 bypass regression as Limited Assessment. Assessable stocks
+can differ from the earlier single-source snapshot because vendor coverage differs. Price-only
+repeats do not become additional fundamental training examples. The target is the independently
+recomputed numeric `Fundamental_Score`, under the existing contextual policy and fixed bands.
+
+These are delayed historical reconstructions from current data vintages. Annual statements are
+admitted 90 days after their period end; quarterly statements after 60 days. Yahoo does not
+provide original filing/release dates or original vintages for these tables, so actual release
+dates can differ and later restatements can affect the reconstruction. Older cached Screener
+periods supplement Yahoo only before the first usable Yahoo period of that section and only on
+the consolidated basis. The current Nifty 200 membership introduces survivorship bias.
+Reported fiscal-period durations override API frequency defaults: ENRIN's eight-month year and
+TMCV's ten-month year cannot support full-year growth comparisons. The duration-audited panel is
+`data/processed/fundamentals/history-yahoo-2026-10-06-duration-verified/historical_panel.json`.
+The experiment measures imitation of fundamental assessment rules, not future stock returns or a
+certified point-in-time investment backtest. It does not establish accuracy on unseen companies.
+
+Yahoo ratios use total debt including leases / stockholders equity for D/E, operating EBIT /
+(total assets minus current liabilities) for ROCE, and operating income plus depreciation /
+revenue for OPM. Historical market cap uses available dated filed shares, adjusted for splits;
+intervening share issues/buybacks can make it approximate. Yahoo and Screener ratios differ, so
+this artifact is not automatically substituted for the production model.
+
+The finite grid tests every declared combination, with both compact and rich financial feature
+views. It has 1,124 scalar regression configurations. Mean/median tree candidates share identical
+fitted trees when possible; all candidate predictions are still measured separately.
+
+| Family | Configurations across both views | Exhaustive tuning values |
+| --- | --- | --- |
+| Extra Trees | 256 | Trees 220/400; features 0.6/1.0; depth None/12; leaf 1/3; split 2/8; bootstrap false/true; mean/median |
+| Random forest | 256 | Same grid as Extra Trees |
+| Histogram gradient boosting | 96 | Iterations 180/350; leaves 7/15/31; leaf samples 3/8; learning rate 0.04/0.1; L2 1/5 |
+| XGBoost | 384 | Trees 180/350; depth 2/3/5; learning rate 0.03/0.1; lambda 1/5; row/column sampling 0.8/1.0; child weight 1/3 |
+| CatBoost | 96 | Depth 3/5/7; iterations 350/600; learning rate 0.04/0.1; loss RMSE/MAE; L2 1/5 |
+| Ridge | 12 | Alpha 0.01/0.1/1/10/100/1000 |
+| SVR | 24 | C 10/100/1000; epsilon 0.1/1; gamma scale/0.01 |
+
+Each configuration is checked on four forward folds: September 2025, December 2025, March 2026
+and June 2026, trained exclusively on earlier snapshots. Imputation, missing indicators, signed
+log scaling, standardization and industry/sector one-hot encoding are fitted within each training
+fold. Identity columns, score/label fields, rule components and future returns are excluded from
+inputs. Regressors fit continuous untransformed scores; there are no classifier targets.
+
+The best validation configuration per family supplies seven sets of forward-validation predictions.
+Blend selection tests all 8,008 nonnegative 0.1-step weight vectors summing to one, plus mean and
+median for all 127 nonempty subsets: 8,262 blend evaluations, including overlapping definitions.
+Category accuracy selects the model/weights; score MAE breaks ties. All choices are locked before
+the September 2026 holdout is predicted. The old 220-tree median configuration is retrained on
+the same historical cohort for a comparable baseline. Carrying forward the prior quarter's score
+is also reported. The previous snapshot's 74.04% nested-CV result uses a different protocol and
+is not a direct historical-holdout baseline.
+
+The evaluated pre-holdout model and final all-history refit are saved separately. Only the former
+provides held-out performance. The latter includes September training targets and its fitted
+predictions must not be described as test accuracy. Search definitions, weights, per-candidate
+validation predictions, holdout predictions, metrics and complete selected parameters are saved
+under `data/models/fundamentals/2026-10-06-historical-blend/`.
+
+Reproduce the data from the cache and run into a new output directory:
+
+```sh
+uv run python -m jobs.acquire_fundamental_history
+uv run python -m jobs.build_historical_fundamentals
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 uv run python -m jobs.train_historical_fundamentals \
+  --output data/models/fundamentals/2026-10-06-historical-blend-rerun --workers 8
+```
+
+The grid is exhaustive within its declared finite ranges; every possible real-valued setting
+cannot be enumerated. Training can resume an unfinished output only when its panel hash, fixed
+candidate definitions and temporal plan match. A completed artifact is never overwritten.
+
+### Completed historical experiment results
+
+The locked historical selection achieved **93.55% (145/155)**
+derived-category accuracy on the September 2026 holdout, **1.2972** score MAE,
+**5.0679** RMSE and **0.9005** R². The previous configuration retrained on
+the identical historical cohort achieved **93.55%** category accuracy
+and **1.3010** MAE. Selected members are
+ExtraTrees (0.3333333333333333), RandomForest (0.3333333333333333), SVR (0.3333333333333333) with
+`median` aggregation. All 1,124 configurations and 8,262 blend evaluations
+completed. Full metrics, settings, evidence and limitations are in
+`data/models/fundamentals/2026-10-06-historical-blend/RESULTS.md`.
+The production model remains separate because financial source formulas differ.
+
+## Current improved score regression
+
+The active model remains a genuine scalar regressor targeting `Fundamental_Score`. The original
+score labels and thresholds are unchanged. The earlier search minimized point error alone; 55
+training stocks have an observed score of 74, so averaging nearby tree predictions frequently
+crossed the Strong threshold at 75. The improved search selects by derived-category accuracy
+inside training CV, breaking exact ties by lower score MAE. All fits still receive numeric scores,
+including their fractional parts, rather than encoded labels.
+
+| Identical nested-CV splits: 156 stocks, two appearances each | Original regression | Improved |
+| --- | --- | --- |
+| Category accuracy | 51.60% (161/312) | **74.04% (231/312)** |
+| Mean absolute score error | 6.53 points | **4.97 points** |
+| RMSE | 10.09 points | **9.65 points** |
+| R² | 0.600 | **0.634** |
+| Macro F1 | 44.27% | **60.11%** |
+| Balanced category accuracy | 43.87% | **57.06%** |
+
+The category gain is 22.44 percentage points. Stock-wise paired bootstrap intervals are descriptive
+because repeated CV fits are dependent: the reported accuracy interval is 67.31%–80.45%, and the
+gain interval is 15.06–29.81 percentage points. These are estimates on the same previously examined
+rule-scored snapshot, not new independent-test or future-period accuracy. Weak recall remains only
+14.29% with seven unique examples; the overall accuracy does not establish reliable Weak detection.
+The earlier classifier also achieved 74.04% overall, but its macro F1 was 55.88%, against 60.11%
+for the score regressor. The two models do not make identical validation predictions.
+
+There are 112 configurations across numeric Extra Trees, random forest, histogram gradient boosting,
+XGBoost, CatBoost, Ridge and SVR. The search tests mean/median tree aggregation, fold-local continuous
+score feature selection, and an optional reversible target transform that spaces the fixed score
+boundaries. The transform preserves numeric differences within bands and converts predictions back
+to 0–100 scores. It is tested as a regression alternative, never used as a score input. No class
+targets, changed thresholds, synthetic observations or seed searches are introduced.
+
+The final winner uses the **original untransformed score target** and median aggregation of 220
+Extra Trees regressors. Each tree is fitted to numeric scores and produces a numeric prediction;
+their median is the predicted score. Settings: squared-error tree splits, `max_features=1.0`,
+unlimited depth, minimum one sample per leaf, minimum two samples per split, no bootstrap, and seed
+20261006. The compact financial representation and all 143 encoded features are retained. The
+score is bounded and rounded to two decimals before category conversion. No classifier is used.
+
+The same ten outer folds and source observations are verified against the earlier regression.
+Every outer training fold performs its own three-fold search; final selection uses repeated
+three-fold CV and refits on all 156 eligible stocks. Candidate definitions, full nested base-model
+parameters, fold choices, class metrics and paired comparisons are in
+`data/models/fundamentals/2026-10-05-regression-improved/regression_report.json`. The final refit's
+200-stock predictions are in-sample; validation results come exclusively from
+`out_of_fold_predictions.json`. The original regressors, classifiers and source CSV are retained.
+The daily refresh loads the verified active regressor without retraining.
+
+Reproduce into a new directory:
+
+```sh
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 uv run python -m jobs.improve_fundamental_regression \
+  --output data/models/fundamentals/2026-10-05-regression-improved-rerun
+```
+
+Add `--activate` to activate only after category accuracy improves against the earlier regression.
+CatBoost and its dependencies are pinned in `uv.lock` and the exported runtime requirements.
+The winning Extra Trees artifact does not depend on CatBoost at inference. Regression alternatives
+follow the [scikit-learn target-transform interface](https://scikit-learn.org/stable/modules/generated/sklearn.compose.TransformedTargetRegressor.html)
+and [CatBoost regression interface](https://catboost.ai/docs/en/concepts/python-reference_catboostregressor).
+
+## Broader parameter experiment
+
+The expanded search did not improve held-out performance. The current 112-configuration search's
+model remains active; the broader experiment is retained separately for review and reproduction.
+
+| Same 156 stocks and ten outer folds | Current model search | Broader search |
+| --- | --- | --- |
+| Derived-category accuracy | **74.04% (231/312)** | 72.76% (227/312) |
+| Mean absolute score error | **4.97 points** | 5.21 points |
+| RMSE | **9.65 points** | 10.04 points |
+| R² | **0.634** | 0.603 |
+| Macro F1 | **60.11%** | 58.79% |
+
+The wider search selected different configurations in some training folds, but these choices
+produced four fewer correct held-out labels overall. Increasing the number of tuning candidates
+does not guarantee better validation predictions. Neither the source CSV nor the active model
+pointer is changed by this experiment.
+
+The broader search's final inner-CV winner is an untransformed score regressor using median
+aggregation of 400 Extra Trees, `max_features=0.8`, unlimited depth, one sample per leaf and
+two per split. Bootstrap is disabled and squared-error splits are used. Its final selection CV
+accuracy is 73.08%; this selected-candidate measurement is not the nested held-out result above.
+The fitted artifact is preserved without activation. Weak recall remains 14.29% in both searches.
+
+The broader search preserves the numeric `Fundamental_Score` target, the source observations,
+the five score bands, and the same ten outer validation folds. Its 794 unique configurations
+include every one of these 432 Extra Trees combinations, with median aggregation, the compact
+financial representation and all encoded features:
+
+| Parameter | Exhaustive values |
+| --- | --- |
+| Number of trees | 220, 400, 600 |
+| Features considered per split | 0.6, 0.8, 1.0 |
+| Maximum depth | None, 8, 12, 20 |
+| Minimum samples per leaf | 1, 2, 3, 5 |
+| Minimum samples per split | 2, 4, 8 |
+
+The previous 112 candidates remain included. Additional fixed samples expand tree split criteria,
+bootstrap sampling, pruning, maximum leaf counts and aggregation; boosting iterations, learning
+rate, depth and regularization; SVR kernel, C, epsilon and gamma; Ridge regularization; financial
+representations, fold-local feature selection and reversible continuous target spacing. Duplicate
+constructor settings are removed. The broader spaces are sampled, not exhaustively enumerated.
+Sampling seeds are fixed before evaluation and never searched for a favorable accuracy result.
+
+There are 556 Extra Trees, 64 random forest, 40 histogram gradient boosting, 48 XGBoost, 40 CatBoost,
+14 Ridge and 32 SVR configurations. Every estimator fits numeric scores. Inner CV selects by
+derived-category accuracy, with score MAE breaking ties. The complete evaluation involves 28,584
+candidate-validation fits, plus the selected models' refits. Final selection uses repeated
+three-fold CV on all eligible stocks. The original source CSV and prior artifacts are retained.
+
+The complete predeclared configurations and source hashes are in
+`data/models/fundamentals/2026-10-05-regression-broad/search_plan.json`. The completed report,
+validation predictions, fold definitions and fitted model are saved beside it. Full winning
+constructor settings for each fold are recovered using only its training CV when displayed
+wrapper names are ambiguous; held-out predictions and reported metrics are never changed.
+
+Reproduce into a new directory:
+
+```sh
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 uv run python \
+  -m jobs.tune_fundamental_regression --workers 6 \
+  --output data/models/fundamentals/2026-10-05-regression-broad-rerun
+```
+
+Completed experiments cannot be overwritten. With `--activate`, the prior active model is retained
+unless held-out category accuracy improves and mean absolute score error does not increase.
+This is another experiment on the previously examined snapshot; it supplies no new independent
+test or future-period accuracy.
+
+## Original score regression
+
+The training target is the contextual policy's score recomputed from cleaned financial evidence.
+It is not the label code or a predicted score from a previous model. Symbol, company identity,
+scores, rule grades, explanations and eligibility profiles never enter the feature matrix.
+The data has 156 assessable stocks and 44 limited stocks; limited target scores are never imputed.
+
+Seven regression families and 100 configurations were compared: Extra Trees, random forest,
+histogram gradient boosting, conventional gradient boosting, XGBoost, Ridge and support vector
+regression. Selection minimizes mean absolute score error using three inner folds. Five outer
+folds with two repeats evaluate the complete selection procedure on the same fixed splits used
+for the previous classifier. All feature processing is fitted inside each training fold. No
+label thresholds, split seeds or test scores are tuned to raise reported accuracy.
+
+| Nested CV measure | Result |
+| --- | --- |
+| Mean absolute score error | **6.53 points** |
+| Root mean squared score error | **10.09 points** |
+| R² | **0.600** |
+| Scores within 5 points | 57.69% |
+| Scores within 10 points | 77.56% |
+| Derived-label accuracy | **51.60% (161/312)** |
+| Previous classifier, same folds | 74.04% (231/312) |
+| Training-fold median score baseline MAE | 12.08 points |
+
+There are 156 unique stocks, each appearing twice in validation, not 312 independent stocks.
+The expanded search does not improve category accuracy. Score regression smooths values across
+hard boundaries, especially the policy's Moderate cap at 74 next to Strong at 75. Rule scores
+remain visible because low point error does not ensure the correct category or preserve every
+contextual risk cap. The initial six-family/76-configuration experiment is retained separately
+under `2026-10-05-regression-initial-76`; its MAE was 6.34 points and label accuracy 52.56%.
+Both runs use previously examined data and provide no new external-test or future accuracy.
+
+The selected final model is `HistGradientBoostingRegressor`: 180 boosting iterations, learning
+rate 0.1, squared-error loss, 15 maximum leaves, minimum 3 samples per leaf, L2 regularization 5,
+and seed 20261006. It uses the compact financial representation. Its 66 raw/contextual inputs
+become 60 financial fields and 143 encoded inputs after financial interactions, median imputation
+with missing indicators, signed-log transformation, standardization and sector/industry one-hot
+encoding. There are no class weights, oversampling or target-score normalization.
+
+Inference clips predictions to [0, 100] and rounds to two decimals before applying these bands:
+
+| Predicted score | Published label |
+| --- | --- |
+| Below 40 | Very Weak |
+| 40 to below 60 | Weak |
+| 60 to below 75 | Moderate |
+| 75 to below 90 | Strong |
+| 90–100 | Very Strong |
+| Insufficient relevant evidence | Limited Assessment; blank score |
+
+Nonfinite predictions stop publication and preserve the last successful generation. Scores are
+estimates, not probabilities; `Model_Probability` is blank for regression. The final model is
+refitted on all 156 eligible stocks after evaluation, so `stock_predictions.json` and the current
+published training-date generation are in-sample predictions. Only `out_of_fold_predictions.json`
+contains the validation predictions used for reported metrics.
+
+Artifacts: `data/models/fundamentals/2026-10-05-regression/model.joblib`, `regression_report.json`,
+`outer_splits.json`, `out_of_fold_predictions.json` and `stock_predictions.json`. The earlier pointer
+selected this score regressor. The previous pointer is saved as `previous_active_model.json`, and
+both earlier classifiers remain available. Source observations and original CSV bytes are retained.
+
+Reproduce into a new directory, since training refuses to overwrite the active model:
+
+```sh
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 uv run python -m jobs.train_fundamental_regression \
+  --output data/models/fundamentals/2026-10-05-regression-rerun
+```
+
+Add `--activate` to select a completed model after checksum and compatibility validation. Activation
+and publication share the refresh lock. A new snapshot requires explicit `--csv`, `--raw` and a
+new output directory. Use `--no-comparison` when there is no matching classifier evaluation, or
+`--comparison` to provide one; comparison data and fold manifests are checked before fitting.
+The fixed default inputs never recycle published model predictions as training targets.
+
+## Previous classification experiment
 
 The improved advisory model adds row-wise financial relationships and selects a compact financial
 representation. A paired evaluation on identical splits compares the previous model configuration
@@ -115,17 +424,19 @@ statements or pledge evidence cannot support a health label. These limits are no
 thresholds. Dates and source provenance are retained in JSON outside the data-only CSV outputs.
 
 Each CV fold fits its own median imputer with missing indicators, numerical standardizer and sector/
-broad-industry one-hot encoder. Unknown future categories are accepted. Target codes are Very Weak
-0, Weak 1, Moderate 2, Strong 3 and Very Strong 4. Limited rows bypass the learned classifier.
+broad-industry one-hot encoder. The improved classifier and regressor also apply signed logarithms.
+Unknown future categories are accepted. The active regression target is the observed score. The
+historical classifiers use target codes Very Weak 0, Weak 1, Moderate 2, Strong 3 and Very Strong 4.
+Limited rows bypass all learned models.
 
-The saved joblib artifact contains preprocessing, model, feature schema, label mapping, policy
+The saved joblib artifact contains preprocessing, model, feature schema, score bands, policy
 version, source hashes and package version. It is refitted on all 156 assessable stocks after
 evaluation. `encoded_training.csv` is an export from that final refit, useful for inspection; it
 must not be split again to claim unbiased accuracy. `stock_predictions.csv` is consequently
 in-sample. Only `holdout_predictions.csv` contains the original untouched test predictions.
-The model probabilities are uncalibrated model outputs, not a probability that a company is strong.
+The historical classifier probabilities are uncalibrated outputs. Regression produces no probability.
 
-## Commands
+## Historical classifier commands
 
 Run from the repository directory with the locked Python 3.12 environment:
 
@@ -139,6 +450,8 @@ The dated model and JSON reports are under `data/models/fundamentals/2026-10-05/
 pipeline is `model.joblib`; the full measured results and candidate parameters are in
 `training_report.json`. Train explicitly on a new dated snapshot; daily prediction never silently
 re-tunes the model.
+
+## Daily refresh
 
 Run the live refresh after close:
 
@@ -160,7 +473,9 @@ Manually verified VAML overrides are restricted to the historical snapshot date.
 verified ownership can be retained at its actual period for up to 200 days when the NSE SHP index
 does not contain it. It becomes limited when that evidence is too old; no fresh PDF data is invented.
 
-Facts and rule labels are recomputed, and the frozen model generates a separate comparison label.
+Facts and comparison rule scores/labels are recomputed. The frozen active regressor predicts scores,
+and the fixed score bands determine the final labels. Historical classifier overrides retain their
+original rule-authoritative behavior. Daily refresh never trains on its own predicted scores.
 Daily refresh does not force a rating change: quarterly/annual evidence often stays unchanged.
 The fixed universe is the user's `data/raw/nifty200/2026-09-30.csv`; membership is not silently changed.
 

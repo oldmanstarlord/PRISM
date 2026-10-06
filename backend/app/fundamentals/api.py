@@ -51,5 +51,8 @@ def company_fundamentals(symbol: str) -> dict[str, Any]:
         "snapshot_date": latest["snapshot_date"],
         "published_at": latest["published_at"],
         "classification_method": latest["classification_method"],
+        "model_task": latest.get("model_task", "classification"),
+        "score_bands": latest.get("score_bands"),
+        "score_decimals": latest.get("score_decimals"),
         **row,
     }

@@ -505,7 +505,7 @@ def assess(row: dict[str, Any], all_rows: list[dict[str, Any]]) -> dict[str, Any
     )
     if row.get("PE") is None:
         valuation = "Positive P/E unavailable; profitability assessed directly"
-    if row.get("Dividend_Yield", 0) > 0 and (not profitable or cash_grade == "Weak"):
+    if (row.get("Dividend_Yield") or 0) > 0 and (not profitable or cash_grade == "Weak"):
         reasons.append(
             "Dividend yield does not establish sustainable payouts when profits/cash are weak"
         )

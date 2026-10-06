@@ -76,6 +76,11 @@ class ContextualAssessmentTests(unittest.TestCase):
             self.assertLessEqual(score, result["raw_score"])
         return result
 
+    def test_missing_dividend_yield_is_not_treated_as_a_paid_dividend(self):
+        missing = self.rate({"Dividend_Yield": None})
+        zero = self.rate({"Dividend_Yield": 0})
+        self.assertEqual(missing, zero)
+
     def test_half_equity_debt_can_be_supported(self):
         result = self.rate()
         self.assertEqual(result["dimensions"]["Leverage"], "Strong")

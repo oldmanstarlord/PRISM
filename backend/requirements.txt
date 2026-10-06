@@ -1,0 +1,3 @@
+# Install from backend/ with: python -m pip install -r requirements.txt
+# The project-root file contains the runtime dependencies pinned by uv.lock.
+-r ../requirements.txt
