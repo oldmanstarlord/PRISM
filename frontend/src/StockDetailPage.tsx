@@ -39,6 +39,7 @@ export default function StockDetailPage() {
   const { symbol = "" } = useParams<{ symbol: string }>();
   const upperSymbol = symbol.toUpperCase();
   const [explainComponentKey, setExplainComponentKey] = useState("");
+  const [explainPath, setExplainPath] = useState("");
 
   const { data: envelope, isLoading, error } = useApi<StockRiskEnvelope>(
     `/stocks/${encodeURIComponent(upperSymbol)}/risk/latest`
@@ -204,6 +205,37 @@ export default function StockDetailPage() {
                 Point score synthesized across 8 risk dimensions using empirical peer rankings.
                 Renormalised for available dimension weights.
               </Typography>
+              {envelope.change_explanation && envelope.change_explanation.total_score_change !== null && (
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    pt: 1.5,
+                    borderTop: "1px dashed #cbd5e1",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 1,
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    Score change:{" "}
+                    <strong>
+                      {envelope.change_explanation.total_score_change > 0 ? "+" : ""}
+                      {envelope.change_explanation.total_score_change.toFixed(1)} pts
+                    </strong>
+                    {envelope.change_explanation.previous_score !== null &&
+                      ` (prev: ${envelope.change_explanation.previous_score.toFixed(1)})`}
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => setExplainPath(`/explain/score-change/${encodeURIComponent(upperSymbol)}`)}
+                  >
+                    Why?
+                  </Button>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
@@ -343,10 +375,14 @@ export default function StockDetailPage() {
         />
       </Box>
       <ExplainDrawer
-        open={explainComponentKey.length > 0}
-        symbol={upperSymbol}
-        componentKey={explainComponentKey}
-        onClose={() => setExplainComponentKey("")}
+        open={Boolean(explainComponentKey || explainPath)}
+        symbol={explainComponentKey ? upperSymbol : undefined}
+        componentKey={explainComponentKey || undefined}
+        path={explainPath || undefined}
+        onClose={() => {
+          setExplainComponentKey("");
+          setExplainPath("");
+        }}
       />
 
       {/* Fundamentals Panel: Quarterly table, TTM metrics, and peer percentiles (Step 7) */}
@@ -374,9 +410,27 @@ export default function StockDetailPage() {
       {history.length > 1 && (
         <Card variant="outlined" sx={{ mb: 3, borderRadius: 2 }}>
           <CardContent>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-              Recent Score Trajectory (Trailing Calculations)
-            </Typography>
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+                flexWrap: "wrap",
+                gap: 1,
+              }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Recent Score Trajectory (Trailing Calculations)
+              </Typography>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setExplainPath(`/explain/score-change/${encodeURIComponent(upperSymbol)}`)}
+              >
+                Why did score change?
+              </Button>
+            </Stack>
             <Stack direction="row" spacing={2} sx={{ overflowX: "auto", pb: 1 }}>
               {history.map((pt) => (
                 <Paper

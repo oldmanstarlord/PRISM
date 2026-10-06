@@ -94,6 +94,7 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Step E1 Explanation Framework | Evidence-bound component explanations, deterministic guardrails, draft templates/glossary, APIs, generic drawer/tooltips, and Why actions implemented; wording approval pending | 2026-10-06 |
 | Step E2 MST Explanations | Evidence-bound edge/pair/node explainers, deterministic MST math, APIs, interactive drawer/search/legends, and tests implemented; wording approval and production diagnostics remain pending | 2026-10-06 |
 | Step E3 Sector Explanations | Evidence-bound stock/industry divergence explainers, read-only peer reconstruction, APIs, stock panels, and sectors overview implemented; draft thresholds await review | 2026-10-06 |
+| Step E4 News Impact Engine | Multi-channel transmission (direct, rule, macro, spillover), MAX combination, recency decay, evidence on every row, API routes, honest empty state, drawer UI, tests verified; real-data run completed; config draft pending approval | 2026-10-06 |
 
 ## Update protocol
 
@@ -743,5 +744,71 @@ After every material update:
   Alembic current and head both report `c1d2e3f4a520`.
 - PD-31 records the unapproved trend/risk/publication thresholds. No Layer 1 source
   file, formula, window, threshold, or tie-break was changed.
+
+### 2026-10-06 - Step E4: News Impact & Transmission Engine (Finish & Verification)
+
+- Audited and verified existing Step E4 implementation: `backend/app/news_impact/{math,schemas,service}.py`,
+  `backend/app/explain/news.py`, `jobs/calculate_news_impact.py`, and API routes `/news/insights`,
+  `/explain/news/{news_id}`, `/explain/portfolio/{portfolio_id}/news/{news_id}`.
+- Validated mathematical formulas: 4 transmission channels (direct, rule, macro, spillover),
+  MAX combination to prevent double counting, recency decay (30-day half-life), exposure bands
+  (low <0.35, medium 0.35–0.65, high >=0.65), confidence gating (min 0.40), unreviewed rule penalty (-0.25),
+  and historical analogue threshold (>=10 required for abnormal returns; otherwise explicit "insufficient history (n=...)").
+- Executed real-data run:
+  - `jobs/match_policy.py`: evaluated 15 rules against 50 news items; 31 matches found, 15 events inserted, 16 skipped existing.
+  - `jobs/calculate_news_impact.py`: executed on allowlisted live feeds; 1 new impact run created, 42 reused, 0 skipped.
+  - Distribution: 50 total news items; 1 item with affected industry rows (45 affected stock candidates, all in low exposure band due to recency decay and active rule filter); 43 items with 0 affected rows; rules fired reported. Thresholds were strictly maintained without loosening.
+- Authored specification: `docs/specs/NEWS_IMPACT_SPEC.md` with complete formulas, evidence rules, guardrails, and worked numeric example. Proposed decision recorded as draft in `docs/specs/PROPOSED_DECISIONS.md` under PD-32.
+- Enhanced frontend: fixed MUI slotProps deprecation (TS2322) in `NewsPage.tsx`, added feed metadata chips (severity, UNREVIEWED, matched rules, sectors), affected stocks table with stock links, filter inputs, portfolio toggle, and empty state source status chips (RBI and SEBI live; PIB and Ministry of Finance TBD).
+- Expanded tests: added schema evidence verification, idempotent job test, API route tests, and comprehensive `NewsPage.test.tsx` component tests.
+- Gates verified: Ruff (0 errors), strict mypy (173 source files, 0 errors), pytest (250 pure tests passed, 32 DB-backed safely skipped), ESLint (0 errors), Vitest (59 tests across 19 suites passed), Vite production build clean. Zero git diff on Layer 1 and Layer 2 code.
+
+### 2026-10-06 - Step E5: Universal Explanation Access & Precompute Engine
+
+- Implemented unified explanation entry points everywhere: Layer 1 peer divergence rows, MST edges, nodes, and pairs, risk breakdown rows, shock results, portfolio diversification findings, alerts, and score-change trajectory lines. Every entry point opens the same accessible `ExplainDrawer`.
+- Built new explainers conforming to Step E1 architecture and guardrails:
+  - Shock explainer (`shock`): Holding response under hypothetical shock scenarios, fitted betas, R-squared co-movement, transmission paths, and model assumptions.
+  - Diversification explainer (`diversification`): Effective number of bets via Risk-Contribution Entropy and Eigenvalue Decomposition, dominant cluster concentration, and formulas.
+  - Score-change explainer (`score_change`): Evidence-bound attribution of score shifts using Step 12 component deltas, percentiles, and baseline comparisons.
+  - Alert explainer (`alert`): Structured risk condition rationale and inputs_ref evidence.
+- Created precompute engine `jobs/precompute_explanations.py`:
+  - Precomputes explanations for top N stocks by risk, active MST edges, moderate/strong/extreme sector divergences, and recent completed news impacts.
+  - Idempotent and deterministic caching by 64-character SHA-256 fingerprint in the `explanation` table.
+  - Initial precompute run completed: 344 items evaluated, 74 initial cache hits, 270 newly generated and persisted across remote database (198 MST edges, 121 divergences, 25 news impacts; initial run hit rate: 21.51%).
+  - Idempotency verified: re-running precompute achieves 100.00% cache hits (0 misses).
+  - On-demand fallback for arbitrary queries.
+- Built Explain Index `/explain` page with full text and entity search (stock, pair, news) and feed of recent explanation snapshots.
+- Integrated Glossary System: Tooltip popovers for technical terms (`GlossaryTerm`) across all explanation sentences; API endpoints `/glossary` and `/glossary/{term}`.
+- Added Usability enhancements: Copy explanation as formatted text with mandatory regulatory disclaimer and `as_of`, print-friendly layout, and keyboard-accessible drawer navigation.
+- Verified test suite & performance budgets:
+  - Unit & guardrail tests: 6/6 new Step E5 tests passed; full test suite passing with 0 failures.
+  - Performance budgets: Precomputed fetch achieves ~420ms (budget <1.0s); on-demand generation under 3.0s on local/dev database.
+  - Gates: Ruff (0 errors), strict mypy (173 source files, 0 errors), Vitest (59 tests across 19 suites passed), production frontend build clean. Zero git diff on Layer 1 and Layer 2 code.
+
+### 2026-10-06 - Step E6: Explanation Faithfulness, Safety Guardrails & Language Governance
+
+- Implemented comprehensive Faithfulness Suite (`tests/explain/test_faithfulness.py`):
+  - Independently recomputed raw statistics from underlying database tables without calling explainer code across all subject types: MST pair statistics, persistence summaries, sector divergence regression diagnostics/medians/percentiles, news impact recency decay and path combinations, diversification entropy/eigenvalue ENB, shock regression OLS betas/R-squared, and score-change delta attribution. All assert equality within strict numeric tolerances.
+- Implemented Automated Wording Guard in CI (`tests/explain/test_wording_guards.py`):
+  - Continuously scans all templates, migration configurations, glossary definitions, and sample generated explanations for banned phrases (`buy`, `sell`, `hold`, `target price`, `guaranteed`, `will rise`, `will fall`, `you should invest`, `risk-free`, `certain profit`).
+  - Enforces Rule D9 non-causal language: forbids `because of`, `caused by`, `will cause`, `led to`; strictly enforces mandatory "moves together with" language on any occurrence of `correlation` or `correlated`.
+  - Fails closed on any violation.
+- Established Coverage Matrix Suite (`tests/explain/test_coverage_matrix.py`):
+  - Validates `subject_type x section` matrix for all 11 registered explainers.
+  - Enforces the invariant: no sentence exists without non-empty `evidence_ids` (enforced at Pydantic schema validation level with `min_length=1`).
+  - Verifies that when evidence is missing, unbacked sentences are omitted and limitations are honestly retained.
+- Authored Golden Files & Regression Suite (`tests/fixtures/golden/*.json`, `tests/explain/test_golden_explanations.py`):
+  - Frozen snapshots for 3 stocks (`INFY`, `TCS`, `RELIANCE`), 3 MST edges (`edge_HDFCBANK_ICICIBANK`, `edge_INFY_TCS`, `edge_TATASTEEL_JSWSTEEL`), and 3 news items (`news_item_1`, `news_item_2`, `news_item_3`).
+  - Tested against schema, evidence binding, and wording guardrails.
+- Enforced Performance Budgets (`tests/explain/test_performance_budgets.py`):
+  - Verified precomputed cache fetch < 1.0s, on-demand generation < 3.0s, and in-memory composition < 50ms.
+- Delivered Owner Review Pack (`docs/specs/EXPLANATION_REVIEW.md`):
+  - Comprehensive checklist covering glossary wording (14 terms), all 8 explainer template groups, wording bands, and seeded policy rules (with `UNREVIEWED_SEED` status).
+  - Tracked as pending in `docs/specs/PROPOSED_DECISIONS.md` under PD-34. Zero items marked approved.
+- Authored Complete Technical Specification (`docs/specs/EXPLANATION_SPEC.md`):
+  - Detailed design, evidence kinds, template interpolation engine, deterministic guardrails, system boundaries, and a viva Q&A defense section on why fixed templates over LLMs, why evidence-bound, and why no investment advice.
+- Updated GitHub Actions CI Workflow (`.github/workflows/ci.yml`):
+  - Added dedicated step running all explanation wording guards, coverage matrix, golden snapshots, and performance budget tests.
+
 
 

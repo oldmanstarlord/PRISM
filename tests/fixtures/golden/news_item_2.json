@@ -1,0 +1,161 @@
+{
+  "schema_version": "1.0",
+  "headline": "Possible transmission paths for: SEBI Revises Derivative Margin and Position Limits",
+  "summary_points": [
+    {
+      "text": "SEBI published this item at 2026-01-12T14:30:00Z; matched rules: SEBI_MARGIN_DERIVATIVES.",
+      "evidence_ids": ["news:item", "rule:sebi_margin"]
+    }
+  ],
+  "sections": [
+    {
+      "key": "what_happened",
+      "title": "What happened",
+      "sentences": [
+        {
+          "text": "Stored headline: SEBI Revises Derivative Margin and Position Limits Source link: https://sebi.gov.in/legal/circulars/20260112",
+          "evidence_ids": ["news:item"]
+        }
+      ]
+    },
+    {
+      "key": "who_may_be_affected",
+      "title": "Who may be affected",
+      "sentences": [
+        {
+          "text": "1 displayed stock or industry rows meet the evidence threshold.",
+          "evidence_ids": ["impact:capital_markets"]
+        }
+      ],
+      "chart_spec": {
+        "type": "affected_stocks_table",
+        "rows": [
+          {
+            "industry": "Capital Markets & Exchanges",
+            "symbol": null,
+            "exposure_score": 0.58,
+            "confidence": 0.90,
+            "paths": [
+              {
+                "path_type": "regulatory_compliance"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "key": "why",
+      "title": "Why",
+      "sentences": [
+        {
+          "text": "Capital Markets & Exchanges has stored regulatory_compliance transmission evidence; its displayed exposure is 0.580 using MAX across paths.",
+          "evidence_ids": ["impact:capital_markets"]
+        }
+      ]
+    },
+    {
+      "key": "how_large",
+      "title": "How large",
+      "sentences": [
+        {
+          "text": "Exposure uses severity/10 × path weight × recency decay × signal strength, capped at 1; multiple paths use MAX.",
+          "evidence_ids": ["impact:capital_markets"]
+        },
+        {
+          "text": "Fewer than 5 historical analogues with post-event price data were available.",
+          "evidence_ids": ["history:analogues"]
+        }
+      ]
+    },
+    {
+      "key": "what_to_consider",
+      "title": "What to consider",
+      "sentences": [
+        {
+          "text": "Transmission channels indicate statistical historical co-movement and rule-based linkages, without directional certainty.",
+          "evidence_ids": ["impact:capital_markets"]
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "news:item",
+      "kind": "event",
+      "label": "News Item",
+      "value": "{\"headline\": \"SEBI Revises Derivative Margin and Position Limits\", \"source\": \"SEBI\", \"published_at\": \"2026-01-12T14:30:00Z\", \"url\": \"https://sebi.gov.in/legal/circulars/20260112\"}",
+      "source_table": "news_item",
+      "source_ref": "news:102",
+      "as_of": "2026-01-12",
+      "data_age_days": 3
+    },
+    {
+      "evidence_id": "rule:sebi_margin",
+      "kind": "rule",
+      "label": "Matched Policy Rule",
+      "value": "{\"rule_key\": \"SEBI_MARGIN_DERIVATIVES\", \"agency\": \"SEBI\"}",
+      "source_table": "policy_rule",
+      "source_ref": "rule:102",
+      "as_of": "2026-01-12",
+      "data_age_days": 3
+    },
+    {
+      "evidence_id": "impact:capital_markets",
+      "kind": "statistic",
+      "label": "Industry Impact Exposure",
+      "value": "{\"industry\": \"Capital Markets & Exchanges\", \"symbol\": null, \"exposure_score\": 0.58, \"confidence\": 0.90, \"paths\": [{\"path_type\": \"regulatory_compliance\"}]}",
+      "source_table": "news_impact",
+      "source_ref": "impact:102:cap_markets",
+      "as_of": "2026-01-12",
+      "data_age_days": 3
+    },
+    {
+      "evidence_id": "history:analogues",
+      "kind": "statistic",
+      "label": "Historical Analogues",
+      "value": 4,
+      "source_table": "news_impact",
+      "source_ref": "analogues:102",
+      "as_of": "2026-01-12",
+      "data_age_days": 3
+    }
+  ],
+  "limitations": [
+    "Possible effects come from versioned rules and stored statistical relationships; they are not predictions or investment advice.",
+    "Rules marked UNREVIEWED receive lower confidence.",
+    "Co-movement and shared clusters do not prove a business relationship or causation.",
+    "Prices are end-of-day, not real-time."
+  ],
+  "confidence": {
+    "level": "high",
+    "reasons": [
+      {
+        "text": "Highest stored path confidence is 0.90.",
+        "evidence_ids": ["impact:capital_markets"]
+      }
+    ]
+  },
+  "data_age": {
+    "days": 3,
+    "as_of": "2026-01-12",
+    "status": "available"
+  },
+  "template_version": "1.0.0",
+  "subject": {
+    "type": "news",
+    "key": "102"
+  },
+  "disclaimer": "PRISM provides descriptive risk explanations, not investment advice or price predictions.",
+  "effective_time": "2026-01-12",
+  "method": "rule-and-statistical-transmission-paths",
+  "method_version": "1.0.0",
+  "units": {
+    "exposure": "0-1",
+    "confidence": "0-1"
+  },
+  "thresholds": {},
+  "component_contributions": [],
+  "data_sufficiency": "sufficient",
+  "computed_at": "2026-01-12T15:00:00Z"
+}

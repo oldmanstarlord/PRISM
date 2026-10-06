@@ -63,6 +63,12 @@ jobs:
         run: uv run mypy backend jobs
 
       # ------------------------------------------------------------------
+      # Explanation Safety & Wording Guards (Step E6)
+      # ------------------------------------------------------------------
+      - name: Explanation Wording Guard & Golden Tests
+        run: uv run pytest tests/explain/test_wording_guards.py tests/explain/test_coverage_matrix.py tests/explain/test_golden_explanations.py tests/explain/test_performance_budgets.py tests/explain/test_faithfulness.py -v
+
+      # ------------------------------------------------------------------
       # pytest
       # All tests use either:
       #   (a) in-memory SQLite databases (market_data, validation)

@@ -21,6 +21,7 @@ const WatchlistsPage = lazy(() => import("./WatchlistsPage"));
 const LimitationsPage = lazy(() => import("./LimitationsPage"));
 const SectorsPage = lazy(() => import("./SectorsPage"));
 const NewsPage = lazy(() => import("./NewsPage"));
+const ExplainPage = lazy(() => import("./ExplainPage"));
 
 function LoadingFallback() {
   return (
@@ -116,6 +117,7 @@ export function AppRoutes() {
         />
         <Route path="/data-health" element={<DataHealthPage />} />
         <Route path="/alerts" element={<Suspense fallback={<LoadingFallback />}><AlertsPage /></Suspense>} />
+        <Route path="/explain" element={<Suspense fallback={<LoadingFallback />}><ExplainPage /></Suspense>} />
         <Route path="/watchlists" element={<Suspense fallback={<LoadingFallback />}><WatchlistsPage /></Suspense>} />
         <Route path="/about/limitations" element={<Suspense fallback={<LoadingFallback />}><LimitationsPage /></Suspense>} />
         <Route path="*" element={<Navigate to="/" replace />} />

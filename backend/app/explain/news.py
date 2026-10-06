@@ -195,6 +195,26 @@ class NewsExplainer:
             or "no stored policy rule"
         )
         age = evidence[0].data_age_days
+        configured_limitations = config.get("limitations")
+        limitations = (
+            [str(item) for item in configured_limitations]
+            if isinstance(configured_limitations, list)
+            else [
+                "Possible effects come from versioned rules and stored statistical relationships; "
+                "they are not predictions or investment advice.",
+                "Rules marked UNREVIEWED receive lower confidence.",
+                "Co-movement and shared clusters do not prove a business relationship or "
+                "causation.",
+                "Prices are end-of-day, not real-time.",
+            ]
+        )
+        disclaimer = str(
+            config.get(
+                "disclaimer",
+                "PRISM provides descriptive risk explanations, not investment advice or price "
+                "predictions.",
+            )
+        )
         return ExplanationPayload(
             headline=f"Possible transmission paths for: {news['headline']}",
             summary_points=[
@@ -246,7 +266,7 @@ class NewsExplainer:
                 ),
             ],
             evidence=evidence,
-            limitations=[],
+            limitations=limitations,
             confidence=ExplanationConfidence(
                 level=confidence_level,
                 reasons=[
@@ -270,7 +290,7 @@ class NewsExplainer:
             },
             data_sufficiency="sufficient" if impacts else "no_affected_rows",
             computed_at=datetime.now(UTC),
-            disclaimer="",
+            disclaimer=disclaimer,
         )
 
 

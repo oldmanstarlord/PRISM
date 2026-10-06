@@ -76,3 +76,23 @@ class ExplanationStoredOut(BaseModel):
     payload: ExplanationPayload
     created_at: datetime
     reused: bool
+
+
+class ExplanationSummaryOut(BaseModel):
+    id: str
+    subject_type: str
+    subject_key: str
+    as_of: date
+    template_version: str
+    headline: str
+    confidence_level: str
+    created_at: datetime
+    request_path: str
+
+
+class ExplanationSearchResult(BaseModel):
+    category: str
+    title: str
+    subtitle: str
+    path: str
+    explanation_id: str | None = None

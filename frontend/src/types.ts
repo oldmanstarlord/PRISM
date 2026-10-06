@@ -1053,6 +1053,26 @@ export interface NewsInsightsResponse {
   limitations: string[];
 }
 
+export interface ExplanationSummaryItem {
+  id: string;
+  subject_type: string;
+  subject_key: string;
+  as_of: string;
+  template_version: string;
+  headline: string;
+  confidence_level: "low" | "medium" | "high" | string;
+  created_at: string;
+  request_path: string;
+}
+
+export interface ExplanationSearchResultItem {
+  category: "stock" | "pair" | "news" | "recent" | string;
+  title: string;
+  subtitle: string;
+  path: string;
+  explanation_id?: string | null;
+}
+
 
 
 

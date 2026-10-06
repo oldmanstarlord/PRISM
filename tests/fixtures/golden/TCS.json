@@ -1,0 +1,150 @@
+{
+  "schema_version": "1.0",
+  "headline": "30-day EWMA Volatility for TCS",
+  "summary_points": [
+    {
+      "text": "The stored component value was 18.20 percent.",
+      "evidence_ids": ["raw"]
+    },
+    {
+      "text": "The value ranked at the 64th percentile in its scoring peer set.",
+      "evidence_ids": ["percentile"]
+    },
+    {
+      "text": "The component received 34.0 risk points before dimension aggregation.",
+      "evidence_ids": ["points"]
+    }
+  ],
+  "sections": [
+    {
+      "key": "details",
+      "title": "Component Configuration & Metadata",
+      "sentences": [
+        {
+          "text": "Its configured direction was higher values correspond to higher descriptive risk and its component weight was 0.25.",
+          "evidence_ids": ["direction", "weight"]
+        },
+        {
+          "text": "Its stored status was ok, with data age of 0 days.",
+          "evidence_ids": ["status", "age"]
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "raw",
+      "kind": "statistic",
+      "label": "Raw value",
+      "value": 18.20,
+      "unit": "percent",
+      "source_table": "risk_component",
+      "source_ref": "TCS:ewma_volatility",
+      "as_of": "2026-01-15",
+      "data_age_days": 0
+    },
+    {
+      "evidence_id": "percentile",
+      "kind": "statistic",
+      "label": "Percentile rank",
+      "value": 64.0,
+      "unit": "percentile",
+      "source_table": "risk_component",
+      "source_ref": "TCS:ewma_volatility",
+      "as_of": "2026-01-15",
+      "data_age_days": 0
+    },
+    {
+      "evidence_id": "points",
+      "kind": "statistic",
+      "label": "Risk points",
+      "value": 34.0,
+      "unit": "points",
+      "source_table": "risk_component",
+      "source_ref": "TCS:ewma_volatility",
+      "as_of": "2026-01-15",
+      "data_age_days": 0
+    },
+    {
+      "evidence_id": "direction",
+      "kind": "config",
+      "label": "Direction",
+      "value": "higher_is_riskier",
+      "source_table": "score_component_definition",
+      "source_ref": "ewma_volatility:direction",
+      "as_of": "2026-01-15",
+      "data_age_days": 0
+    },
+    {
+      "evidence_id": "weight",
+      "kind": "config",
+      "label": "Component weight",
+      "value": 0.25,
+      "unit": "share",
+      "source_table": "score_component_definition",
+      "source_ref": "ewma_volatility:weight",
+      "as_of": "2026-01-15",
+      "data_age_days": 0
+    },
+    {
+      "evidence_id": "status",
+      "kind": "rule",
+      "label": "Status",
+      "value": "ok",
+      "source_table": "risk_component",
+      "source_ref": "TCS:ewma_volatility",
+      "as_of": "2026-01-15",
+      "data_age_days": 0
+    },
+    {
+      "evidence_id": "age",
+      "kind": "statistic",
+      "label": "Data age",
+      "value": 0,
+      "unit": "days",
+      "source_table": "risk_component",
+      "source_ref": "TCS:ewma_volatility",
+      "as_of": "2026-01-15",
+      "data_age_days": 0
+    }
+  ],
+  "limitations": [
+    "The explanation is limited to stored component evidence available at the score run cutoff.",
+    "Percentile and points describe relative risk inputs; they do not predict returns."
+  ],
+  "confidence": {
+    "level": "high",
+    "reasons": [
+      {
+        "text": "Component points are derived from complete point-in-time trading data without look-ahead.",
+        "evidence_ids": ["raw", "status"]
+      }
+    ]
+  },
+  "data_age": {
+    "days": 0,
+    "as_of": "2026-01-15",
+    "status": "current"
+  },
+  "template_version": "1.0.0",
+  "subject": {
+    "type": "risk_component",
+    "key": "TCS:ewma_volatility"
+  },
+  "disclaimer": "PRISM provides descriptive risk explanations, not investment advice or price predictions.",
+  "effective_time": "2026-01-15",
+  "method": "ewma_volatility",
+  "method_version": "1.0.0",
+  "input_fingerprint": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+  "lookback": {
+    "window_days": 30
+  },
+  "units": {
+    "raw": "percent",
+    "points": "points"
+  },
+  "thresholds": {},
+  "component_contributions": [],
+  "data_sufficiency": "sufficient",
+  "computed_at": "2026-01-15T16:00:00Z"
+}

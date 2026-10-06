@@ -168,4 +168,151 @@ INFO:     127.0.0.1:56939 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
 INFO:     127.0.0.1:57651 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
 INFO:     127.0.0.1:49255 - "GET /api/v1/meta HTTP/1.1" 200 OK
 INFO:     127.0.0.1:63745 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
- 
+  INFO:     127.0.0.1:62611 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49671 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63932 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52731 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63932 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52731 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57158 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52731 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57158 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+        INFO:     127.0.0.1:57562 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:52218 - "GET /api/v1/meta HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:65158 - "GET /api/v1/ops/freshness HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57277 - "GET /api/v1/macro/regime/latest HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:63632 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:55971 - "GET /api/v1/about/limitations HTTP/1.1" 500 Internal Server Error
+  INFO:     127.0.0.1:62103 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61348 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55905 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57387 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:51601 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61504 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51601 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61504 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51601 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+        INFO:     127.0.0.1:61401 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49781 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61984 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49781 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49781 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61401 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61401 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49781 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63112 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+  INFO:     127.0.0.1:60739 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65454 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54794 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56839 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56839 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54794 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54794 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56839 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58706 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:61635 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62074 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57187 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50083 - "GET /api/v1/ops/freshness HTTP/1.1" 500 Internal Server Error
+ INFO:     127.0.0.1:63903 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63903 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53949 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:63903 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53949 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61603 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53113 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58377 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59868 - "GET /api/v1/ops/freshness HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:53929 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61580 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53792 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51985 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56272 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56272 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58210 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49945 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62130 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64452 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63920 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50404 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49348 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55261 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55261 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49348 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52062 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57110 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52062 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52541 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64764 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52759 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49849 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49849 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52759 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60165 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60165 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61325 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54339 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64561 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64622 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49358 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49358 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64622 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55941 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55133 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55941 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57331 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62297 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56445 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57637 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56445 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57637 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57444 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64755 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57444 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56152 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57236 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51667 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52137 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52137 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51667 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63500 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51667 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52137 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58191 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53725 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64454 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58991 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58991 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64454 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59257 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59257 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64454 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:58271 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57338 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60119 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55702 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+ INFO:     127.0.0.1:63488 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63488 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52950 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52950 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63488 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63783 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65317 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51720 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57188 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57188 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51720 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61683 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59789 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61683 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54140 - "GET /api/v1/meta HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59952 - "GET /api/v1/macro/regime/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55937 - "GET /api/v1/about/limitations HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53770 - "GET /api/v1/mst/latest?variant=raw HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53770 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55937 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59755 - "GET /api/v1/ops/freshness HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59755 - "GET /api/v1/glossary/correlation HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50214 - "GET /api/v1/glossary/correlation_distance HTTP/1.1" 200 OK
+       

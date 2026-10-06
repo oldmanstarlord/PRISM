@@ -1,0 +1,161 @@
+{
+  "schema_version": "1.0",
+  "headline": "Possible transmission paths for: RBI Keeps Policy Repo Rate Unchanged at 6.50%",
+  "summary_points": [
+    {
+      "text": "RBI published this item at 2026-01-10T10:00:00Z; matched rules: RBI_REPO_RATE_PAUSE.",
+      "evidence_ids": ["news:item", "rule:rbi_pause"]
+    }
+  ],
+  "sections": [
+    {
+      "key": "what_happened",
+      "title": "What happened",
+      "sentences": [
+        {
+          "text": "Stored headline: RBI Keeps Policy Repo Rate Unchanged at 6.50% Source link: https://rbi.org.in/press/20260110",
+          "evidence_ids": ["news:item"]
+        }
+      ]
+    },
+    {
+      "key": "who_may_be_affected",
+      "title": "Who may be affected",
+      "sentences": [
+        {
+          "text": "1 displayed stock or industry rows meet the evidence threshold.",
+          "evidence_ids": ["impact:banking"]
+        }
+      ],
+      "chart_spec": {
+        "type": "affected_stocks_table",
+        "rows": [
+          {
+            "industry": "Banking & Financial Services",
+            "symbol": null,
+            "exposure_score": 0.42,
+            "confidence": 0.85,
+            "paths": [
+              {
+                "path_type": "interest_rate_sensitivity"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "key": "why",
+      "title": "Why",
+      "sentences": [
+        {
+          "text": "Banking & Financial Services has stored interest_rate_sensitivity transmission evidence; its displayed exposure is 0.420 using MAX across paths.",
+          "evidence_ids": ["impact:banking"]
+        }
+      ]
+    },
+    {
+      "key": "how_large",
+      "title": "How large",
+      "sentences": [
+        {
+          "text": "Exposure uses severity/10 × path weight × recency decay × signal strength, capped at 1; multiple paths use MAX.",
+          "evidence_ids": ["impact:banking"]
+        },
+        {
+          "text": "Fewer than 5 historical analogues with post-event price data were available.",
+          "evidence_ids": ["history:analogues"]
+        }
+      ]
+    },
+    {
+      "key": "what_to_consider",
+      "title": "What to consider",
+      "sentences": [
+        {
+          "text": "Transmission channels indicate statistical historical co-movement and rule-based linkages, without directional certainty.",
+          "evidence_ids": ["impact:banking"]
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "news:item",
+      "kind": "event",
+      "label": "News Item",
+      "value": "{\"headline\": \"RBI Keeps Policy Repo Rate Unchanged at 6.50%\", \"source\": \"RBI\", \"published_at\": \"2026-01-10T10:00:00Z\", \"url\": \"https://rbi.org.in/press/20260110\"}",
+      "source_table": "news_item",
+      "source_ref": "news:101",
+      "as_of": "2026-01-10",
+      "data_age_days": 5
+    },
+    {
+      "evidence_id": "rule:rbi_pause",
+      "kind": "rule",
+      "label": "Matched Policy Rule",
+      "value": "{\"rule_key\": \"RBI_REPO_RATE_PAUSE\", \"agency\": \"RBI\"}",
+      "source_table": "policy_rule",
+      "source_ref": "rule:101",
+      "as_of": "2026-01-10",
+      "data_age_days": 5
+    },
+    {
+      "evidence_id": "impact:banking",
+      "kind": "statistic",
+      "label": "Industry Impact Exposure",
+      "value": "{\"industry\": \"Banking & Financial Services\", \"symbol\": null, \"exposure_score\": 0.42, \"confidence\": 0.85, \"paths\": [{\"path_type\": \"interest_rate_sensitivity\"}]}",
+      "source_table": "news_impact",
+      "source_ref": "impact:101:banking",
+      "as_of": "2026-01-10",
+      "data_age_days": 5
+    },
+    {
+      "evidence_id": "history:analogues",
+      "kind": "statistic",
+      "label": "Historical Analogues",
+      "value": 3,
+      "source_table": "news_impact",
+      "source_ref": "analogues:101",
+      "as_of": "2026-01-10",
+      "data_age_days": 5
+    }
+  ],
+  "limitations": [
+    "Possible effects come from versioned rules and stored statistical relationships; they are not predictions or investment advice.",
+    "Rules marked UNREVIEWED receive lower confidence.",
+    "Co-movement and shared clusters do not prove a business relationship or causation.",
+    "Prices are end-of-day, not real-time."
+  ],
+  "confidence": {
+    "level": "high",
+    "reasons": [
+      {
+        "text": "Highest stored path confidence is 0.85.",
+        "evidence_ids": ["impact:banking"]
+      }
+    ]
+  },
+  "data_age": {
+    "days": 5,
+    "as_of": "2026-01-10",
+    "status": "available"
+  },
+  "template_version": "1.0.0",
+  "subject": {
+    "type": "news",
+    "key": "101"
+  },
+  "disclaimer": "PRISM provides descriptive risk explanations, not investment advice or price predictions.",
+  "effective_time": "2026-01-10",
+  "method": "rule-and-statistical-transmission-paths",
+  "method_version": "1.0.0",
+  "units": {
+    "exposure": "0-1",
+    "confidence": "0-1"
+  },
+  "thresholds": {},
+  "component_contributions": [],
+  "data_sufficiency": "sufficient",
+  "computed_at": "2026-01-10T11:00:00Z"
+}

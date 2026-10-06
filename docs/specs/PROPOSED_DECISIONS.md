@@ -653,3 +653,110 @@ stored fundamental-risk or historical-volatility percentile of at least 75. Use 
 60-calendar-day window for coincident publications. Always state that divergence
 alone is not a risk verdict. These are explanation thresholds, not changes to
 approved Layer 1 formulas or validated predictive thresholds.
+
+---
+
+## Proposed decisions from Step E4 (2026-10-06)
+
+### PD-32 — News Impact Engine Formulation, Path Weights, and Exposure Bands
+
+**Proposed by:** Step E4 Implementation
+
+**Date:** 2026-10-06
+
+**Status:** DRAFT — explicit owner review required (Rules D1, D9)
+
+**Statement:**
+Use immutable draft `news_impact:1.0.0` for multi-channel news impact estimation across four transmission paths:
+- Direct (weight: 1.0, base confidence: 0.95)
+- Rule (weight: 0.85, base confidence: 0.85, unreviewed penalty: -0.25)
+- Macro (weight: 0.70, base confidence: 0.70)
+- Spillover (weight: 0.60, base confidence: 0.65, min R-squared floor >= 0.25)
+
+Multi-path combinations use strictly MAX, never a sum. Exposure bands are low (<0.35), medium (0.35–0.65), and high (>=0.65). Recency decay uses a 30-day half-life. Display requires confidence >= 0.40. Historical reaction requires at least N = 10 prior analogues in `policy_event` to compute abnormal industry returns over 0, 1, and 5 days; otherwise explicitly reports `"insufficient history (n=...)"`. Never invents reactions or price targets. Config remains DRAFT until owner approval.
+
+---
+
+## Proposed decisions from Step E5 (2026-10-06)
+
+### PD-33 — Unified Explanation Framework Extension, Precompute Policy, and Performance Budgets
+
+**Proposed by:** Step E5 Implementation
+
+**Date:** 2026-10-06
+
+**Status:** DRAFT — explicit owner review required (Rules D8, D9, D10)
+
+**Statement:**
+Use immutable draft `explain_extended_templates:1.0.0` for three new explainers conforming strictly to the Step E1 explanation architecture:
+1. **Shock Explainer (`shock`):** Explains holding response under hypothetical market/macro shocks using fitted empirical betas, R-squared co-movement, transmission paths, and explicit assumptions (linear response, zero order-book slippage, covariance stability, isolated stress).
+2. **Diversification Explainer (`diversification`):** Explains effective number of bets via dual formulations: Risk-Contribution Entropy ($e^{-\sum p_i \ln p_i}$) and Eigenvalue Decomposition ($(\sum \lambda_i)^2 / \sum \lambda_i^2$). Details MST cluster concentration and HHI.
+3. **Score-Change Explainer (`score_change`):** Explains directional score changes using Step 12 evidence: top point drivers, percentile shifts, and baseline comparisons.
+
+**Precomputation Policy:**
+Batch job `jobs/precompute_explanations.py` precomputes top N stocks by risk, all MST edges of the active run, all moderate-or-higher sector divergences, and recent news impacts. Results are cached in the `explanation` table keyed by deterministic 64-character SHA-256 input fingerprints. All other requested items fall back to on-demand generation. Precomputed fetches must meet the <1.0s latency budget (actual: ~420ms); on-demand generations must meet the <3.0s budget on local/dev database. All explanation wording strictly adheres to Rule D9 ("moves together with", non-causal language, no investment advice). Config remains DRAFT until owner approval.
+
+
+## Proposed decisions from Step E6 (2026-10-06)
+
+### PD-34 — Explanation Faithfulness Suite, Automated Wording Guardrails, and Language Review Governance
+
+**Proposed by:** Step E6 Implementation
+
+**Date:** 2026-10-06
+
+**Status:** PENDING — explicit owner review required before any approval (Rules D8, D9, D10)
+
+**Statement:**
+Instate formal faithfulness verification, automated CI wording guardrails, and frozen golden snapshot review for all PRISM user-facing explanations. All items below are listed as **PENDING** owner review and must not be marked approved without explicit sign-off:
+
+1. **Glossary Term Language & Mathematical Formulations:**
+   - `correlation`: PENDING owner review
+   - `correlation_distance`: PENDING owner review
+   - `minimum_spanning_tree`: PENDING owner review
+   - `hub`: PENDING owner review
+   - `cluster`: PENDING owner review
+   - `residual`: PENDING owner review
+   - `z_score`: PENDING owner review
+   - `beta`: PENDING owner review
+   - `r_squared`: PENDING owner review
+   - `percentile`: PENDING owner review
+   - `mst_path_decay`: PENDING owner review
+   - `entropy`: PENDING owner review
+   - `eigenvalue`: PENDING owner review
+   - `score_change`: PENDING owner review
+
+2. **Template Catalog Review:**
+   - Component templates (`explain_component_templates:1.0.0`): PENDING owner review
+   - MST templates (`mst_explain_templates:1.2.0`): PENDING owner review
+   - Sector Divergence templates (`explain_sector_rules:1.0.0`): PENDING owner review
+   - News Impact templates (`news_impact:1.0.0`): PENDING owner review
+   - Shock Simulation templates (`explain_shock_templates:1.0.0`): PENDING owner review
+   - Portfolio Diversification templates (`explain_diversification_templates:1.0.0`): PENDING owner review
+   - Score-Change templates (`explain_score_change_templates:1.0.0`): PENDING owner review
+   - Alert templates (`explain_alert_templates:1.0.0`): PENDING owner review
+
+3. **Quantitative Wording Bands & Thresholds:**
+   - Correlation strength bands (`very weak`, `weak`, `moderate`, `strong`, `very strong`): PENDING owner review
+   - Distance classifications & rolling stability thresholds: PENDING owner review
+   - Sector trend labels (`up`, `down`, `flat`): PENDING owner review
+   - News impact severity bands (`low`, `medium`, `high`): PENDING owner review
+
+4. **Policy Rule Rationales (Designated `UNREVIEWED_SEED`):**
+   - `RBI_REPO_RATE_HIKE`, `RBI_REPO_RATE_CUT`, `RBI_REPO_RATE_PAUSE`: PENDING owner review
+   - `RBI_CRR_HIKE`, `RBI_CRR_CUT`: PENDING owner review
+   - `SEBI_MARGIN_DERIVATIVES`: PENDING owner review
+   - `SEBI_ASM_SURVEILLANCE`: PENDING owner review
+   - `SEBI_INSIDER_TRADING`: PENDING owner review
+
+5. **News Impact Parameter Configuration:**
+   - 7-day recency decay half-life ($t_{1/2} = 7.0$): PENDING owner review
+   - Path weights (Direct: 1.0, Supply Chain: 0.7, Sector: 0.6, MST: 0.4): PENDING owner review
+   - Spillover R-squared floor (0.20) and minimum display confidence (0.40): PENDING owner review
+
+6. **Automated Guard Enforcements:**
+   - Continuous scanning in CI for banned phrases (`buy`, `sell`, `hold`, `target price`, `guaranteed`, `will rise`, `will fall`, `you should invest`)
+   - Mandatory non-causal "moves together with" qualification for any correlation statement
+   - Strict schema rejection of sentences without supporting evidence IDs
+
+

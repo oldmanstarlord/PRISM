@@ -6,7 +6,7 @@ from math import exp, sqrt
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import desc, func, select
+from sqlalchemy import delete, desc, func, select
 from sqlalchemy.orm import Session
 
 from backend.app.db.models import Explanation, MstEdge, MstRun
@@ -167,6 +167,13 @@ def test_edge_explanation_matches_stored_distance_and_reuses_fingerprint(
     )
     if edge is None or edge.symbol_a is None or edge.symbol_b is None:
         pytest.skip("no stored MST edge")
+    session.execute(
+        delete(Explanation).where(
+            Explanation.subject_type == "mst_edge",
+            Explanation.subject_key == f"{run.id}:{edge.symbol_a.upper()}:{edge.symbol_b.upper()}",
+        )
+    )
+    session.commit()
     before = session.scalar(select(func.count(Explanation.id))) or 0
     first, reused_first, first_row = get_or_create_mst_edge_explanation(
         session, run.id, edge.symbol_a, edge.symbol_b

@@ -23,6 +23,7 @@ Refresh verified RSS metadata:
 ```powershell
 uv run python jobs/ingest_news.py
 uv run python jobs/match_policy.py
+uv run python jobs/calculate_news_impact.py
 ```
 
 The RSS job fails if every enabled feed fails. A feed that returns no complete,

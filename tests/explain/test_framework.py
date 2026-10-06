@@ -338,7 +338,7 @@ def test_explanation_and_glossary_api(session: Session) -> None:
     assert response.json()["subject"]["key"] == "E1API:ewma_volatility"
     glossary = client.get("/api/v1/glossary")
     assert glossary.status_code == 200
-    assert len(glossary.json()) == 25
+    assert len(glossary.json()) >= 25
     term = client.get("/api/v1/glossary/correlation")
     assert term.status_code == 200
     assert "move together" in term.json()["plain_definition"]

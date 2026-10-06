@@ -33,19 +33,30 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import engine, get_session
 from backend.app.events.schemas import RecentEventsResponse, StockEventsResponse
-from backend.app.explain.schemas import ExplanationPayload, GlossaryTermOut
+from backend.app.explain.schemas import (
+    ExplanationPayload,
+    ExplanationSearchResult,
+    ExplanationSummaryOut,
+    GlossaryTermOut,
+)
 from backend.app.explain.sector import SectorOverviewResponse, build_sector_overview
 from backend.app.explain.service import (
     get_glossary_term,
+    get_or_create_alert_explanation,
     get_or_create_component_explanation,
     get_or_create_divergence_explanation,
+    get_or_create_diversification_explanation,
     get_or_create_mst_edge_explanation,
     get_or_create_mst_node_explanation,
     get_or_create_mst_pair_explanation,
     get_or_create_news_explanation,
+    get_or_create_score_change_explanation,
     get_or_create_sector_explanation,
+    get_or_create_shock_explanation,
     list_glossary,
+    list_recent_explanations,
     load_explain_config,
+    search_explanations,
 )
 from backend.app.fundamentals.service import get_stock_fundamentals
 from backend.app.macro.schemas import (
@@ -291,6 +302,113 @@ def explain_mst_pair(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get("/explain/shock", response_model=ExplanationPayload, tags=["explanations", "shock"])
+def explain_shock(
+    session: DatabaseSession,
+    holding_symbol: str = Query(min_length=1),
+    shocked_symbol: str = Query(min_length=1),
+    portfolio_id: UUID | None = None,
+    scenario_id: UUID | None = None,
+    shock_pct: float = Query(default=-10.0),
+    method: str = Query(default="regression_beta"),
+) -> ExplanationPayload:
+    try:
+        return get_or_create_shock_explanation(
+            session,
+            holding_symbol=holding_symbol,
+            shocked_symbol=shocked_symbol,
+            portfolio_id=portfolio_id,
+            scenario_id=scenario_id,
+            shock_pct=shock_pct,
+            method=method,
+        )[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/explain/diversification/{portfolio_id}",
+    response_model=ExplanationPayload,
+    tags=["explanations", "diversification"],
+)
+def explain_diversification(
+    portfolio_id: UUID,
+    session: DatabaseSession,
+    run_id: UUID | None = None,
+    as_of: date | None = None,
+) -> ExplanationPayload:
+    try:
+        return get_or_create_diversification_explanation(
+            session, portfolio_id=portfolio_id, run_id=run_id, as_of=as_of
+        )[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/explain/score-change/{symbol}",
+    response_model=ExplanationPayload,
+    tags=["explanations", "score_change"],
+)
+def explain_score_change(
+    symbol: str,
+    session: DatabaseSession,
+    as_of: date | None = None,
+) -> ExplanationPayload:
+    try:
+        return get_or_create_score_change_explanation(session, symbol, as_of=as_of)[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/explain/alert/{alert_id}",
+    response_model=ExplanationPayload,
+    tags=["explanations", "alerts"],
+)
+def explain_alert(
+    alert_id: UUID,
+    session: DatabaseSession,
+) -> ExplanationPayload:
+    try:
+        return get_or_create_alert_explanation(session, alert_id)[0]
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.get(
+    "/explain/recent",
+    response_model=list[ExplanationSummaryOut],
+    tags=["explanations"],
+)
+def explain_recent(
+    session: DatabaseSession,
+    limit: int = Query(default=50, ge=1, le=200),
+) -> list[ExplanationSummaryOut]:
+    return list_recent_explanations(session, limit)
+
+
+@router.get(
+    "/explain/search",
+    response_model=list[ExplanationSearchResult],
+    tags=["explanations"],
+)
+def explain_search(
+    session: DatabaseSession,
+    q: str = Query(default="", min_length=1),
+    limit: int = Query(default=25, ge=1, le=100),
+) -> list[ExplanationSearchResult]:
+    return search_explanations(session, q, limit)
 
 
 @router.get("/ops/pipeline-runs", response_model=list[PipelineRunOut], tags=["operations"])

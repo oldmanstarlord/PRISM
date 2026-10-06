@@ -129,7 +129,13 @@ def _latest_raw_run(session: Session, as_of: date | None = None) -> MstRun:
     return run
 
 
+_CONTEXT_CACHE: dict[UUID, tuple[dict[str, MstNode], list[MstEdge]]] = {}
+_PANEL_CACHE: dict[UUID, pd.DataFrame] = {}
+
+
 def _run_context(session: Session, run: MstRun) -> tuple[dict[str, MstNode], list[MstEdge]]:
+    if run.id in _CONTEXT_CACHE:
+        return _CONTEXT_CACHE[run.id]
     nodes = {
         node.symbol.upper(): node
         for node in session.scalars(
@@ -139,10 +145,14 @@ def _run_context(session: Session, run: MstRun) -> tuple[dict[str, MstNode], lis
     edges = session.scalars(
         select(MstEdge).where(MstEdge.mst_run_id == run.id).order_by(MstEdge.edge_rank)
     ).all()
-    return nodes, list(edges)
+    res = (nodes, list(edges))
+    _CONTEXT_CACHE[run.id] = res
+    return res
 
 
 def _price_panel(session: Session, run: MstRun, nodes: dict[str, MstNode]) -> pd.DataFrame:
+    if run.id in _PANEL_CACHE:
+        return _PANEL_CACHE[run.id]
     if run.data_cutoff is None:
         raise LookupError("MST run has no point-in-time data cutoff")
     observations = load_latest_adjusted_closes(
@@ -161,6 +171,7 @@ def _price_panel(session: Session, run: MstRun, nodes: dict[str, MstNode]) -> pd
     for item in observations:
         if item.trade_date in selected_dates:
             panel.at[item.trade_date, symbols[item.security_id]] = float(item.adjusted_close)
+    _PANEL_CACHE[run.id] = panel
     return panel
 
 

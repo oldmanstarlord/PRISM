@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import { useApi } from "./api";
+import { ExplainDrawer } from "./components/ExplainDrawer";
 import type { Horizon, NewsInsightsResponse, RankingsResponse } from "./types";
 
 const bandColor = {
@@ -45,6 +46,7 @@ function formatTimestamp(value: string) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [horizon, setHorizon] = useState<Horizon>(20);
+  const [explainPath, setExplainPath] = useState("");
   const { data: portfolios = [] } = useApi<Array<{ id: string; name: string }>>("/portfolios");
   const firstPortfolioId = portfolios[0]?.id;
   const { data: portfolioNews } = useApi<NewsInsightsResponse>(
@@ -152,6 +154,7 @@ export default function Dashboard() {
                   <TableCell align="right">Direction</TableCell>
                   <TableCell align="right">Industry percentile</TableCell>
                   <TableCell>Band</TableCell>
+                  <TableCell align="right">Explain</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -191,6 +194,18 @@ export default function Dashboard() {
                         variant={score.interpretation === "normal" ? "outlined" : "filled"}
                       />
                     </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExplainPath(`/explain/divergence/${encodeURIComponent(score.symbol)}`);
+                        }}
+                      >
+                        Why?
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -202,6 +217,11 @@ export default function Dashboard() {
           Daily closing-price analysis, not live intraday data. Divergence is descriptive, not a forecast or investment recommendation.
         </Alert>
       </Stack>
+      <ExplainDrawer
+        open={Boolean(explainPath)}
+        path={explainPath}
+        onClose={() => setExplainPath("")}
+      />
     </Container>
   );
 }

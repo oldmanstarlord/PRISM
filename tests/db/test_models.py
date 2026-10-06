@@ -33,6 +33,8 @@ def test_database_tables_are_registered() -> None:
         "mst_node_metric",
         "mst_run",
         "mst_stability",
+        "news_impact",
+        "news_impact_item",
         "news_item",
         "news_security_link",
         "pipeline_run",

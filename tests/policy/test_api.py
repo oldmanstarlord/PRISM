@@ -2,15 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
-
-from backend.app.main import app
-
-
-@pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
 
 
 def test_get_policy_rules_endpoint(client: TestClient):

@@ -28,6 +28,7 @@ import {
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { z } from "zod";
 import { useApi, apiBase, fetchJson, postJson } from "./api";
+import { ExplainDrawer } from "./components/ExplainDrawer";
 import { ExplainPanel } from "./components/ExplainPanel";
 import { FreshnessBadge } from "./components/FreshnessBadge";
 import { DrawdownChart, RiskContributionChart } from "./components/PortfolioCharts";
@@ -68,6 +69,7 @@ export default function PortfolioPage() {
   const [divData, setDivData] = useState<DiversificationResponse | null>(null);
   const [isLoadingDiv, setIsLoadingDiv] = useState<boolean>(false);
   const [forceRerun, setForceRerun] = useState<boolean>(false);
+  const [explainPath, setExplainPath] = useState<string>("");
 
 
   // Load existing portfolios
@@ -886,14 +888,29 @@ export default function PortfolioPage() {
                 >
                   Portfolio Diversification &amp; Effective Number of Bets (FR-I1)
                 </Typography>
-                {divData && (
-                  <Chip
-                    label={`Default: ${divData.enb_default_type.toUpperCase()} ENB`}
-                    color="primary"
-                    size="small"
-                    variant="outlined"
-                  />
-                )}
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                  {divData && (
+                    <Chip
+                      label={`Default: ${divData.enb_default_type.toUpperCase()} ENB`}
+                      color="primary"
+                      size="small"
+                      variant="outlined"
+                    />
+                  )}
+                  {selectedPortfolioId && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() =>
+                        setExplainPath(
+                          `/explain/diversification/${encodeURIComponent(selectedPortfolioId)}`
+                        )
+                      }
+                    >
+                      Why?
+                    </Button>
+                  )}
+                </Stack>
               </Box>
 
               {isLoadingDiv && (
@@ -1099,6 +1116,12 @@ export default function PortfolioPage() {
 
         </Box>
       )}
+
+      <ExplainDrawer
+        open={Boolean(explainPath)}
+        path={explainPath}
+        onClose={() => setExplainPath("")}
+      />
     </Container>
   );
 }

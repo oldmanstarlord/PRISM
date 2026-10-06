@@ -38,9 +38,14 @@ def combine_exposures(scores: Iterable[float]) -> float:
     return max(values, default=0.0)
 
 
-def historical_reaction_label(n: int, minimum_analogues: int) -> str:
+def historical_reaction_label(
+    n: int, minimum_analogues: int, returns: dict[int, float] | None = None
+) -> str:
     if n < minimum_analogues:
         return f"insufficient history (n={n})"
+    if returns:
+        parts = [f"{day}d: {ret:+.2%}" for day, ret in sorted(returns.items())]
+        return f"historical reaction (n={n}, average abnormal return: {', '.join(parts)})"
     return f"historical reaction available (n={n})"
 
 

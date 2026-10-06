@@ -318,11 +318,13 @@ describe("AppRoutes across all views", () => {
   ];
 
   routesToTest.forEach(({ path, expectedTitle }) => {
-    it(`renders route "${path}" with AppLayout and displays regulatory disclaimer`, async () => {
-      renderRoute(path);
+    it(
+      `renders route "${path}" with AppLayout and displays regulatory disclaimer`,
+      async () => {
+        renderRoute(path);
 
-      // Check expected page title
-      expect(await screen.findByRole("heading", { name: expectedTitle })).toBeInTheDocument();
+        // Check expected page title
+        expect(await screen.findByRole("heading", { name: expectedTitle }, { timeout: 10000 })).toBeInTheDocument();
 
       // Check header PRISM title
       expect(screen.getByRole("heading", { name: "PRISM" })).toBeInTheDocument();

@@ -436,7 +436,26 @@ export function MstPageContent() {
 
             {/* Edge details prompt */}
             {selectedEdge && (
-              <Alert severity="info" onClose={() => setSelectedEdge(null)}>
+              <Alert
+                severity="info"
+                onClose={() => setSelectedEdge(null)}
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={() => {
+                      const parts = selectedEdge.title.split(" ↔ ");
+                      if (parts.length === 2) {
+                        setExplainPath(
+                          `/explain/mst/pair?a=${encodeURIComponent(parts[0].trim())}&b=${encodeURIComponent(parts[1].trim())}`
+                        );
+                      }
+                    }}
+                  >
+                    Explain Pair
+                  </Button>
+                }
+              >
                 <strong>{selectedEdge.title}</strong>: {selectedEdge.detail}
               </Alert>
             )}
@@ -464,9 +483,20 @@ export function MstPageContent() {
                     title={selectedNode.symbol}
                     subheader={selectedNode.industry}
                     action={
-                      <Button size="small" onClick={() => setSelectedNode(null)}>
-                        Close
-                      </Button>
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() =>
+                            setExplainPath(`/explain/mst/node/${encodeURIComponent(selectedNode.symbol)}`)
+                          }
+                        >
+                          Explain Node
+                        </Button>
+                        <Button size="small" onClick={() => setSelectedNode(null)}>
+                          Close
+                        </Button>
+                      </Stack>
                     }
                   />
                   <Divider />
@@ -539,6 +569,7 @@ export function MstPageContent() {
                                 <TableCell>Neighbor</TableCell>
                                 <TableCell align="right">Corr</TableCell>
                                 <TableCell align="right">Dist</TableCell>
+                                <TableCell align="right">Explain</TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
@@ -560,6 +591,21 @@ export function MstPageContent() {
                                     </TableCell>
                                     <TableCell align="right">
                                       {Number(e.distance).toFixed(2)}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Button
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{ py: 0, px: 1, minWidth: "auto", fontSize: "0.75rem" }}
+                                        onClick={(evt) => {
+                                          evt.stopPropagation();
+                                          setExplainPath(
+                                            `/explain/mst/edge?run_id=${encodeURIComponent(data.run.id)}&a=${encodeURIComponent(e.symbol_a)}&b=${encodeURIComponent(e.symbol_b)}`
+                                          );
+                                        }}
+                                      >
+                                        Why?
+                                      </Button>
                                     </TableCell>
                                   </TableRow>
                                 );

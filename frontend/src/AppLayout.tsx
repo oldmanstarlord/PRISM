@@ -33,6 +33,7 @@ const NAV_ITEMS = [
   { label: "Validation", path: "/validation" },
   { label: "Data Health", path: "/data-health" },
   { label: "Alerts", path: "/alerts" },
+  { label: "Explain", path: "/explain" },
   { label: "Watchlists", path: "/watchlists" },
   { label: "Limitations", path: "/about/limitations" },
 ];

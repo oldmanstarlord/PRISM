@@ -31,6 +31,7 @@ import { useForm, Controller, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { postJson, useApi } from "./api";
+import { ExplainDrawer } from "./components/ExplainDrawer";
 import type { Portfolio, ShockRequest, ShockScenarioResponse } from "./types";
 
 const shockSchema = z.object({
@@ -47,6 +48,7 @@ type ShockFormValues = z.infer<typeof shockSchema>;
 
 export default function ShockPage(): React.ReactElement {
   const [formError, setFormError] = useState<string | null>(null);
+  const [explainPath, setExplainPath] = useState("");
 
   // Load user portfolios
   const { data: portfolios = [], isLoading: isLoadingPortfolios } =
@@ -69,6 +71,7 @@ export default function ShockPage(): React.ReactElement {
 
   const portfolioList = Array.isArray(portfolios) ? portfolios : [];
   const currentPortfolioId = useWatch({ control, name: "portfolioId" });
+  const currentMethod = useWatch({ control, name: "method" });
   const selectedPortfolio = portfolioList.find((p) => p.id === currentPortfolioId);
 
   // Shock mutation
@@ -358,6 +361,7 @@ export default function ShockPage(): React.ReactElement {
                       <TableCell align="right" sx={{ fontWeight: 700 }}>Sensitivity (Beta/Decay)</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700 }}>Estimated Asset Impact</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700 }}>Portfolio Contribution</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>Explain</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -397,6 +401,22 @@ export default function ShockPage(): React.ReactElement {
                             {row.contribution_pct > 0 ? "+" : ""}
                             {row.contribution_pct.toFixed(2)}%
                           </TableCell>
+                          <TableCell align="right">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              sx={{ py: 0, px: 1, minWidth: "auto", fontSize: "0.75rem" }}
+                              onClick={() => {
+                                const targetPortId = scenario.portfolio_id || currentPortfolioId;
+                                const portParam = targetPortId ? `&portfolio_id=${encodeURIComponent(targetPortId)}` : "";
+                                setExplainPath(
+                                  `/explain/shock?holding_symbol=${encodeURIComponent(row.symbol)}&shocked_symbol=${encodeURIComponent(scenario.shocked_symbol)}${portParam}&shock_pct=${encodeURIComponent(scenario.shock_pct)}&method=${encodeURIComponent(currentMethod || "regression_beta")}`
+                                );
+                              }}
+                            >
+                              Why?
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -423,6 +443,12 @@ export default function ShockPage(): React.ReactElement {
           </Card>
         </Box>
       )}
+
+      <ExplainDrawer
+        open={explainPath.length > 0}
+        path={explainPath}
+        onClose={() => setExplainPath("")}
+      />
     </Container>
   );
 }
