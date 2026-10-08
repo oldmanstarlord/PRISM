@@ -25,6 +25,7 @@ import {
 import { Link } from "react-router-dom";
 
 import { postJson } from "./api";
+import PortfolioMstGraph from "./PortfolioMstGraph";
 import {
   type DemoPortfolioRow,
   parseDemoPortfolioCsv,
@@ -143,7 +144,7 @@ export default function PortfolioDemoPage() {
               setRows(parsed);
               setFileName(file);
               setAnalysis(null);
-              setMessages({ errors: [], warnings: [] });
+              void analyze(parsed);
             }}
             onError={(message) => setMessages({ errors: [message], warnings: [] })}
           />
@@ -431,6 +432,13 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
         Clusters retain MST edges with correlation ≥ {analysis.mst.cluster_correlation_floor.toFixed(2)}.
         Paths use the unique route through the complete NIFTY 200 MST.
       </Typography>
+      <Alert
+        severity={analysis.mst.stability.confidence === "high" ? "success" : analysis.mst.stability.confidence === "moderate" ? "info" : "warning"}
+        sx={{ mt: 2 }}
+      >
+        MST stability: {analysis.mst.stability.confidence}. {analysis.mst.stability.reason}
+      </Alert>
+      <PortfolioMstGraph mst={analysis.mst} holdings={analysis.holdings} />
       <Stack direction={{ xs: "column", md: "row" }} spacing={3} sx={{ mt: 2 }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h6">Portfolio clusters</Typography>
@@ -466,12 +474,17 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
       <Box sx={{ overflowX: "auto", mt: 3 }}>
         <Typography variant="h6">Holding-to-holding paths</Typography>
         <Table size="small">
-          <TableHead><TableRow><TableCell>Pair</TableCell><TableCell align="right">Hops</TableCell><TableCell align="right">Average edge ρ</TableCell><TableCell>Unique MST path</TableCell></TableRow></TableHead>
+          <TableHead><TableRow><TableCell>Pair</TableCell><TableCell align="right">Hops</TableCell><TableCell align="right">Average edge ρ</TableCell><TableCell>Stability</TableCell><TableCell>Unique MST path</TableCell></TableRow></TableHead>
           <TableBody>{analysis.mst.holding_paths.map((path) => (
             <TableRow key={`${path.symbol_a}-${path.symbol_b}`}>
               <TableCell>{path.symbol_a} / {path.symbol_b}</TableCell>
               <TableCell align="right">{path.hops}</TableCell>
               <TableCell align="right">{path.average_correlation.toFixed(2)}</TableCell>
+              <TableCell>
+                {path.minimum_edge_persistence === null
+                  ? "Unavailable"
+                  : `${(path.minimum_edge_persistence * 100).toFixed(0)}% · ${path.confidence}`}
+              </TableCell>
               <TableCell>{path.path.join(" → ")}</TableCell>
             </TableRow>
           ))}</TableBody>

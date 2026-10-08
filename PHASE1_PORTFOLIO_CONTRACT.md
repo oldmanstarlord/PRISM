@@ -36,18 +36,21 @@ investment recommendation service.
 - `portfolio` stores identity, owner, input mode, currency and archive state.
 - `portfolio_snapshot` stores a dated, immutable holdings snapshot and deterministic
   input fingerprint.
-- `portfolio_holding` stores one positive quantity or target weight per security.
+- `portfolio_snapshot_holding` stores one positive quantity or target weight per security.
+- The independently developed `portfolio_holding` table remains intact for its original
+  analytics workflow; the two schemas are deliberately not conflated.
+- `audit_event` stores owner-scoped create, archive, restore and delete events without copying
+  raw CSV content or credentials. Deleted-portfolio events remain as audit evidence.
 - Portfolios are archived before optional permanent deletion.
 - Phase 1 stores snapshots, not transactions, dividends or cash-flow history.
 
-## Planned analytics
+## Implemented analytics
 
 - Position and industry weights, concentration, annualized volatility and drawdown.
-- Historical one-day VaR and Expected Shortfall at 95% and 99%, using 250 trading days.
 - Layer 1 divergence annotations for owned securities.
-- Layer 2 MST clusters and concentration indicators.
-- Market, industry and selected-security percentage shocks. Security shocks override
-  industry shocks, and industry shocks override the market shock.
+- Layer 2 MST paths, bridge stocks, clusters, subtree visualization and consecutive-window
+  stability confidence.
+- Selected-security regression-beta shocks and parallel selected-industry shocks.
 
 Analytics must expose valuation date, price coverage, assumptions, exclusions and data
 freshness. Missing values are never replaced with invented prices or returns.

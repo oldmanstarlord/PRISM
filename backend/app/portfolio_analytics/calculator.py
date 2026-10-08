@@ -6,6 +6,7 @@ import math
 from collections import Counter, deque
 from dataclasses import dataclass
 from datetime import date
+from typing import Literal
 
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
@@ -21,6 +22,7 @@ from backend.app.portfolio_analytics.schemas import (
     MstEdgeSummary,
     MstPathSummary,
     MstPortfolioSummary,
+    MstStabilitySummary,
     PerformancePoint,
     PerformanceSummary,
     StressHoldingResult,
@@ -30,6 +32,9 @@ from backend.app.portfolio_analytics.schemas import (
 
 ANNUALISATION_FACTOR = 252
 MST_CLUSTER_CORRELATION_FLOOR = 0.50
+MST_STABILITY_HIGH_THRESHOLD = 0.80
+MST_STABILITY_MODERATE_THRESHOLD = 0.60
+MST_STABILITY_WINDOW_COUNT = 5
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +43,88 @@ class MstEdgeData:
     symbol_b: str
     correlation: float
     distance: float
+
+
+def _edge_key(symbol_a: str, symbol_b: str) -> tuple[str, str]:
+    return min(symbol_a, symbol_b), max(symbol_a, symbol_b)
+
+
+def _stability_confidence(
+    value: float | None,
+) -> Literal["unavailable", "low", "moderate", "high"]:
+    if value is None:
+        return "unavailable"
+    if value >= MST_STABILITY_HIGH_THRESHOLD:
+        return "high"
+    if value >= MST_STABILITY_MODERATE_THRESHOLD:
+        return "moderate"
+    return "low"
+
+
+def calculate_mst_stability(
+    windows: list[tuple[date, list[MstEdgeData]]],
+) -> tuple[MstStabilitySummary, dict[tuple[str, str], float | None]]:
+    """Measure current-edge persistence and adjacent-window overlap deterministically."""
+    if not windows:
+        raise ValueError("At least the current MST window is required")
+    bounded_windows = windows[:MST_STABILITY_WINDOW_COUNT]
+    edge_sets = [
+        {_edge_key(edge.symbol_a, edge.symbol_b) for edge in edges}
+        for _window_end, edges in bounded_windows
+    ]
+    current_edges = edge_sets[0]
+    persistence: dict[tuple[str, str], float | None]
+    if len(edge_sets) < 2:
+        persistence = {edge: None for edge in current_edges}
+        return (
+            MstStabilitySummary(
+                method=(
+                    "current-edge frequency and mean adjacent-window edge overlap across up to "
+                    f"{MST_STABILITY_WINDOW_COUNT} compatible completed MST runs"
+                ),
+                runs_compared=1,
+                window_ends=[bounded_windows[0][0]],
+                consecutive_edge_overlap=None,
+                current_edge_persistence=None,
+                confidence="unavailable",
+                reason="At least two compatible completed MST runs are required.",
+            ),
+            persistence,
+        )
+
+    run_count = len(edge_sets)
+    persistence = {
+        edge: round(sum(edge in edge_set for edge_set in edge_sets) / run_count, 8)
+        for edge in sorted(current_edges)
+    }
+    overlaps: list[float] = []
+    for newer, older in zip(edge_sets, edge_sets[1:], strict=False):
+        denominator = max(len(newer), len(older), 1)
+        overlaps.append(len(newer & older) / denominator)
+    current_persistence = (
+        float(np.mean(list(persistence.values()))) if persistence else 1.0
+    )
+    consecutive_overlap = float(np.mean(overlaps))
+    confidence = _stability_confidence(current_persistence)
+    return (
+        MstStabilitySummary(
+            method=(
+                "current-edge frequency and mean adjacent-window edge overlap across up to "
+                f"{MST_STABILITY_WINDOW_COUNT} compatible completed MST runs"
+            ),
+            runs_compared=run_count,
+            window_ends=[window_end for window_end, _edges in bounded_windows],
+            consecutive_edge_overlap=round(consecutive_overlap, 8),
+            current_edge_persistence=round(current_persistence, 8),
+            confidence=confidence,
+            reason=(
+                f"Mean current-edge persistence is {current_persistence:.1%}; thresholds are "
+                f"{MST_STABILITY_MODERATE_THRESHOLD:.0%} for moderate and "
+                f"{MST_STABILITY_HIGH_THRESHOLD:.0%} for high confidence."
+            ),
+        ),
+        persistence,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -294,9 +381,13 @@ def calculate_mst_diagnostics(
     all_symbols: set[str],
     edges: list[MstEdgeData],
     holdings: dict[str, float],
+    comparison_windows: list[tuple[date, list[MstEdgeData]]] | None = None,
 ) -> MstPortfolioSummary:
     """Describe direct and indirect relationships between holdings on the full MST."""
     adjacency = _adjacency(edges)
+    stability, edge_persistence = calculate_mst_stability(
+        [(as_of, edges), *(comparison_windows or [])]
+    )
     holding_symbols = sorted(holdings)
     direct_edges = [
         MstEdgeSummary(
@@ -304,6 +395,10 @@ def calculate_mst_diagnostics(
             symbol_b=edge.symbol_b,
             correlation=round(edge.correlation, 8),
             distance=round(edge.distance, 8),
+            persistence=edge_persistence[_edge_key(edge.symbol_a, edge.symbol_b)],
+            confidence=_stability_confidence(
+                edge_persistence[_edge_key(edge.symbol_a, edge.symbol_b)]
+            ),
         )
         for edge in edges
         if edge.symbol_a in holdings and edge.symbol_b in holdings
@@ -312,10 +407,25 @@ def calculate_mst_diagnostics(
 
     paths: list[MstPathSummary] = []
     bridge_counts: Counter[str] = Counter()
+    subtree_edge_data: dict[tuple[str, str], MstEdgeData] = {}
     for left_index, symbol_a in enumerate(holding_symbols):
         for symbol_b in holding_symbols[left_index + 1 :]:
             nodes, path_edges = _unique_tree_path(adjacency, symbol_a, symbol_b)
             correlations = [edge.correlation for edge in path_edges]
+            path_persistence = [
+                edge_persistence[_edge_key(edge.symbol_a, edge.symbol_b)] for edge in path_edges
+            ]
+            minimum_persistence = (
+                min(value for value in path_persistence if value is not None)
+                if all(value is not None for value in path_persistence)
+                else None
+            )
+            for edge in path_edges:
+                key = (
+                    min(edge.symbol_a, edge.symbol_b),
+                    max(edge.symbol_a, edge.symbol_b),
+                )
+                subtree_edge_data[key] = edge
             for bridge in nodes[1:-1]:
                 bridge_counts[bridge] += 1
             paths.append(
@@ -329,6 +439,8 @@ def calculate_mst_diagnostics(
                         math.prod(max(correlation, 0.0) for correlation in correlations), 8
                     ),
                     path=nodes,
+                    minimum_edge_persistence=minimum_persistence,
+                    confidence=_stability_confidence(minimum_persistence),
                 )
             )
     paths.sort(
@@ -347,17 +459,32 @@ def calculate_mst_diagnostics(
         )
         for symbol, count in sorted(bridge_counts.items(), key=lambda item: (-item[1], item[0]))
     ]
+    subtree_edges = [
+        MstEdgeSummary(
+            symbol_a=edge.symbol_a,
+            symbol_b=edge.symbol_b,
+            correlation=round(edge.correlation, 8),
+            distance=round(edge.distance, 8),
+            persistence=edge_persistence[_edge_key(edge.symbol_a, edge.symbol_b)],
+            confidence=_stability_confidence(
+                edge_persistence[_edge_key(edge.symbol_a, edge.symbol_b)]
+            ),
+        )
+        for _key, edge in sorted(subtree_edge_data.items())
+    ]
     clusters, cluster_hhi = _mst_clusters(all_symbols, edges, holdings)
     return MstPortfolioSummary(
         run_id=run_id,
         as_of=as_of,
         cluster_correlation_floor=MST_CLUSTER_CORRELATION_FLOOR,
         direct_edges=direct_edges,
+        subtree_edges=subtree_edges,
         holding_paths=paths,
         bridge_stocks=bridges,
         clusters=clusters,
         cluster_hhi=round(cluster_hhi, 8),
         effective_clusters=round(1.0 / cluster_hhi, 4),
+        stability=stability,
     )
 
 

@@ -111,6 +111,8 @@ class MstEdgeSummary(BaseModel):
     symbol_b: str
     correlation: float
     distance: float
+    persistence: float | None
+    confidence: Literal["unavailable", "low", "moderate", "high"]
 
 
 class MstPathSummary(BaseModel):
@@ -121,6 +123,8 @@ class MstPathSummary(BaseModel):
     weakest_correlation: float
     positive_path_product: float
     path: list[str]
+    minimum_edge_persistence: float | None
+    confidence: Literal["unavailable", "low", "moderate", "high"]
 
 
 class MstBridgeSummary(BaseModel):
@@ -136,16 +140,28 @@ class MstClusterSummary(BaseModel):
     full_node_count: int
 
 
+class MstStabilitySummary(BaseModel):
+    method: str
+    runs_compared: int
+    window_ends: list[date]
+    consecutive_edge_overlap: float | None
+    current_edge_persistence: float | None
+    confidence: Literal["unavailable", "low", "moderate", "high"]
+    reason: str
+
+
 class MstPortfolioSummary(BaseModel):
     run_id: str
     as_of: date
     cluster_correlation_floor: float
     direct_edges: list[MstEdgeSummary]
+    subtree_edges: list[MstEdgeSummary]
     holding_paths: list[MstPathSummary]
     bridge_stocks: list[MstBridgeSummary]
     clusters: list[MstClusterSummary]
     cluster_hhi: float
     effective_clusters: float
+    stability: MstStabilitySummary
 
 
 class StressHoldingResult(BaseModel):

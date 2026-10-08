@@ -48,5 +48,6 @@ stage separately. Setup, failure recovery and verification are documented in
 
 Backend, frontend and jobs run as native local processes; PostgreSQL is managed by Supabase.
 
-Phase 0 is complete. The project is currently implementing Phase 1 authenticated portfolio
-insight; see the status tracker and [portfolio contract](PHASE1_PORTFOLIO_CONTRACT.md).
+Phases 0 and 1 are complete. The current product supports authenticated portfolio snapshots,
+session-only portfolio analytics, MST stability confidence, stress scenarios and owner-scoped
+audit history. See the status tracker and [portfolio contract](PHASE1_PORTFOLIO_CONTRACT.md).

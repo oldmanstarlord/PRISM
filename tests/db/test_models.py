@@ -4,13 +4,14 @@ from backend.app.db.base import Base
 
 def test_database_tables_are_registered() -> None:
     expected = {
+        "audit_event",
         "corporate_action",
         "mst_edge",
         "mst_node",
         "mst_run",
         "pipeline_run",
         "portfolio",
-        "portfolio_holding",
+        "portfolio_snapshot_holding",
         "portfolio_snapshot",
         "price_daily_adjusted",
         "price_daily_raw",

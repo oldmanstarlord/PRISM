@@ -79,3 +79,12 @@ class PortfolioDetail(PortfolioSummary):
     owner_id: UUID
     cash_value: Decimal
     holdings: list[PreviewHolding]
+
+
+class AuditEventResponse(BaseModel):
+    id: UUID
+    event_type: str
+    entity_type: str
+    entity_id: UUID
+    details: dict[str, object]
+    created_at: datetime

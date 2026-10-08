@@ -11,9 +11,16 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from backend.app.core.auth import AuthenticatedUser, require_user
-from backend.app.db.models import Portfolio, PortfolioHolding, PortfolioSnapshot, Security
+from backend.app.db.models import (
+    AuditEvent,
+    Portfolio,
+    PortfolioHolding,
+    PortfolioSnapshot,
+    Security,
+)
 from backend.app.db.session import get_session
 from backend.app.portfolio.schemas import (
+    AuditEventResponse,
     InputMode,
     PortfolioArchiveRequest,
     PortfolioCreateRequest,
@@ -28,6 +35,25 @@ from backend.app.portfolio.service import preview_portfolio
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
 DatabaseSession = Annotated[Session, Depends(get_session)]
 CurrentUser = Annotated[AuthenticatedUser, Depends(require_user)]
+
+
+def _record_audit_event(
+    session: Session,
+    *,
+    owner_id: UUID,
+    event_type: str,
+    entity_id: UUID,
+    details: dict[str, object],
+) -> None:
+    session.add(
+        AuditEvent(
+            owner_id=owner_id,
+            event_type=event_type,
+            entity_type="portfolio",
+            entity_id=entity_id,
+            details=details,
+        )
+    )
 
 
 def _owned_portfolio(session: Session, portfolio_id: UUID, owner_id: UUID) -> Portfolio:
@@ -145,6 +171,7 @@ def create_portfolio(
 
     portfolio = Portfolio(
         owner_id=user.id,
+        owner_ref=str(user.id),
         name=request.name,
         input_mode=request.input_mode,
         currency="INR",
@@ -177,6 +204,19 @@ def create_portfolio(
                 target_weight=holding.value if request.input_mode == "weights" else None,
             )
         )
+    _record_audit_event(
+        session,
+        owner_id=user.id,
+        event_type="portfolio.created",
+        entity_id=portfolio.id,
+        details={
+            "snapshot_id": str(snapshot.id),
+            "input_fingerprint": snapshot.input_fingerprint,
+            "input_mode": portfolio.input_mode,
+            "valuation_date": snapshot.valuation_date.isoformat(),
+            "holding_count": len(preview_result.holdings),
+        },
+    )
     session.commit()
     return _detail(session, portfolio)
 
@@ -192,6 +232,31 @@ def list_portfolios(
         query = query.where(Portfolio.archived_at.is_(None))
     portfolios = session.scalars(query.order_by(desc(Portfolio.updated_at))).all()
     return [_summary(session, portfolio) for portfolio in portfolios]
+
+
+@router.get("/audit-events", response_model=list[AuditEventResponse])
+def list_audit_events(
+    session: DatabaseSession,
+    user: CurrentUser,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> list[AuditEventResponse]:
+    events = session.scalars(
+        select(AuditEvent)
+        .where(AuditEvent.owner_id == user.id)
+        .order_by(desc(AuditEvent.created_at), desc(AuditEvent.id))
+        .limit(limit)
+    ).all()
+    return [
+        AuditEventResponse(
+            id=event.id,
+            event_type=event.event_type,
+            entity_type=event.entity_type,
+            entity_id=event.entity_id,
+            details=event.details,
+            created_at=event.created_at,
+        )
+        for event in events
+    ]
 
 
 @router.get("/{portfolio_id}", response_model=PortfolioDetail)
@@ -212,6 +277,13 @@ def archive_portfolio(
 ) -> PortfolioSummary:
     portfolio = _owned_portfolio(session, portfolio_id, user.id)
     portfolio.archived_at = datetime.now(UTC) if request.archived else None
+    _record_audit_event(
+        session,
+        owner_id=user.id,
+        event_type="portfolio.archived" if request.archived else "portfolio.restored",
+        entity_id=portfolio.id,
+        details={"archived": request.archived},
+    )
     session.commit()
     return _summary(session, portfolio)
 
@@ -228,6 +300,13 @@ def delete_portfolio(
             status_code=http_status.HTTP_409_CONFLICT,
             detail="Archive the portfolio before permanently deleting it",
         )
+    _record_audit_event(
+        session,
+        owner_id=user.id,
+        event_type="portfolio.deleted",
+        entity_id=portfolio.id,
+        details={"name": portfolio.name},
+    )
     session.delete(portfolio)
     session.commit()
     return Response(status_code=http_status.HTTP_204_NO_CONTENT)
