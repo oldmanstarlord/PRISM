@@ -106,7 +106,7 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Layer 2 migration verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
 | Phase 0 reproducibility audit | Layer 1 and Layer 2 semantic digests reproduced identically across repeated calculations | 2026-10-04 |
 | Unified daily pipeline | Completed for market date 2026-10-01; pipeline run `9aca74e2-90dd-47e7-bdf8-0d23f80ffe3f` linked persisted Layer 1 and Layer 2 runs | 2026-10-05 |
-| GitHub CI | Backend and frontend jobs passed for commit `739ce35` | 2026-10-05 |
+| GitHub CI | Backend and frontend jobs passed for Phase 1 closure commit `22d99c0` | 2026-10-08 |
 | Phase 1 local backend verification | Ruff passed; strict mypy passed for 47 source files; 45 tests passed and 2 database integration tests were skipped locally | 2026-10-05 |
 | Phase 1 local frontend verification | ESLint passed; 7 Vitest tests passed; TypeScript/Vite production build passed | 2026-10-08 |
 | Phase 1 migration verification | Reconciliation and audit head `b7d4e2f91a08` rendered offline and deployed to Supabase; legacy rows and tables preserved | 2026-10-08 |
