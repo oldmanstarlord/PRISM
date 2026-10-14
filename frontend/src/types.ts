@@ -154,10 +154,17 @@ export interface PortfolioAnalysisResponse {
     cluster_correlation_floor: number;
     direct_edges: Array<{
       symbol_a: string; symbol_b: string; correlation: number; distance: number;
+      persistence: number | null; confidence: "unavailable" | "low" | "moderate" | "high";
+    }>;
+    subtree_edges: Array<{
+      symbol_a: string; symbol_b: string; correlation: number; distance: number;
+      persistence: number | null; confidence: "unavailable" | "low" | "moderate" | "high";
     }>;
     holding_paths: Array<{
       symbol_a: string; symbol_b: string; hops: number; average_correlation: number;
       weakest_correlation: number; positive_path_product: number; path: string[];
+      minimum_edge_persistence: number | null;
+      confidence: "unavailable" | "low" | "moderate" | "high";
     }>;
     bridge_stocks: Array<{ symbol: string; path_pair_count: number; is_holding: boolean }>;
     clusters: Array<{
@@ -165,6 +172,15 @@ export interface PortfolioAnalysisResponse {
     }>;
     cluster_hhi: number;
     effective_clusters: number;
+    stability: {
+      method: string;
+      runs_compared: number;
+      window_ends: string[];
+      consecutive_edge_overlap: number | null;
+      current_edge_persistence: number | null;
+      confidence: "unavailable" | "low" | "moderate" | "high";
+      reason: string;
+    };
   };
   stress: null | {
     kind: "stock" | "industry";
@@ -184,6 +200,15 @@ export interface PortfolioAnalysisResponse {
 }
 
 export type PortfolioInputMode = "quantities" | "weights";
+
+export interface PortfolioAuditEvent {
+  id: string;
+  event_type: string;
+  entity_type: string;
+  entity_id: string;
+  details: Record<string, unknown>;
+  created_at: string;
+}
 
 export interface PortfolioInputRow {
   symbol: string;

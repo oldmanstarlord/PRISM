@@ -66,5 +66,6 @@ Configuration loads the project-root `.env` regardless of the launch directory.
 To run Uvicorn directly from `backend`, activate `../.venv/bin/activate` first, then
 run `python -m uvicorn app.main:app --reload`.
 
-Phase 0 is complete. The project is currently implementing Phase 1 authenticated portfolio
-insight; see the status tracker and [portfolio contract](PHASE1_PORTFOLIO_CONTRACT.md).
+Phases 0 and 1 are complete. The current product supports authenticated portfolio snapshots,
+session-only portfolio analytics, MST stability confidence, stress scenarios and owner-scoped
+audit history. See the status tracker and [portfolio contract](PHASE1_PORTFOLIO_CONTRACT.md).

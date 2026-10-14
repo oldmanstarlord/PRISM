@@ -55,11 +55,22 @@ historically hedging position and sum to approximately one when variance is posi
 
 - Direct links are stored Layer 2 edges whose endpoints are both held.
 - Every holding pair uses its unique path through the complete NIFTY 200 MST.
+- The portfolio subtree is the deduplicated union of those paths. Its response edges retain
+  the exact stored correlation and Mantegna distance used by the interactive visualization.
 - A bridge stock is an internal path node; its count is the number of holding-pair paths
   that traverse it. A bridge can be held or non-held.
 - Version 1 correlation clusters remove MST edges below correlation `0.50` and use the
   remaining connected components. Cluster weights, HHI and effective clusters use only
   portfolio holding weights, while component size reports all included MST nodes.
+- Stability compares the current tree with up to four immediately preceding completed runs
+  having the same universe, implementation version and configuration hash. Per-edge
+  persistence is the fraction of compared trees containing that canonical symbol pair.
+- Consecutive-window overlap is the mean adjacent-run edge intersection divided by the larger
+  tree's edge count. Overall confidence is `high` at 80% mean current-edge persistence,
+  `moderate` at 60%, and `low` below 60%. It is `unavailable` with fewer than two runs.
+- Every subtree edge and holding-to-holding path exposes persistence and a confidence label.
+  A path uses its least-persistent edge, preventing one unstable connector from being hidden by
+  otherwise stable segments.
 - MST relationships are sparse statistical summaries. Paths and bridges do not establish
   causal transmission or prove diversification.
 

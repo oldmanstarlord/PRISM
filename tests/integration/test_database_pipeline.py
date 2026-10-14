@@ -96,15 +96,21 @@ def test_migrations_and_quantitative_runs_are_idempotent() -> None:
     _seed_synthetic_snapshot()
     with SessionLocal() as session:
         revision = session.scalar(text("select version_num from alembic_version"))
-        assert revision == "c6f2e9a1b304"
+        assert revision == "b7d4e2f91a08"
         rls_tables = session.execute(
             text(
                 "select relname from pg_class "
-                "where relname in ('portfolio', 'portfolio_snapshot', 'portfolio_holding') "
+                "where relname in "
+                "('portfolio', 'portfolio_snapshot', 'portfolio_snapshot_holding', 'audit_event') "
                 "and relrowsecurity"
             )
         ).scalars().all()
-        assert set(rls_tables) == {"portfolio", "portfolio_snapshot", "portfolio_holding"}
+        assert set(rls_tables) == {
+            "portfolio",
+            "portfolio_snapshot",
+            "portfolio_snapshot_holding",
+            "audit_event",
+        }
         market_date, cutoff = latest_market_snapshot(session)
         first_l1 = persist_calculation(
             session,
@@ -174,9 +180,14 @@ def test_portfolio_api_enforces_authenticated_ownership() -> None:
             assert created.status_code == 201
             portfolio_id = created.json()["id"]
             assert client.get(f"/api/v1/portfolios/{portfolio_id}").status_code == 200
+            audit_events = client.get("/api/v1/portfolios/audit-events")
+            assert audit_events.status_code == 200
+            assert audit_events.json()[0]["event_type"] == "portfolio.created"
+            assert audit_events.json()[0]["entity_id"] == portfolio_id
 
             app.dependency_overrides[require_user] = lambda: other_user
             assert client.get("/api/v1/portfolios").json() == []
+            assert client.get("/api/v1/portfolios/audit-events").json() == []
             assert client.get(f"/api/v1/portfolios/{portfolio_id}").status_code == 404
     finally:
         app.dependency_overrides.pop(require_user, None)

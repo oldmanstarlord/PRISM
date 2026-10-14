@@ -27,6 +27,7 @@ import { fetchAuthenticatedJson } from "./api";
 import { parsePortfolioCsv } from "./portfolioCsv";
 import { supabase, supabaseConfigurationError } from "./supabase";
 import type {
+  PortfolioAuditEvent,
   PortfolioDetail,
   PortfolioInputMode,
   PortfolioPreview,
@@ -77,19 +78,30 @@ export default function PortfolioPage() {
   const [rows, setRows] = useState<Array<{ symbol: string; value: string }>>([]);
   const [preview, setPreview] = useState<PortfolioPreview | null>(null);
   const [portfolios, setPortfolios] = useState<PortfolioSummary[]>([]);
+  const [auditEvents, setAuditEvents] = useState<PortfolioAuditEvent[]>([]);
   const [selected, setSelected] = useState<PortfolioDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function loadPortfolios(token: string) {
-    const result = await fetchAuthenticatedJson<PortfolioSummary[]>("/portfolios", token);
-    setPortfolios(result);
+    const [portfolioResult, auditResult] = await Promise.all([
+      fetchAuthenticatedJson<PortfolioSummary[]>("/portfolios", token),
+      fetchAuthenticatedJson<PortfolioAuditEvent[]>("/portfolios/audit-events", token),
+    ]);
+    setPortfolios(portfolioResult);
+    setAuditEvents(auditResult);
   }
 
   useEffect(() => {
     if (!session) return;
-    void fetchAuthenticatedJson<PortfolioSummary[]>("/portfolios", session.access_token)
-      .then(setPortfolios)
+    void Promise.all([
+      fetchAuthenticatedJson<PortfolioSummary[]>("/portfolios", session.access_token),
+      fetchAuthenticatedJson<PortfolioAuditEvent[]>("/portfolios/audit-events", session.access_token),
+    ])
+      .then(([portfolioResult, auditResult]) => {
+        setPortfolios(portfolioResult);
+        setAuditEvents(auditResult);
+      })
       .catch((reason: unknown) => {
         setError(reason instanceof Error ? reason.message : "Unable to load portfolios");
       });
@@ -163,6 +175,23 @@ export default function PortfolioPage() {
           <Button variant="contained" color="success" disabled={busy || !preview.valid} onClick={() => void savePortfolio()}>Confirm and save private snapshot</Button>
         </Stack></Paper>}
         <Paper sx={{ p: 3 }}><Typography variant="h5" gutterBottom>Saved portfolios</Typography>{!portfolios.length ? <Typography color="text.secondary">No saved portfolios yet.</Typography> : <Stack spacing={1}>{portfolios.map((portfolio) => <Button key={portfolio.id} variant="text" sx={{ justifyContent: "space-between" }} onClick={() => void openPortfolio(portfolio.id)}>{portfolio.name}<span>{portfolio.holding_count} holdings · {portfolio.valuation_date}</span></Button>)}</Stack>}</Paper>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h5" gutterBottom>Recent audit history</Typography>
+          {!auditEvents.length ? (
+            <Typography color="text.secondary">No portfolio changes recorded yet.</Typography>
+          ) : (
+            <Stack spacing={1}>
+              {auditEvents.slice(0, 10).map((event) => (
+                <Box key={event.id} sx={{ borderBottom: "1px solid #e3e8eb", pb: 1 }}>
+                  <Typography sx={{ fontWeight: 700 }}>{event.event_type}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {new Date(event.created_at).toLocaleString()} · {event.entity_id}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </Paper>
         {selected && <Paper sx={{ p: 3 }}><Typography variant="h5">{selected.name}</Typography><Typography color="text.secondary">Snapshot {selected.valuation_date} · {selected.input_mode}</Typography><HoldingsTable holdings={selected.holdings} mode={selected.input_mode} /></Paper>}
       </Stack>
     </Page>

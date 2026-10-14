@@ -6,19 +6,19 @@ This is the living implementation record for PRISM. It must be updated after eve
 
 | Field | Value |
 |---|---|
-| Current phase | Phase 1 - Portfolio insight |
-| Overall status | In progress |
-| Last updated | 2026-10-06 |
+| Current phase | Phase 2 - Text intelligence |
+| Overall status | Ready to start |
+| Last updated | 2026-10-08 |
 | Requirements source | `PRISM_SRS.md` version 1.6 |
 | Initial universe | NIFTY 200 |
-| Active implementation focus | Session-only portfolio performance, risk, diversification, MST diagnostics and stress testing |
+| Active implementation focus | Phase 2 source and point-in-time text-intelligence contract design |
 
 ## Phase status
 
 | Phase | Name | Status | Exit evidence |
 |---|---|---|---|
 | 0 | Foundations | Complete | CI, reproducibility, unified pipeline and independent teammate operations verification passed |
-| 1 | Portfolio insight | In progress | Pending |
+| 1 | Portfolio insight | Complete | Risk, diversification, MST stability, stress, audit and presentation gates passed |
 | 2 | Text intelligence | Not started | Pending |
 | 3 | Attribution and forecasting | Not started | Pending |
 | 4 | Advanced research | Not started | Pending |
@@ -57,14 +57,15 @@ This is the living implementation record for PRISM. It must be updated after eve
 - [x] Selected-holding and selected-industry stress scenarios with visible assumptions.
 - [x] Current 20-day divergence annotations and company-detail links.
 - [x] Downloadable JSON report and print-to-PDF presentation view.
-- [ ] Reconcile the independently developed shared-database portfolio schema before persistence.
-- [ ] Add audit persistence and MST stability confidence required for full Phase 1 closure.
+- [x] Reconcile the independently developed shared-database portfolio schema before persistence.
+- [x] Add owner-scoped audit persistence and MST stability confidence.
 
 ## Known limitations
 
 1. Historical NIFTY 200 membership data is not yet available; the official source provides the current composition.
 2. The presentation portfolio is session-only: it performs no authentication, persistence or shared Supabase writes.
-3. The shared Supabase database has an independently developed portfolio schema/revision that must be reconciled before the authenticated portfolio migration can be deployed safely.
+3. Three legacy portfolio rows from the independently developed schema intentionally remain
+   unclaimed (`owner_id IS NULL`) and are not exposed by the authenticated portfolio API.
 
 ## Verification status
 
@@ -96,7 +97,7 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Layer 1 persistence verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
 | Backend verification | Ruff passed; strict mypy passed for 42 source files; GitHub CI passed all backend tests including the PostgreSQL integration test | 2026-10-05 |
 | Frontend verification | ESLint passed; 7 Vitest tests passed across 4 files; TypeScript/Vite production build passed | 2026-10-06 |
-| Portfolio analytics verification | Ruff passed; strict mypy passed across 52 source files; 48 tests passed and 2 approved database integration tests skipped | 2026-10-06 |
+| Portfolio analytics verification | Ruff passed; strict mypy passed across 52 source files; 49 tests passed and 2 approved database integration tests skipped | 2026-10-08 |
 | Portfolio browser rehearsal | Prepared sample, performance, risk, MST, stress and JSON download passed in headless Chrome with zero console errors | 2026-10-06 |
 | Backend startup recovery | Root/backend import and root `.env` regression checks passed; 125 tests passed, 2 database integration tests skipped; Uvicorn reload and database readiness verified | 2026-10-06 |
 | Fundamental historical regression | 149 tests passed, 2 integration tests deselected; Ruff and strict mypy passed across 75 source files; 1,124 configurations and 8,262 blends evaluated; 93.55% category accuracy on 155 held-out stocks, score MAE 1.2972 and R² 0.9005 | 2026-10-06 |
@@ -107,10 +108,11 @@ This is the living implementation record for PRISM. It must be updated after eve
 | Layer 2 migration verification | Additive PostgreSQL migration renders successfully in offline mode | 2026-10-04 |
 | Phase 0 reproducibility audit | Layer 1 and Layer 2 semantic digests reproduced identically across repeated calculations | 2026-10-04 |
 | Unified daily pipeline | Completed for market date 2026-10-01; pipeline run `9aca74e2-90dd-47e7-bdf8-0d23f80ffe3f` linked persisted Layer 1 and Layer 2 runs | 2026-10-05 |
-| GitHub CI | Backend and frontend jobs passed for commit `739ce35` | 2026-10-05 |
+| GitHub CI | Backend and frontend jobs passed for Phase 1 closure commit `22d99c0` | 2026-10-08 |
 | Phase 1 local backend verification | Ruff passed; strict mypy passed for 47 source files; 45 tests passed and 2 database integration tests were skipped locally | 2026-10-05 |
-| Phase 1 local frontend verification | ESLint passed; 4 Vitest tests passed; TypeScript/Vite production build passed | 2026-10-05 |
-| Phase 1 migration verification | Portfolio/RLS migration `c6f2e9a1b304` renders successfully in offline PostgreSQL mode | 2026-10-05 |
+| Phase 1 local frontend verification | ESLint passed; 7 Vitest tests passed; TypeScript/Vite production build passed | 2026-10-08 |
+| Phase 1 migration verification | Reconciliation and audit head `b7d4e2f91a08` rendered offline and deployed to Supabase; legacy rows and tables preserved | 2026-10-08 |
+| MST stability evidence | Two compatible consecutive windows compared; 90.4% adjacent edge overlap and 95.2% mean current-edge persistence (high confidence) | 2026-10-08 |
 
 ## Update protocol
 
@@ -292,3 +294,32 @@ After every material update:
 - Added a favicon so the presentation page loads without the previous browser-console 404.
 - Verified the real prepared sample with 250 returns, 15 holding paths, 3 direct edges, 11 bridge stocks and 3 clusters through 2026-10-01.
 - Completed a browser rehearsal of sample analysis, stress calculation and report download with zero console errors.
+
+### 2026-10-06 - Interactive portfolio MST subtree added
+
+- Added the exact deduplicated union of holding-to-holding MST path edges to the analytics response.
+- Added a responsive left-to-right portfolio MST map that distinguishes held stocks, non-held bridges,
+  direct holding links and weaker cross-cluster connectors.
+- Encoded holding weight in node size and retained exact correlation and Mantegna distance in selectable
+  edge explanations; selections isolate the relevant local neighborhood.
+- Kept the existing cluster, bridge and path tables as detailed evidence beneath the visual summary.
+- Verified the graph in a real Chromium browser at desktop width, including a mocked six-holding response.
+
+### 2026-10-08 - Phase 1 closed with stability, audit and schema reconciliation
+
+- Added current-edge persistence across up to five compatible consecutive MST runs, adjacent-window
+  overlap, explicit high/moderate/low thresholds and an unavailable state for insufficient history.
+- Added confidence to every displayed subtree edge and holding-to-holding path; each path inherits
+  the confidence of its least-persistent edge.
+- Persisted the 2026-09-30 comparison tree and verified the 2026-10-01 tree has 90.4% adjacent-edge
+  overlap and 95.2% mean current-edge persistence across the two compatible runs.
+- Reconciled the independently deployed `r1a2b3c4d5e6` schema additively: retained the legacy
+  `portfolio_holding` workflow, extended `portfolio`, and isolated authenticated immutable rows in
+  `portfolio_snapshot` and `portfolio_snapshot_holding`.
+- Added owner-scoped, RLS-protected audit events for portfolio creation, archive, restore and deletion.
+- Deployed migration head `b7d4e2f91a08` to Supabase after read-only collision checks; all three
+  pre-existing legacy portfolio rows were preserved and remain unclaimed by authenticated users.
+- Verified Ruff, strict mypy, 49 local tests with two approved database tests skipped, Alembic offline
+  rendering, ESLint, seven frontend tests and the production build.
+- Closed Phase 1 after the portfolio risk, diversification, explainability, MST stability, stress,
+  freshness, disclaimer, schema and audit gates passed.

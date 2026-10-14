@@ -1,15 +1,17 @@
 """Read-only orchestration for session-only portfolio analytics."""
 
 from datetime import timedelta
+from uuid import UUID
 
 import pandas as pd  # type: ignore[import-untyped]
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from backend.app.correlation_mst.service import latest_completed_mst_query
 from backend.app.db.models import (
     MstEdge,
     MstNode,
+    MstRun,
     SectorDivergenceScore,
 )
 from backend.app.portfolio_analytics.calculator import (
@@ -28,6 +30,26 @@ from backend.app.sector_divergence.service import latest_completed_run_query
 
 IMPLEMENTATION_VERSION = "portfolio-analytics-v1"
 MINIMUM_RETURN_OBSERVATIONS = 60
+MST_STABILITY_PRIOR_RUN_COUNT = 4
+
+
+def _mst_edges_for_run(session: Session, run_id: UUID) -> list[MstEdgeData]:
+    stored_edges = session.scalars(
+        select(MstEdge).where(MstEdge.mst_run_id == run_id).order_by(MstEdge.edge_rank)
+    ).all()
+    edges: list[MstEdgeData] = []
+    for edge in stored_edges:
+        if edge.symbol_a is None or edge.symbol_b is None or edge.correlation is None:
+            raise ValueError("A Layer 2 MST comparison run contains an incomplete stored edge")
+        edges.append(
+            MstEdgeData(
+                symbol_a=edge.symbol_a,
+                symbol_b=edge.symbol_b,
+                correlation=float(edge.correlation),
+                distance=float(edge.distance),
+            )
+        )
+    return edges
 
 
 def _normalized_holdings(payload: PortfolioAnalysisRequest) -> dict[str, float]:
@@ -108,27 +130,31 @@ def analyze_portfolio(
         }
 
     risk = calculate_risk(common_prices, holdings, industries, divergence)
-    stored_edges = session.scalars(
-        select(MstEdge).where(MstEdge.mst_run_id == mst_run.id).order_by(MstEdge.edge_rank)
-    ).all()
-    edges: list[MstEdgeData] = []
-    for edge in stored_edges:
-        if edge.symbol_a is None or edge.symbol_b is None or edge.correlation is None:
-            raise ValueError("Latest Layer 2 MST contains an incomplete stored edge")
-        edges.append(
-            MstEdgeData(
-                symbol_a=edge.symbol_a,
-                symbol_b=edge.symbol_b,
-                correlation=float(edge.correlation),
-                distance=float(edge.distance),
-            )
+    edges = _mst_edges_for_run(session, mst_run.id)
+    compatible_runs_query = (
+        select(MstRun)
+        .where(
+            MstRun.id != mst_run.id,
+            MstRun.status == "completed",
+            MstRun.universe_id == mst_run.universe_id,
+            MstRun.implementation_version == mst_run.implementation_version,
+            MstRun.configuration_hash == mst_run.configuration_hash,
+            MstRun.window_end < mst_run.window_end,
         )
+        .order_by(desc(MstRun.window_end), desc(MstRun.computed_at))
+        .limit(MST_STABILITY_PRIOR_RUN_COUNT)
+    )
+    compatible_runs = session.scalars(compatible_runs_query).all()
+    comparison_windows = [
+        (run.window_end, _mst_edges_for_run(session, run.id)) for run in compatible_runs
+    ]
     mst = calculate_mst_diagnostics(
         run_id=str(mst_run.id),
         as_of=mst_run.window_end,
         all_symbols=set(node_by_symbol),
         edges=edges,
         holdings=holdings,
+        comparison_windows=comparison_windows,
     )
     stress = calculate_stress(payload.stress, risk.returns, holdings, industries)
 
@@ -137,6 +163,11 @@ def analyze_portfolio(
         findings.append(
             f"Only {observations_used} common returns were available from the requested "
             f"{payload.window}-return window."
+        )
+    if mst.stability.confidence in {"unavailable", "low"}:
+        findings.append(
+            "MST-derived paths and clusters have "
+            f"{mst.stability.confidence} confidence: {mst.stability.reason}"
         )
     highest_risk = max(risk.holdings, key=lambda holding: holding.risk_contribution)
     findings.append(
@@ -197,6 +228,8 @@ def analyze_portfolio(
             "Constant target weights are a simplifying backtest assumption; taxes, costs "
             "and cash flows are excluded.",
             "MST paths are a sparse descriptive summary and are not causal transmission channels.",
+            "MST stability compares only compatible stored runs and may be unavailable until a "
+            "second distinct market window has been calculated.",
             "Stress estimates exclude liquidity effects, feedback loops and parameter instability.",
             "This analysis is educational and does not provide investment advice.",
         ],

@@ -366,11 +366,18 @@ class Portfolio(TimestampMixin, Base):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    owner_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+    # Legacy shared-schema rows use owner_ref and intentionally remain unclaimed
+    # until an authenticated UUID owner is assigned explicitly.
+    owner_id: Mapped[UUID | None] = mapped_column(index=True)
+    owner_ref: Mapped[str] = mapped_column(
+        String(120), default="local-user", server_default="local-user", nullable=False
+    )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
     input_mode: Mapped[str] = mapped_column(String(20), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="INR", server_default="INR")
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PortfolioSnapshot(Base):
@@ -402,16 +409,18 @@ class PortfolioSnapshot(Base):
 
 
 class PortfolioHolding(Base):
-    __tablename__ = "portfolio_holding"
+    __tablename__ = "portfolio_snapshot_holding"
     __table_args__ = (
-        UniqueConstraint("snapshot_id", "security_id", name="uq_portfolio_snapshot_security"),
+        UniqueConstraint(
+            "snapshot_id", "security_id", name="uq_portfolio_snapshot_holding_security"
+        ),
         CheckConstraint(
             "(quantity IS NOT NULL AND quantity > 0 AND target_weight IS NULL) OR "
             "(target_weight IS NOT NULL AND target_weight > 0 AND target_weight <= 1 "
             "AND quantity IS NULL)",
-            name="ck_portfolio_holding_value",
+            name="ck_portfolio_snapshot_holding_value",
         ),
-        Index("ix_portfolio_holding_owner", "owner_id"),
+        Index("ix_portfolio_snapshot_holding_owner", "owner_id"),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -425,3 +434,23 @@ class PortfolioHolding(Base):
     symbol: Mapped[str] = mapped_column(String(40), nullable=False)
     quantity: Mapped[Decimal | None] = mapped_column(Numeric(24, 8))
     target_weight: Mapped[Decimal | None] = mapped_column(Numeric(18, 12))
+
+
+class AuditEvent(Base):
+    __tablename__ = "audit_event"
+    __table_args__ = (
+        Index("ix_audit_event_owner_created", "owner_id", "created_at"),
+        Index("ix_audit_event_entity", "entity_type", "entity_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(80), nullable=False)
+    entity_id: Mapped[UUID] = mapped_column(nullable=False)
+    details: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
