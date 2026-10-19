@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import cytoscape, { type Core } from "cytoscape";
+import { Link } from "react-router-dom";
 
+import { getDecisionsCountMap, getNotesCountMap } from "./journalStorage";
 import type { PortfolioAnalysisResponse } from "./types";
 
 type MstSummary = PortfolioAnalysisResponse["mst"];
@@ -12,9 +14,18 @@ type Selection = {
   title: string;
   detail: string;
   secondary: string;
+  symbol?: string;
+  isNode?: boolean;
+  isHolding?: boolean;
+  riskMetrics?: {
+    volatility: number;
+    marginalRisk: number;
+    riskContribution: number;
+    divergence: number | null;
+  } | null;
 };
 
-const clusterColors = ["#0f766e", "#2563eb", "#7c3aed", "#be123c", "#a16207", "#047857"];
+const clusterColors = ["#1F6F78", "#6B3F69", "#3F5B7A", "#A0522D", "#6B7A2A"];
 
 function edgeKey(symbolA: string, symbolB: string) {
   return [symbolA, symbolB].sort().join("::");
@@ -28,6 +39,13 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
   const container = useRef<HTMLDivElement | null>(null);
   const graph = useRef<Core | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [notesCountMap, setNotesCountMap] = useState<Record<string, number>>({});
+  const [decisionsCountMap, setDecisionsCountMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    void getNotesCountMap().then(setNotesCountMap).catch(() => {});
+    void getDecisionsCountMap().then(setDecisionsCountMap).catch(() => {});
+  }, []);
 
   const graphData = useMemo(() => {
     const heldBySymbol = new Map(holdings.map((holding) => [holding.symbol, holding]));
@@ -66,9 +84,13 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
           weight: holding?.weight ?? 0,
           weightLabel: holding ? `${(holding.weight * 100).toFixed(1)}% portfolio weight` : "Not held",
           cluster: cluster?.name ?? "Bridge stock",
-          color: cluster?.color ?? "#dbe4e8",
+          color: cluster?.color ?? "#E3D7C4",
           pathCount: bridge?.path_pair_count ?? 0,
           degree: nodeDegree.get(symbol) ?? 0,
+          volatility: holding?.annualized_volatility ?? null,
+          marginalRisk: holding?.marginal_risk ?? null,
+          riskContribution: holding?.risk_contribution ?? null,
+          divergence: holding?.divergence_20d ?? null,
         },
         classes: holding ? "holding" : "bridge",
       };
@@ -137,13 +159,12 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
         {
           selector: "node.holding",
           style: {
-            shape: "round-rectangle",
+            shape: "rectangle",
             width: "mapData(weight, 0, 0.5, 52, 78)",
             height: "mapData(weight, 0, 0.5, 34, 48)",
             "background-color": "data(color)",
-            "border-width": 3,
-            "border-color": "#ffffff",
-            color: "#ffffff",
+            "border-width": 0,
+            color: "#F9EBD7",
             "text-outline-color": "data(color)",
             "text-outline-width": 2,
           },
@@ -151,17 +172,16 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
         {
           selector: "node.bridge",
           style: {
-            shape: "ellipse",
+            shape: "rectangle",
             width: "mapData(pathCount, 0, 15, 24, 45)",
             height: "mapData(pathCount, 0, 15, 24, 45)",
-            "background-color": "#f8fafc",
-            "border-width": 2,
-            "border-color": "#82939d",
-            color: "#33434c",
+            "background-color": "#E3D7C4",
+            "border-width": 0,
+            color: "#292D2A",
             "text-valign": "bottom",
             "text-margin-y": 7,
-            "text-background-color": "#ffffff",
-            "text-background-opacity": 0.82,
+            "text-background-color": "#F9EBD7",
+            "text-background-opacity": 0.9,
             "text-background-padding": "2px",
           },
         },
@@ -169,7 +189,7 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
           selector: "edge",
           style: {
             width: "mapData(correlation, -1, 1, 1.25, 5)",
-            "line-color": "#8ba4ad",
+            "line-color": "#686B64",
             "curve-style": "straight",
             opacity: 0.78,
             "overlay-opacity": 0,
@@ -177,8 +197,8 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
             "transition-duration": 160,
           },
         },
-        { selector: "edge.strong", style: { "line-color": "#14b8a6" } },
-        { selector: "edge.weak", style: { "line-color": "#f59e0b", "line-style": "dashed" } },
+        { selector: "edge.strong", style: { "line-color": "#046A38" } },
+        { selector: "edge.weak", style: { "line-color": "#8A5A00", "line-style": "dashed" } },
         { selector: "edge.direct", style: { width: 6 } },
         {
           selector: "edge:selected",
@@ -186,20 +206,20 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
             label: "data(correlationLabel)",
             "font-size": 11,
             "font-weight": 700,
-            color: "#172b35",
-            "text-background-color": "#ffffff",
+            color: "#292D2A",
+            "text-background-color": "#F9EBD7",
             "text-background-opacity": 1,
             "text-background-padding": "4px",
-            "line-color": "#e11d48",
+            "line-color": "#E34222",
             width: 7,
             opacity: 1,
           },
         },
         {
           selector: "node:selected",
-          style: { "border-width": 5, "border-color": "#fb7185" },
+          style: { "border-width": 4, "border-color": "#046A38" },
         },
-        { selector: ".faded", style: { opacity: 0.12 } },
+        { selector: ".faded", style: { opacity: 0.15 } },
       ],
       layout: { name: "preset" },
       minZoom: 0.45,
@@ -239,6 +259,17 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
           ? `${data.weightLabel} · ${data.cluster}`
           : `Appears on ${data.pathCount} holding-to-holding path${data.pathCount === 1 ? "" : "s"}`,
         secondary: `${data.degree} direct MST connection${data.degree === 1 ? "" : "s"} in this portfolio subtree.`,
+        symbol: data.symbol,
+        isNode: true,
+        isHolding: Boolean(data.isHolding),
+        riskMetrics: data.isHolding
+          ? {
+              volatility: data.volatility,
+              marginalRisk: data.marginalRisk,
+              riskContribution: data.riskContribution,
+              divergence: data.divergence,
+            }
+          : null,
       });
     });
     instance.on("tap", "edge", (event) => {
@@ -277,33 +308,33 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
   ).length;
 
   return (
-    <Box sx={{ mt: 2.5, border: "1px solid #dbe5e9", borderRadius: 2.5, overflow: "hidden" }}>
+    <Box sx={{ mt: 2.5, borderRadius: 0, overflow: "hidden", boxShadow: "0 10px 28px rgba(41,45,42,0.18)" }}>
       <Box
         sx={{
           px: { xs: 2, md: 2.5 },
           py: 2,
-          color: "white",
-          background: "linear-gradient(115deg, #0d3444 0%, #12566a 55%, #0f766e 100%)",
+          color: "#F9EBD7",
+          bgcolor: "#292D2A",
         }}
       >
         <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 1.5, justifyContent: "space-between" }}>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 750 }}>Portfolio MST map</Typography>
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.76)" }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: "#F9EBD7" }}>Portfolio MST map</Typography>
+            <Typography variant="body2" sx={{ color: "#E3D7C4" }}>
               The smallest part of the market tree needed to connect every holding.
             </Typography>
           </Box>
           <Stack direction="row" sx={{ gap: 0.75, flexWrap: "wrap", alignItems: "center" }}>
-            <Chip size="small" label={`${holdings.length} held`} sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }} />
-            <Chip size="small" label={`${bridgeCount} bridge${bridgeCount === 1 ? "" : "s"}`} sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }} />
-            <Chip size="small" label={`${mst.subtree_edges.length} links`} sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }} />
-            <Chip size="small" label={`${mst.stability.confidence} confidence`} sx={{ bgcolor: "rgba(255,255,255,0.15)", color: "white" }} />
+            <Chip size="small" label={`${holdings.length} held`} sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }} />
+            <Chip size="small" label={`${bridgeCount} bridge${bridgeCount === 1 ? "" : "s"}`} sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }} />
+            <Chip size="small" label={`${mst.subtree_edges.length} links`} sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }} />
+            <Chip size="small" label={`${mst.stability.confidence} confidence`} sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }} />
           </Stack>
         </Stack>
       </Box>
 
       <Stack direction={{ xs: "column", md: "row" }} sx={{ minHeight: 470 }}>
-        <Box sx={{ position: "relative", flex: 1, minWidth: 0, bgcolor: "#f8fbfc" }}>
+        <Box sx={{ position: "relative", flex: 1, minWidth: 0, bgcolor: "#F9EBD7" }}>
           <Box
             ref={container}
             role="img"
@@ -312,43 +343,128 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
           />
           <Button
             size="small"
-            variant="outlined"
             onClick={resetGraph}
             className="no-print"
-            sx={{ position: "absolute", top: 12, right: 12, bgcolor: "rgba(255,255,255,0.92)" }}
+            sx={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              bgcolor: "#E3D7C4",
+              color: "#292D2A",
+              borderRadius: 0,
+              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+              "&:hover": { bgcolor: "#E3D7C4" },
+            }}
           >
             Reset view
           </Button>
         </Box>
 
-        <Box sx={{ width: { md: 300 }, p: 2.5, bgcolor: "white", borderLeft: { md: "1px solid #dbe5e9" } }}>
+        <Box sx={{ width: { md: 320 }, p: 2.5, bgcolor: "#F9EBD7", boxShadow: { xs: "none", md: "-4px 0 16px rgba(41,45,42,0.06)" } }}>
           {selection ? (
             <Box sx={{ minHeight: 145 }}>
               <Typography variant="overline" color="text.secondary">{selection.eyebrow}</Typography>
-              <Typography variant="h6" sx={{ fontWeight: 750, mb: 0.75 }}>{selection.title}</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.75, color: "#292D2A" }}>{selection.title}</Typography>
               <Typography variant="body2">{selection.detail}</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{selection.secondary}</Typography>
+
+              {selection.isNode && selection.symbol && (
+                <Box sx={{ mt: 1.5 }}>
+                  <Stack direction="row" spacing={0.75} sx={{ mb: 1, flexWrap: "wrap" }}>
+                    <Chip
+                      size="small"
+                      label={`${notesCountMap[selection.symbol] ?? 0} notes`}
+                      sx={{
+                        fontSize: "0.72rem",
+                        borderRadius: 0,
+                        bgcolor: (notesCountMap[selection.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
+                        color: (notesCountMap[selection.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
+                        fontWeight: 600,
+                      }}
+                    />
+                    <Chip
+                      size="small"
+                      label={`${decisionsCountMap[selection.symbol] ?? 0} decisions`}
+                      sx={{
+                        fontSize: "0.72rem",
+                        borderRadius: 0,
+                        bgcolor: (decisionsCountMap[selection.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
+                        color: (decisionsCountMap[selection.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
+                        fontWeight: 600,
+                      }}
+                    />
+                  </Stack>
+
+                  {selection.riskMetrics && (
+                    <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0, mb: 1.5, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 0.5 }}>
+                        Risk Profile
+                      </Typography>
+                      <Stack spacing={0.35}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                          <span style={{ color: "#686B64" }}>Ann. Volatility:</span>
+                          <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{(selection.riskMetrics.volatility * 100).toFixed(1)}%</strong>
+                        </Box>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                          <span style={{ color: "#686B64" }}>Marginal Risk:</span>
+                          <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{(selection.riskMetrics.marginalRisk * 100).toFixed(2)}%</strong>
+                        </Box>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                          <span style={{ color: "#686B64" }}>Risk Share:</span>
+                          <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{(selection.riskMetrics.riskContribution * 100).toFixed(1)}%</strong>
+                        </Box>
+                        {selection.riskMetrics.divergence !== null && (
+                          <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                            <span style={{ color: "#686B64" }}>20D Divergence:</span>
+                            <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{selection.riskMetrics.divergence.toFixed(2)}σ</strong>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  <Button
+                    component={Link}
+                    to={`/companies/${selection.symbol}`}
+                    size="small"
+                    variant="contained"
+                    fullWidth
+                    sx={{
+                      textTransform: "none",
+                      bgcolor: "#046A38",
+                      color: "#F9EBD7",
+                      borderRadius: 0,
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                      "&:hover": { bgcolor: "#03532c" },
+                    }}
+                  >
+                    Open Company Details ({selection.symbol}) →
+                  </Button>
+                </Box>
+              )}
             </Box>
           ) : (
             <Box sx={{ minHeight: 145 }}>
               <Typography variant="overline" color="text.secondary">How to explore</Typography>
-              <Typography variant="h6" sx={{ fontWeight: 750, mb: 0.75 }}>Select a stock or link</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.75, color: "#292D2A" }}>Select a stock or link</Typography>
               <Typography variant="body2" color="text.secondary">
                 A selection isolates its local connections and explains why it matters. Pan, zoom, or tap the background to clear it.
               </Typography>
             </Box>
           )}
 
-          <Box sx={{ borderTop: "1px solid #e4eaed", pt: 2, mt: 1 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>Legend</Typography>
-            <LegendItem color="#0f766e" shape="rounded" label="Held stock · size shows weight" />
-            <LegendItem color="#dbe4e8" shape="circle" label="Bridge stock · not held" />
-            <LegendItem color="#14b8a6" label={`Correlation ≥ ${mst.cluster_correlation_floor.toFixed(2)}`} />
-            <LegendItem color="#f59e0b" dashed label={`Weaker connector < ${mst.cluster_correlation_floor.toFixed(2)}`} />
+          <Box sx={{ pt: 2, mt: 1 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: "#292D2A" }}>Legend</Typography>
+            <LegendItem color="#046A38" shape="square" label="Held stock · size shows weight" />
+            <LegendItem color="#E3D7C4" shape="square" label="Bridge stock · not held" />
+            <LegendItem color="#046A38" label={`Correlation ≥ ${mst.cluster_correlation_floor.toFixed(2)}`} />
+            <LegendItem color="#8A5A00" dashed label={`Weaker connector < ${mst.cluster_correlation_floor.toFixed(2)}`} />
           </Box>
 
-          <Box sx={{ borderTop: "1px solid #e4eaed", pt: 2, mt: 2 }}>
-            <Typography variant="subtitle2">What stands out</Typography>
+          <Box sx={{ pt: 2, mt: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>What stands out</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               {weakEdgeCount === 0
                 ? "All displayed links meet the cluster threshold."
@@ -372,15 +488,15 @@ function LegendItem({
 }: {
   color: string;
   label: string;
-  shape?: "rounded" | "circle";
+  shape?: "square";
   dashed?: boolean;
 }) {
   return (
     <Stack direction="row" sx={{ gap: 1, alignItems: "center", mb: 1 }}>
       {shape ? (
-        <Box sx={{ width: shape === "rounded" ? 24 : 16, height: 16, borderRadius: shape === "rounded" ? 1 : "50%", bgcolor: color, border: "1px solid #82939d", flex: "0 0 auto" }} />
+        <Box sx={{ width: 16, height: 16, borderRadius: 0, bgcolor: color, flex: "0 0 auto", boxShadow: "0 1px 3px rgba(41,45,42,0.12)" }} />
       ) : (
-        <Box sx={{ width: 25, borderTop: `3px ${dashed ? "dashed" : "solid"} ${color}`, flex: "0 0 auto" }} />
+        <Box sx={{ width: 25, height: 0, borderTop: `3px ${dashed ? "dashed" : "solid"} ${color}`, flex: "0 0 auto" }} />
       )}
       <Typography variant="caption" color="text.secondary">{label}</Typography>
     </Stack>

@@ -109,9 +109,18 @@ def _validate_inputs(inputs: SectorDivergenceInputs, computed_at: datetime) -> N
 def _calculate_daily_estimates(
     prices: pd.DataFrame,
     industries: dict[str, str],
+    opens: pd.DataFrame | None = None,
 ) -> tuple[dict[tuple[str, int], _DailyEstimate], dict[tuple[str, int], str]]:
-    log_prices = np.log(prices.astype("float64"))
-    returns = log_prices.diff()
+    close_vals = prices.astype("float64")
+    if opens is not None and not opens.empty:
+        open_vals = opens.reindex(index=prices.index, columns=prices.columns).astype("float64")
+        valid_open = (open_vals > 0) & np.isfinite(open_vals) & (close_vals > 0) & np.isfinite(close_vals)
+        intraday_returns = np.where(valid_open, np.log(close_vals / np.where(valid_open, open_vals, 1.0)), np.nan)
+        close_diff_returns = np.log(close_vals).diff().to_numpy()
+        combined_returns = np.where(valid_open, intraday_returns, close_diff_returns)
+        returns = pd.DataFrame(combined_returns, index=prices.index, columns=prices.columns)
+    else:
+        returns = np.log(close_vals).diff()
     dates = list(prices.index)
     estimates: dict[tuple[str, int], _DailyEstimate] = {}
     failures: dict[tuple[str, int], str] = {}
@@ -202,8 +211,13 @@ def calculate_sector_divergence(
     prices = inputs.adjusted_closes.sort_index().loc[: inputs.signal_date].copy()
     symbols = sorted(inputs.security_ids)
     prices = prices.reindex(columns=symbols)
+    opens = (
+        inputs.adjusted_opens.sort_index().loc[: inputs.signal_date].reindex(columns=symbols).copy()
+        if inputs.adjusted_opens is not None
+        else None
+    )
     industries = {symbol: inputs.industries[symbol] for symbol in symbols}
-    estimates, failures = _calculate_daily_estimates(prices, industries)
+    estimates, failures = _calculate_daily_estimates(prices, industries, opens=opens)
     issues: list[CalculationIssue] = []
     dates = list(prices.index)
     signal_position = dates.index(inputs.signal_date)

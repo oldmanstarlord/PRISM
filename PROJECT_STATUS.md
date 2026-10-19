@@ -6,12 +6,12 @@ This is the living implementation record for PRISM. It must be updated after eve
 
 | Field | Value |
 |---|---|
-| Current phase | Phase 2 - Text intelligence |
-| Overall status | Ready to start |
-| Last updated | 2026-10-08 |
-| Requirements source | `PRISM_SRS.md` version 1.6 |
+| Current phase | Phase 3 - Structural Monitoring, MST Integration, Historical Risk Tracking & Validation |
+| Overall status | Implemented and Verified |
+| Last updated | 2026-10-19 |
+| Requirements source | `PRISM_SRS.md` and Phase 3 Requirements |
 | Initial universe | NIFTY 200 |
-| Active implementation focus | Phase 2 source and point-in-time text-intelligence contract design |
+| Active implementation focus | Phase 3 Complete: Structural Monitoring, MST Ego-Network, Historical Tracking, Modular News Contracts & Final Validation |
 
 ## Phase status
 
@@ -19,9 +19,9 @@ This is the living implementation record for PRISM. It must be updated after eve
 |---|---|---|---|
 | 0 | Foundations | Complete | CI, reproducibility, unified pipeline and independent teammate operations verification passed |
 | 1 | Portfolio insight | Complete | Risk, diversification, MST stability, stress, audit and presentation gates passed |
-| 2 | Text intelligence | Not started | Pending |
-| 3 | Attribution and forecasting | Not started | Pending |
-| 4 | Advanced research | Not started | Pending |
+| 2 | Explainable Risk & Diversification | Complete | Multi-window stock risk, 5-factor scoring, portfolio covariance, Euler risk share, diversification metrics, sector benchmark analysis passed |
+| 3 | Structural Monitoring & Validation | Complete | Holdings-integrated MST ego-network, structural dashboard, historical risk tracking & audit persistence, configurable monitoring alerts, modular news contracts, all 74 backend tests & 15 frontend tests passing |
+| 4 | Advanced research & forecasting | Not started | Pending |
 
 ## Phase 0 checklist
 
@@ -301,3 +301,66 @@ After every material update:
   rendering, ESLint, seven frontend tests and the production build.
 - Closed Phase 1 after the portfolio risk, diversification, explainability, MST stability, stress,
   freshness, disclaimer, schema and audit gates passed.
+
+### 2026-10-19 - Phase 2: Explainable Stock Risk, Portfolio Covariance, Diversification & Sector Analysis
+
+- **Multi-Window Stock Risk Analytics (`backend/app/portfolio_analytics/stock_risk.py`):**
+  - Evaluates risk across four standard financial horizons: 1M (21 days), 3M (63 days), 6M (126 days), and 1Y (252 days).
+  - Calculates annualized volatility, downside semi-deviation (semi-volatility below target 0), peak-to-trough maximum drawdown, price instability ratio (short 21d vol / 126d baseline vol), market beta vs NIFTY 50 (`^NSEI`), and Jensen's alpha.
+  - Integrates investor position tracking: purchase price vs current price, unrealized P&L (₹) and percentage return, drawdown since purchase, and volatility since purchase date. Position loss is strictly distinguished from market volatility.
+- **Explainable 5-Factor Risk Scoring:**
+  - Standardized 0–100 scale calibrated with bounded thresholds: Annualized Volatility (30%, range 12–42%), Downside Volatility (25%, range 8–30%), Max Drawdown (20%, range 8–45%), Market Beta (15%, centered at 1.0), and Price Instability & Divergence (10%).
+  - Dynamically constructs qualitative narratives explaining the strongest risk drivers without hardcoded stock-specific strings.
+  - Classifies assets into 4 calibrated tiers: Low (0–35, green), Moderate (35–60, amber), High (60–80, orange), and Very High (80–100, red).
+- **Portfolio Covariance & Euler Risk Decomposition:**
+  - Computes portfolio volatility via true asset covariance matrix: $\sigma_p = \sqrt{w^T \Sigma w}$.
+  - Computes marginal Euler risk contributions: $\text{RC}_i = \frac{w_i (\Sigma w)_i}{\sigma_p^2}$, proving exact 100% risk contribution summing.
+  - Calculates historical risk trend (1M vs 6M annualized volatility change).
+- **Defensible Diversification Index:**
+  - Evaluates Herfindahl-Hirschman Index (HHI), Effective Number of Holdings ($N_{eff} = 1/\sum w_i^2$), Effective Number of Sectors ($S_{eff} = 1/\sum s_j^2$), and the Diversification Ratio ($\text{DR} = \frac{\sum w_i \sigma_i}{\sigma_p}$).
+  - Computes normalized 0–100 Diversification Score mapped to Letter Grades (A, B, C, D) with explicit educational disclaimers.
+- **Sector Exposure & Benchmarked Ceilings:**
+  - Calculates sector weights, risk contributions, and 20-day Layer 1 sector divergence.
+  - Enforces a documented 25% portfolio ceiling target, categorizing allocations as "Balanced" (<=25%), "Elevated" (25–35%), or "Excessive" (>35%).
+- **Interactive UI & Dedicated Navigation (`frontend/src/Phase2RiskSections.tsx`, `PortfolioManager.tsx`):**
+  - Added dedicated tabs: Stock Risk Analysis, Portfolio Risk, Sector Exposure, Diversification, Network & Stress (MST), and Transaction Ledger.
+  - Interactive Stock Risk modal for factor contribution inspection, multi-window comparison, and purchase tracking.
+  - Correlation matrix heatmap, simulated 250-day SVG portfolio performance curve, and Sector risk vs capital comparison bars.
+- **Verification & Testing:**
+  - Deduplicated price histories in database queries to prevent index collision errors on revised prices.
+  - All 67 backend pytest tests passing (including 10 comprehensive tests in `test_stock_risk.py`).
+  - Strict mypy passed across `portfolio_analytics` with zero errors.
+  - All 15 Vitest frontend tests passing; ESLint 0 errors; TypeScript/Vite production build passing.
+
+### 2026-10-19 - Phase 3: Structural Monitoring, MST Holdings Integration, Historical Risk Tracking & Validation
+
+- **MST Integration with Portfolio Holdings (`backend/app/portfolio_analytics/structural_monitoring.py`, `frontend/src/Phase3StructuralSections.tsx`):**
+  - Reused existing Mantegna correlation metric ($d_{ij} = \sqrt{2(1 - \rho_{ij})}$) and MST topological structures from Phase 1 without creating any duplicate MST engines.
+  - Added holding-centric MST Ego-Network Inspector: selecting any portfolio holding immediately exposes its direct topological MST links, edge correlation ($\rho$), Mantegna metric distance, bridge stock pathways, and indirect path routes to other holdings.
+  - Added Correlated Holding Groups detection (clusters with mean $\rho \ge 0.50$), surfacing return co-movement risks and common sectoral exposures.
+  - Added explicit, transparent callout of MST Methodological Limitations: highlights that MST identifies topological backbones of historical co-movement but does not establish causation, guarantee future correlation persistence, or capture tail dependency outside the estimation window.
+- **Structural Monitoring Dashboard:**
+  - Executive Overview Banner tracking Current Portfolio Value, Total Return, Portfolio Risk Score (0–100), Diversification Index, Sector Ceiling, and Largest Holding Weight.
+  - Analytical Monitoring Indicators with configurable warning thresholds:
+    - *Elevated Portfolio Risk* ($\ge 60$) & *Critical Portfolio Risk* ($\ge 80$)
+    - *Excessive Sector Concentration* ($\ge 25\%$ or $\ge 35\%$)
+    - *Single-Holding Concentration Risk* ($\ge 20\%$)
+    - *Insufficient Portfolio Diversification* ($N_{eff} < 4.0$)
+    - *Excessive Downside Volatility* ($\ge 20\%$)
+    - *Disproportionate Euler Risk Contribution* ($\text{RC}_i \ge 30\%$)
+  - Added clear non-advisory disclaimers emphasizing alerts are analytical mathematical signals rather than automated trade advice.
+  - Visualized top Euler risk contributions against invested capital weights to instantly spot risk amplifiers.
+- **Historical Risk Tracking & Audit Persistence:**
+  - Implemented persistent risk snapshots auto-persisting to `data/processed/portfolio_risk_history.json`.
+  - Tracks time-series progression (Current, 1M, 3M, 6M) across Portfolio Risk Score, Volatility, Max Drawdown, Effective Holdings ($N_{eff}$), and Sector Concentration ($HHI$).
+  - Strictly reports observation dates, sample sizes, and historical data coverage without fabricating missing points.
+- **Modular News Integration Architecture (`backend/app/portfolio_analytics/news_signals.py`):**
+  - Created decoupled contract schemas (`NewsArticleItem`, `StockNewsSignal`, `PortfolioNewsSummary`).
+  - Implemented isolated news preview endpoint `POST /portfolio-analysis/news-signals` that isolates news sentiment and risk multipliers from quantitative market risk, preventing silent corruption of historical risk metrics.
+- **Dedicated 9-Tab Navigation & Responsive UI:**
+  - Navigation hierarchy: Structural Overview (`monitoring`), Holdings Dashboard (`dashboard`), Stock Risk Analysis (`stock-risk`), Portfolio Risk & History (`portfolio-risk`), Sector Exposure (`sector-exposure`), Diversification (`diversification`), Network & Stress (MST) (`analysis`), News Signals Preview (`news-preview`), Transaction Ledger (`transactions`).
+  - Added loading, empty, and error fallback states; accessible typography and labels; SVG vector icons with zero external icon package overhead.
+- **Full End-to-End Audit & Verification:**
+  - Backend: 74 tests passing (0 failures, 2 approved live-PostgreSQL skips); 21/21 in `tests/portfolio_analytics/`.
+  - Mypy: strict mode passed across all 8 `portfolio_analytics` files with zero errors.
+  - Frontend: 15/15 Vitest tests passing; ESLint 0 errors / 0 warnings; TypeScript/Vite production build cleanly generating chunks.

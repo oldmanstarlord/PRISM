@@ -4,10 +4,8 @@ import {
   Box,
   Button,
   CircularProgress,
-  Container,
   FormControl,
   InputLabel,
-  Link as MuiLink,
   MenuItem,
   Paper,
   Select,
@@ -20,7 +18,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { Link } from "react-router-dom";
+
+import AppShell from "./AppShell";
 
 import { useAuth } from "./authState";
 import { fetchAuthenticatedJson } from "./api";
@@ -55,16 +54,16 @@ function SignInPanel() {
   }
 
   return (
-    <Paper sx={{ p: 3, maxWidth: 520 }}>
+    <Paper sx={{ p: 3, maxWidth: 520, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
       <Stack spacing={2}>
-        <Typography variant="h5">Sign in to portfolios</Typography>
-        <Typography color="text.secondary">Portfolios are private to your Supabase account.</Typography>
-        {message && <Alert severity="info">{message}</Alert>}
-        <TextField label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-        <TextField label="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+        <Typography variant="h5" sx={{ fontWeight: 700, color: "#292D2A" }}>Sign in to portfolios</Typography>
+        <Typography sx={{ color: "#686B64" }}>Portfolios are private to your Supabase account.</Typography>
+        {message && <Alert severity="info" sx={{ borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A" }}>{message}</Alert>}
+        <TextField label="Email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} sx={{ bgcolor: "#F9EBD7" }} />
+        <TextField label="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} sx={{ bgcolor: "#F9EBD7" }} />
         <Stack direction="row" spacing={1}>
-          <Button variant="contained" disabled={busy || !email || !password} onClick={() => void authenticate(false)}>Sign in</Button>
-          <Button variant="outlined" disabled={busy || !email || password.length < 8} onClick={() => void authenticate(true)}>Create account</Button>
+          <Button variant="contained" disabled={busy || !email || !password} onClick={() => void authenticate(false)} sx={{ borderRadius: 0, bgcolor: "#046A38", color: "#F9EBD7" }}>Sign in</Button>
+          <Button disabled={busy || !email || password.length < 8} onClick={() => void authenticate(true)} sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A", "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" } }}>Create account</Button>
         </Stack>
       </Stack>
     </Paper>
@@ -152,37 +151,37 @@ export default function PortfolioPage() {
     <Page>
       <Stack spacing={3}>
         <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", gap: 2 }}>
-          <Box><Typography variant="h4">Private portfolios</Typography><Typography color="text.secondary">Signed in as {session.user.email}</Typography></Box>
-          <Button variant="outlined" onClick={() => void supabase?.auth.signOut()}>Sign out</Button>
+          <Box><Typography variant="h4" sx={{ fontWeight: 700, color: "#292D2A" }}>Private portfolios</Typography><Typography sx={{ color: "#686B64" }}>Signed in as {session.user.email}</Typography></Box>
+          <Button onClick={() => void supabase?.auth.signOut()} sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A", "&:hover": { bgcolor: "#E34222", color: "#F9EBD7" } }}>Sign out</Button>
         </Stack>
-        {error && <Alert severity="error">{error}</Alert>}
-        <Paper sx={{ p: 3 }}><Stack spacing={2}>
-          <Typography variant="h5">Upload holdings</Typography>
-          <Alert severity="info" icon={false}>CSV header: <code>symbol,value</code>. Use decimal weights such as <code>0.25</code>. Use <code>CASH</code> for INR cash.</Alert>
-          <TextField label="Portfolio name" value={name} onChange={(event) => setName(event.target.value)} />
-          <FormControl><InputLabel id="portfolio-mode">Input mode</InputLabel><Select labelId="portfolio-mode" label="Input mode" value={inputMode} onChange={(event) => { setInputMode(event.target.value as PortfolioInputMode); setPreview(null); }}><MenuItem value="quantities">Quantities</MenuItem><MenuItem value="weights">Weights</MenuItem></Select></FormControl>
-          <Button component="label" variant="outlined">Choose CSV<input hidden type="file" accept=".csv,text/csv" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; void file.text().then((text) => { setRows(parsePortfolioCsv(text)); setPreview(null); setError(null); }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to read CSV")); }} /></Button>
-          <Typography variant="body2">{rows.length ? `${rows.length} rows loaded` : "No CSV loaded"}</Typography>
-          <Button variant="contained" disabled={busy || !rows.length || !name.trim()} onClick={() => void previewUpload()}>Preview validation</Button>
+        {error && <Alert severity="error" sx={{ borderRadius: 0, bgcolor: "#F6D9CC", color: "#B8321A" }}>{error}</Alert>}
+        <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}><Stack spacing={2}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: "#292D2A" }}>Upload holdings</Typography>
+          <Alert severity="info" icon={false} sx={{ borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A" }}>CSV header: <code>symbol,value</code>. Use decimal weights such as <code>0.25</code>. Use <code>CASH</code> for INR cash.</Alert>
+          <TextField label="Portfolio name" value={name} onChange={(event) => setName(event.target.value)} sx={{ bgcolor: "#F9EBD7" }} />
+          <FormControl sx={{ bgcolor: "#F9EBD7" }}><InputLabel id="portfolio-mode">Input mode</InputLabel><Select labelId="portfolio-mode" label="Input mode" value={inputMode} onChange={(event) => { setInputMode(event.target.value as PortfolioInputMode); setPreview(null); }}><MenuItem value="quantities">Quantities</MenuItem><MenuItem value="weights">Weights</MenuItem></Select></FormControl>
+          <Button component="label" sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A", "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" } }}>Choose CSV<input hidden type="file" accept=".csv,text/csv" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; void file.text().then((text) => { setRows(parsePortfolioCsv(text)); setPreview(null); setError(null); }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Unable to read CSV")); }} /></Button>
+          <Typography variant="body2" sx={{ color: "#686B64" }}>{rows.length ? `${rows.length} rows loaded` : "No CSV loaded"}</Typography>
+          <Button variant="contained" disabled={busy || !rows.length || !name.trim()} onClick={() => void previewUpload()} sx={{ borderRadius: 0, bgcolor: "#046A38", color: "#F9EBD7" }}>Preview validation</Button>
         </Stack></Paper>
-        {preview && <Paper sx={{ p: 3 }}><Stack spacing={2}>
-          <Typography variant="h5">Validation preview</Typography>
-          {preview.errors.map((item) => <Alert key={item} severity="error">{item}</Alert>)}
-          {preview.warnings.map((item) => <Alert key={item} severity="warning">{item}</Alert>)}
-          <Typography>Valuation date: {preview.valuation_date ?? "unavailable"}</Typography>
+        {preview && <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}><Stack spacing={2}>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: "#292D2A" }}>Validation preview</Typography>
+          {preview.errors.map((item) => <Alert key={item} severity="error" sx={{ borderRadius: 0, bgcolor: "#F6D9CC", color: "#B8321A" }}>{item}</Alert>)}
+          {preview.warnings.map((item) => <Alert key={item} severity="warning" sx={{ borderRadius: 0, bgcolor: "#E3D7C4", color: "#8A5A00" }}>{item}</Alert>)}
+          <Typography sx={{ color: "#292D2A" }}>Valuation date: {preview.valuation_date ?? "unavailable"}</Typography>
           <HoldingsTable holdings={preview.holdings} mode={preview.input_mode} />
-          {Number(preview.cash_value) > 0 && <Typography>Cash: {preview.cash_value}</Typography>}
-          <Button variant="contained" color="success" disabled={busy || !preview.valid} onClick={() => void savePortfolio()}>Confirm and save private snapshot</Button>
+          {Number(preview.cash_value) > 0 && <Typography sx={{ color: "#292D2A" }}>Cash: {preview.cash_value}</Typography>}
+          <Button variant="contained" disabled={busy || !preview.valid} onClick={() => void savePortfolio()} sx={{ borderRadius: 0, bgcolor: "#046A38", color: "#F9EBD7" }}>Confirm and save private snapshot</Button>
         </Stack></Paper>}
-        <Paper sx={{ p: 3 }}><Typography variant="h5" gutterBottom>Saved portfolios</Typography>{!portfolios.length ? <Typography color="text.secondary">No saved portfolios yet.</Typography> : <Stack spacing={1}>{portfolios.map((portfolio) => <Button key={portfolio.id} variant="text" sx={{ justifyContent: "space-between" }} onClick={() => void openPortfolio(portfolio.id)}>{portfolio.name}<span>{portfolio.holding_count} holdings · {portfolio.valuation_date}</span></Button>)}</Stack>}</Paper>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h5" gutterBottom>Recent audit history</Typography>
+        <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}><Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: "#292D2A" }}>Saved portfolios</Typography>{!portfolios.length ? <Typography sx={{ color: "#686B64" }}>No saved portfolios yet.</Typography> : <Stack spacing={1}>{portfolios.map((portfolio) => <Button key={portfolio.id} variant="text" sx={{ justifyContent: "space-between", borderRadius: 0, color: "#292D2A", "&:hover": { bgcolor: "#E3D7C4" } }} onClick={() => void openPortfolio(portfolio.id)}>{portfolio.name}<span style={{ color: "#686B64" }}>{portfolio.holding_count} holdings · {portfolio.valuation_date}</span></Button>)}</Stack>}</Paper>
+        <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: "#292D2A" }}>Recent audit history</Typography>
           {!auditEvents.length ? (
-            <Typography color="text.secondary">No portfolio changes recorded yet.</Typography>
+            <Typography sx={{ color: "#686B64" }}>No portfolio changes recorded yet.</Typography>
           ) : (
             <Stack spacing={1}>
               {auditEvents.slice(0, 10).map((event) => (
-                <Box key={event.id} sx={{ borderBottom: "1px solid #e3e8eb", pb: 1 }}>
+                <Box key={event.id} sx={{ pb: 1 }}>
                   <Typography sx={{ fontWeight: 700 }}>{event.event_type}</Typography>
                   <Typography variant="body2" color="text.secondary">
                     {new Date(event.created_at).toLocaleString()} · {event.entity_id}
@@ -203,5 +202,9 @@ function HoldingsTable({ holdings, mode }: { holdings: PortfolioDetail["holdings
 }
 
 function Page({ children }: { children: ReactNode }) {
-  return <Box sx={{ minHeight: "100vh", bgcolor: "#f4f7f9" }}><Box sx={{ bgcolor: "#102b3a", color: "white", py: 3 }}><Container maxWidth="lg"><Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between" }}><Typography variant="h3" sx={{ fontWeight: 700 }}>PRISM</Typography><MuiLink component={Link} to="/" color="inherit">Market intelligence</MuiLink></Stack></Container></Box><Container maxWidth="lg" sx={{ py: 4 }}>{children}</Container></Box>;
+  return (
+    <AppShell subtitle="Portfolio Management">
+      {children}
+    </AppShell>
+  );
 }

@@ -19,6 +19,7 @@ from backend.app.db.models import (
     Security,
 )
 from backend.app.db.session import engine, get_session
+from backend.app.market_data.router import router as market_data_router
 from backend.app.portfolio.router import router as portfolio_router
 from backend.app.portfolio_analytics.router import router as portfolio_analytics_router
 from backend.app.sector_divergence.inputs import load_inputs
@@ -31,6 +32,7 @@ from backend.app.sector_divergence.service import (
 router = APIRouter()
 router.include_router(portfolio_router)
 router.include_router(portfolio_analytics_router)
+router.include_router(market_data_router)
 DatabaseSession = Annotated[Session, Depends(get_session)]
 
 
@@ -50,6 +52,62 @@ def readiness() -> dict[str, str]:
             detail="Database unavailable",
         ) from exc
     return {"status": "ready", "database": "connected"}
+
+
+_securities_cache: list[dict[str, Any]] | None = None
+_securities_cache_time: float = 0.0
+
+
+@router.get("/securities", tags=["universe"])
+def list_active_securities(session: DatabaseSession) -> list[dict[str, Any]]:
+    """Return active NIFTY 200 constituents with their latest available closing prices."""
+    global _securities_cache, _securities_cache_time
+    import time
+    from datetime import date
+
+    from backend.app.market_data.service import active_nifty200_instruments
+
+    now = time.time()
+    if _securities_cache is not None and (now - _securities_cache_time) < 300:
+        return _securities_cache
+
+    as_of = session.scalar(select(func.max(PriceDailyAdjusted.trade_date))) or date.today()
+    instruments = active_nifty200_instruments(session, as_of)
+    sec_ids = [inst.security_id for inst in instruments]
+
+    securities_map = {
+        s.id: s
+        for s in session.scalars(select(Security).where(Security.id.in_(sec_ids))).all()
+    }
+
+    subq = (
+        select(PriceDailyAdjusted.security_id, func.max(PriceDailyAdjusted.trade_date).label("max_date"))
+        .where(PriceDailyAdjusted.security_id.in_(sec_ids))
+        .group_by(PriceDailyAdjusted.security_id)
+        .subquery()
+    )
+    prices_q = (
+        select(PriceDailyAdjusted.security_id, PriceDailyAdjusted.adjusted_close, PriceDailyAdjusted.trade_date)
+        .join(subq, (PriceDailyAdjusted.security_id == subq.c.security_id) & (PriceDailyAdjusted.trade_date == subq.c.max_date))
+    )
+    prices_map = {row.security_id: (float(row.adjusted_close), row.trade_date) for row in session.execute(prices_q).all()}
+
+    results = []
+    for inst in instruments:
+        sec = securities_map.get(inst.security_id)
+        price_info = prices_map.get(inst.security_id)
+        results.append({
+            "id": str(inst.security_id),
+            "isin": sec.isin if sec else "",
+            "company_name": sec.company_name if sec else inst.symbol,
+            "industry": sec.industry if sec else "Unknown",
+            "symbol": inst.symbol,
+            "latest_price": price_info[0] if price_info else None,
+            "latest_trade_date": price_info[1].isoformat() if price_info else None,
+        })
+    _securities_cache = results
+    _securities_cache_time = now
+    return results
 
 
 @router.get("/pipeline/status", tags=["operations"])
@@ -210,7 +268,15 @@ def latest_sector_divergence_company(symbol: str, session: DatabaseSession) -> d
             detail=f"{normalized_symbol} has no score in the latest completed run",
         )
     security = session.get(Security, scores[0].security_id)
-    inputs = load_inputs(session, run.signal_date, run.lookback_start, run.data_cutoff)
+    global _inputs_cache
+    if "_inputs_cache" not in globals():
+        _inputs_cache = {}
+    cache_key = (run.id, run.signal_date)
+    if cache_key in _inputs_cache:
+        inputs = _inputs_cache[cache_key]
+    else:
+        inputs = load_inputs(session, run.signal_date, run.lookback_start, run.data_cutoff)
+        _inputs_cache[cache_key] = inputs
     try:
         comparison = build_company_comparison(inputs, normalized_symbol)
     except ValueError as exc:

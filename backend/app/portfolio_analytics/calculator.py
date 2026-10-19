@@ -101,9 +101,7 @@ def calculate_mst_stability(
     for newer, older in zip(edge_sets, edge_sets[1:], strict=False):
         denominator = max(len(newer), len(older), 1)
         overlaps.append(len(newer & older) / denominator)
-    current_persistence = (
-        float(np.mean(list(persistence.values()))) if persistence else 1.0
-    )
+    current_persistence = float(np.mean(list(persistence.values()))) if persistence else 1.0
     consecutive_overlap = float(np.mean(overlaps))
     confidence = _stability_confidence(current_persistence)
     return (
@@ -254,9 +252,7 @@ def calculate_risk(
     eigenvalues = np.maximum(np.linalg.eigvalsh((correlation + correlation.T) / 2.0), 0.0)
     eigen_square_sum = float(np.sum(np.square(eigenvalues)))
     correlation_enb = (
-        float(np.sum(eigenvalues) ** 2 / eigen_square_sum)
-        if eigen_square_sum > 1e-12
-        else 1.0
+        float(np.sum(eigenvalues) ** 2 / eigen_square_sum) if eigen_square_sum > 1e-12 else 1.0
     )
     effective_limit = float(len(symbols))
     risk_enb = float(np.clip(risk_enb, 1.0, effective_limit))

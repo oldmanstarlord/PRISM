@@ -5,7 +5,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Container,
   FormControl,
   InputLabel,
   LinearProgress,
@@ -24,6 +23,8 @@ import {
 } from "@mui/material";
 import { Link } from "react-router-dom";
 
+import AppShell from "./AppShell";
+
 import { postJson } from "./api";
 import PortfolioMstGraph from "./PortfolioMstGraph";
 import {
@@ -39,12 +40,27 @@ import type {
 } from "./types";
 
 const sampleRows: DemoPortfolioRow[] = [
-  { symbol: "BAJAJ-AUTO", weightPercent: 20 },
-  { symbol: "M&M", weightPercent: 15 },
-  { symbol: "GODREJPROP", weightPercent: 20 },
-  { symbol: "DLF", weightPercent: 15 },
-  { symbol: "INFY", weightPercent: 15 },
-  { symbol: "TCS", weightPercent: 15 },
+  // Cluster 1: Financial Services & Banking
+  { symbol: "ICICIBANK", weightPercent: 8.5 },
+  { symbol: "HDFCBANK", weightPercent: 6.1 },
+  { symbol: "SBIN", weightPercent: 6.0 },
+  { symbol: "AXISBANK", weightPercent: 4.7 },
+  { symbol: "KOTAKBANK", weightPercent: 3.3 },
+  { symbol: "BAJFINANCE", weightPercent: 3.6 },
+  // Cluster 2: Information Technology
+  { symbol: "TCS", weightPercent: 7.6 },
+  { symbol: "INFY", weightPercent: 7.4 },
+  { symbol: "HCLTECH", weightPercent: 5.2 },
+  { symbol: "TECHM", weightPercent: 3.4 },
+  { symbol: "WIPRO", weightPercent: 2.5 },
+  // Cluster 3: Industrials, Auto, Consumer, Energy & Healthcare
+  { symbol: "LT", weightPercent: 8.8 },
+  { symbol: "RELIANCE", weightPercent: 7.4 },
+  { symbol: "MARUTI", weightPercent: 7.1 },
+  { symbol: "TITAN", weightPercent: 5.3 },
+  { symbol: "HINDUNILVR", weightPercent: 4.8 },
+  { symbol: "SUNPHARMA", weightPercent: 4.8 },
+  { symbol: "ITC", weightPercent: 3.5 },
 ];
 
 const bandColor = {
@@ -98,39 +114,9 @@ export default function PortfolioDemoPage() {
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "#f4f7f9",
-        color: "#14212b",
-        "@media print": {
-          bgcolor: "white",
-          "& .no-print": { display: "none !important" },
-          "& .MuiPaper-root": { boxShadow: "none", breakInside: "avoid" },
-        },
-      }}
-    >
-      <Box className="no-print" sx={{ bgcolor: "#102b3a", color: "white", py: 3 }}>
-        <Container maxWidth="lg">
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            sx={{ gap: 2, alignItems: { sm: "center" }, justifyContent: "space-between" }}
-          >
-            <Box>
-              <Typography variant="h3" sx={{ fontWeight: 700 }}>PRISM</Typography>
-              <Typography sx={{ color: "#b9d5df" }}>Portfolio risk and explainability</Typography>
-            </Box>
-            <Stack direction="row" spacing={2}>
-              <MuiLink component={Link} to="/" color="inherit">Market</MuiLink>
-              <MuiLink component={Link} to="/mst" color="inherit">Full MST</MuiLink>
-            </Stack>
-          </Stack>
-        </Container>
-      </Box>
-
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Stack spacing={3}>
-          <Alert severity="info" className="no-print">
+    <AppShell subtitle="Portfolio Risk & Explainability (Quick Demo)">
+      <Stack spacing={2.5}>
+        <Alert severity="info" className="no-print">
             <strong>Session-only mode:</strong> holdings are not saved. Results use real persisted
             adjusted prices, Layer 1 divergence and the latest Layer 2 MST.
           </Alert>
@@ -169,7 +155,7 @@ export default function PortfolioDemoPage() {
               <SummaryCards analysis={analysis} />
               <Stack spacing={1}>
                 {analysis.findings.map((finding) => (
-                  <Alert severity="success" variant="outlined" key={finding}>{finding}</Alert>
+                  <Alert severity="success" key={finding} sx={{ borderRadius: 0, border: "none", bgcolor: "#DCE9DE", color: "#046A38" }}>{finding}</Alert>
                 ))}
               </Stack>
               <PerformanceChart points={analysis.performance.points} />
@@ -189,8 +175,7 @@ export default function PortfolioDemoPage() {
             </>
           )}
         </Stack>
-      </Container>
-    </Box>
+    </AppShell>
   );
 }
 
@@ -212,18 +197,18 @@ function InputPanel({
   onError: (message: string) => void;
 }) {
   return (
-    <Paper className="no-print" sx={{ p: 3 }}>
+    <Paper className="no-print" sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
       <Stack spacing={2}>
-        <Typography variant="h4">Analyze a weighted portfolio</Typography>
-        <Typography color="text.secondary">
+        <Typography variant="h4" sx={{ fontWeight: 700, color: "#292D2A" }}>Analyze a weighted portfolio</Typography>
+        <Typography sx={{ color: "#686B64" }}>
           Upload <code>symbol,weight</code> with percentage weights totaling 100, or use the
           prepared sample.
         </Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-          <Button variant="contained" onClick={onSample} disabled={loading}>
+          <Button variant="contained" onClick={onSample} disabled={loading} sx={{ borderRadius: 0, bgcolor: "#046A38", color: "#F9EBD7" }}>
             Run prepared sample
           </Button>
-          <Button component="label" variant="outlined" disabled={loading}>
+          <Button component="label" disabled={loading} sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A", "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" } }}>
             Choose CSV
             <input
               hidden
@@ -240,11 +225,11 @@ function InputPanel({
               }}
             />
           </Button>
-          <Button variant="outlined" onClick={onAnalyze} disabled={loading || !rows.length}>
+          <Button onClick={onAnalyze} disabled={loading || !rows.length} sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A", "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" } }}>
             Analyze loaded portfolio
           </Button>
         </Stack>
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ color: "#686B64" }}>
           {fileName} · {rows.length} rows · {rows.reduce(
             (sum, row) => sum + row.weightPercent, 0,
           ).toFixed(2)}%
@@ -268,15 +253,15 @@ function ReportHeader({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   return (
     <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", gap: 2 }}>
       <Box>
-        <Typography variant="h4">Portfolio analysis</Typography>
-        <Typography color="text.secondary">
+        <Typography variant="h4" sx={{ fontWeight: 700, color: "#292D2A" }}>Portfolio analysis</Typography>
+        <Typography sx={{ color: "#686B64" }}>
           Data through {analysis.envelope.as_of} · {analysis.envelope.observations_used} daily
           returns
         </Typography>
       </Box>
       <Stack direction="row" spacing={1} className="no-print">
-        <Button variant="outlined" onClick={downloadReport}>Download report</Button>
-        <Button variant="contained" onClick={() => window.print()}>Print / save PDF</Button>
+        <Button onClick={downloadReport} sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A", "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" } }}>Download report</Button>
+        <Button variant="contained" onClick={() => window.print()} sx={{ borderRadius: 0, bgcolor: "#046A38", color: "#F9EBD7" }}>Print / save PDF</Button>
       </Stack>
     </Stack>
   );
@@ -374,7 +359,7 @@ function ExposurePanel({ analysis }: { analysis: PortfolioAnalysisResponse }) {
               <Typography variant="body2">{item.industry}</Typography>
               <Typography variant="body2" sx={{ fontWeight: 700 }}>{formatPercent(item.weight)}</Typography>
             </Stack>
-            <LinearProgress variant="determinate" value={item.weight * 100} sx={{ height: 8, borderRadius: 4, mt: 0.5 }} />
+            <LinearProgress variant="determinate" value={item.weight * 100} sx={{ height: 8, borderRadius: 0, mt: 0.5 }} />
           </Box>
         ))}
       </Stack>
@@ -416,7 +401,7 @@ function RiskContributionTable({ holdings }: { holdings: PortfolioHoldingAnalyti
             <TableCell align="right">{formatPercent(holding.weight)}</TableCell>
             <TableCell align="right">{formatPercent(holding.annualized_volatility)}</TableCell>
             <TableCell align="right">{formatPercent(holding.risk_contribution)}</TableCell>
-            <TableCell><LinearProgress color={holding.risk_contribution > 0.35 ? "warning" : "primary"} variant="determinate" value={Math.min(Math.max(holding.risk_contribution * 100, 0), 100)} sx={{ height: 8, borderRadius: 4 }} /></TableCell>
+            <TableCell><LinearProgress color={holding.risk_contribution > 0.35 ? "warning" : "primary"} variant="determinate" value={Math.min(Math.max(holding.risk_contribution * 100, 0), 100)} sx={{ height: 8, borderRadius: 0 }} /></TableCell>
           </TableRow>
         ))}</TableBody>
       </Table>
