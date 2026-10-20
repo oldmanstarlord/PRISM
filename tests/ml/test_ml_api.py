@@ -2,35 +2,115 @@
 
 from uuid import UUID
 
-import numpy as np
-import pandas as pd  # type: ignore[import-untyped]
 import pytest
 from fastapi.testclient import TestClient
 
 import backend.app.ml.router as ml_router_mod
-import backend.app.ml.service as ml_service_mod
 from backend.app.core.auth import AuthenticatedUser, require_user
+from backend.app.db.session import get_session
 from backend.app.main import app
 
 
 @pytest.fixture(autouse=True)
-def mock_price_data(monkeypatch: pytest.MonkeyPatch):
-    """Ensure predictable price history during API contract tests."""
-    rng = np.random.default_rng(42)
-    dates = pd.date_range("2024-01-01", periods=120, freq="B")
-
-    def fake_load_prices(symbols: list[str], session: object, days: int = 500) -> pd.DataFrame:
-        data = {}
-        for s in symbols:
-            ret = rng.normal(0.0004, 0.012, len(dates))
-            data[s] = 100.0 * np.cumprod(1.0 + ret)
-        return pd.DataFrame(data, index=dates)
-
-    def fake_bench_returns(session: object = None) -> pd.Series:
-        return pd.Series(rng.normal(0.0002, 0.009, len(dates)), index=dates)
-
-    monkeypatch.setattr(ml_service_mod, "_load_prices_for_symbols", fake_load_prices)
-    monkeypatch.setattr(ml_service_mod, "get_benchmark_returns", fake_bench_returns)
+def persisted_ml_outputs(monkeypatch: pytest.MonkeyPatch):
+    """API handlers render persisted service results and never run model fitting."""
+    model_statuses = {
+        "volatility_forecast_21d": {
+            "model_name": "21-Session Volatility Forecast",
+            "model_version": "2.0.0",
+            "model_type": "supervised volatility regression",
+            "status": "baseline_selected",
+            "data_cutoff": "2026-10-20",
+            "metrics_vs_baseline": {"test": {"qlike": 0.12}},
+        }
+    }
+    volatility = {
+        "status": "baseline_selected",
+        "portfolio_forecast": None,
+        "holdings_forecasts": [
+            {
+                "symbol": "RELIANCE",
+                "status": "baseline_selected",
+                "forecast_volatility": 0.16,
+                "lower_bound_90": 0.12,
+                "upper_bound_90": 0.21,
+            },
+            {
+                "symbol": "TCS",
+                "status": "insufficient_data",
+                "forecast_volatility": None,
+                "failure_reason": "insufficient_history",
+            },
+        ],
+        "portfolio_reason": "requires_covariance_forecast",
+    }
+    regime = {
+        "status": "ready",
+        "market_regime": {
+            "active_regime_name": "Calm / Normal",
+            "filtered_probability": 0.8,
+        },
+    }
+    anomalies = {
+        "status": "ready",
+        "anomaly_analysis": {
+            "unusual_holdings": [
+                {"symbol": "RELIANCE", "status": "ready", "anomaly_score": 55.0},
+                {"symbol": "TCS", "status": "insufficient_data"},
+                {"symbol": "INFY", "status": "ready", "anomaly_score": 82.0},
+            ]
+        },
+    }
+    score = {
+        "status": "ready",
+        "score_validation": {
+            "models": {
+                "five_factor_fixed_weights": {
+                    "volatility_21d": {"mean_monthly_spearman_ic": 0.1}
+                }
+            },
+            "baseline_comparisons": {},
+        },
+    }
+    monkeypatch.setattr(
+        ml_router_mod._ml_service,
+        "get_model_statuses",
+        lambda session: model_statuses,
+    )
+    monkeypatch.setattr(
+        ml_router_mod._ml_service,
+        "get_volatility_insights",
+        lambda symbols, weights, session: volatility,
+    )
+    monkeypatch.setattr(
+        ml_router_mod._ml_service, "get_market_regime_insights", lambda session: regime
+    )
+    monkeypatch.setattr(
+        ml_router_mod._ml_service,
+        "get_anomaly_insights",
+        lambda symbols, session, company_names=None: anomalies,
+    )
+    monkeypatch.setattr(
+        ml_router_mod._ml_service,
+        "get_risk_score_validation_insights",
+        lambda symbols, session: score,
+    )
+    monkeypatch.setattr(
+        ml_router_mod._ml_service,
+        "get_comprehensive_ai_insights",
+        lambda symbols, weights, session, company_names=None: {
+            "model_statuses": model_statuses,
+            "volatility": volatility,
+            "regime": regime,
+            "anomalies": anomalies,
+            "score_validation": score,
+            "governance": {
+                "methodology_version": "ml-risk-v2",
+                "disclaimer": "PRISM does NOT forecast price direction.",
+                "is_model_estimate": True,
+            },
+        },
+    )
     monkeypatch.setattr(
         ml_router_mod,
         "_get_company_names",
@@ -39,8 +119,10 @@ def mock_price_data(monkeypatch: pytest.MonkeyPatch):
     app.dependency_overrides[require_user] = lambda: AuthenticatedUser(
         id=UUID("00000000-0000-0000-0000-000000000001"), email="ml-test@prism.local"
     )
+    app.dependency_overrides[get_session] = lambda: object()
     yield
     app.dependency_overrides.pop(require_user, None)
+    app.dependency_overrides.pop(get_session, None)
 
 
 def test_get_model_status():
@@ -65,11 +147,8 @@ def test_post_volatility_forecast():
     resp = client.post("/api/v1/ml/volatility-forecast", json=req)
     assert resp.status_code == 200
     data = resp.json()
-    assert data["status"] == "ready"
-    assert "portfolio_forecast" in data
-    assert data["portfolio_forecast"]["predicted_volatility_pct"] > 0
-    assert "lower_bound_90_pct" in data["portfolio_forecast"]
-    assert "upper_bound_90_pct" in data["portfolio_forecast"]
+    assert data["status"] == "baseline_selected"
+    assert data["portfolio_forecast"] is None
     assert len(data["holdings_forecasts"]) == 2
 
 
@@ -108,9 +187,8 @@ def test_get_risk_score_validation():
     data = resp.json()
     assert data["status"] == "ready"
     val = data["score_validation"]
-    assert "spearman_rank_ic" in val
-    assert "isotonic_calibration_curve" in val
-    assert len(val["isotonic_calibration_curve"]) == 5
+    assert "five_factor_fixed_weights" in val["models"]
+    assert "baseline_comparisons" in val
 
 
 def test_post_comprehensive_insights():

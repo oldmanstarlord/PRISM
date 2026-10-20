@@ -13,7 +13,7 @@ async function sessionHeaders(headers?: HeadersInit): Promise<Headers> {
   return result;
 }
 
-export async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T> {
+export async function fetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${apiBase}${path}`, {
     signal,
     headers: await sessionHeaders(),
@@ -25,7 +25,7 @@ export async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T
   return (await response.json()) as T;
 }
 
-export async function postJson<T>(path: string, body: unknown, signal: AbortSignal): Promise<T> {
+export async function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const headers = await sessionHeaders({ "Content-Type": "application/json" });
   const response = await fetch(`${apiBase}${path}`, {
     method: "POST",

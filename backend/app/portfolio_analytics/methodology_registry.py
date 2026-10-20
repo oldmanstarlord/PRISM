@@ -583,15 +583,15 @@ METRIC_REGISTRY: dict[str, MetricDefinition] = {
             "Score = 0.30*S_vol + 0.25*S_down + 0.20*S_mdd + 0.15*S_beta + 0.10*S_instab"
         ),
         units="Score (0–100)",
-        default_window="252 trading days (or 126d fallback)",
-        min_observations=30,
+        default_window="252 trading days",
+        min_observations=180,
         return_type="ratio",
         assumptions=[
-            "Normalized to [0, 100] via fixed empirical calibration bounds.",
+            "Normalized to [0, 100] using that date's persisted NIFTY 200 P10/P90 cutoffs.",
             "Labelled HEURISTIC: diagnostic synthesis, not an ML prediction or buy/sell signal.",
         ],
         limitations=[
-            "Fixed normalization parameters; full historical calibration scheduled for Phase 4.",
+            "Unavailable when any factor or cross-sectional calibration is unavailable.",
         ],
     ),
     "PORTFOLIO_RISK_SCORE_HEURISTIC": MetricDefinition(
@@ -639,11 +639,7 @@ STOCK_RISK_FACTOR_WEIGHTS = {
     "price_instability": 0.10,
 }
 
-STOCK_RISK_NORMALIZATION_BOUNDS = {
-    "annualized_volatility": (0.12, 0.42),
-    "downside_volatility": (0.08, 0.30),
-    "max_drawdown": (0.08, 0.45),
-}
+STOCK_RISK_CALIBRATION_PERCENTILES = (0.10, 0.90)
 
 PORTFOLIO_RISK_FACTOR_WEIGHTS = {
     "portfolio_volatility": 0.35,
@@ -821,7 +817,12 @@ def get_methodology_manifest() -> dict[str, Any]:
         "default_risk_free_rate": DEFAULT_RISK_FREE_RATE,
         "metrics": {k: v.to_dict() for k, v in METRIC_REGISTRY.items()},
         "stock_risk_weights": STOCK_RISK_FACTOR_WEIGHTS,
-        "stock_risk_bounds": {k: list(v) for k, v in STOCK_RISK_NORMALIZATION_BOUNDS.items()},
+        "stock_risk_calibration": {
+            "method": "daily NIFTY 200 cross-sectional linear percentile normalization",
+            "lower_percentile": STOCK_RISK_CALIBRATION_PERCENTILES[0],
+            "upper_percentile": STOCK_RISK_CALIBRATION_PERCENTILES[1],
+            "persistence_table": "score_calibration",
+        },
         "portfolio_risk_weights": PORTFOLIO_RISK_FACTOR_WEIGHTS,
         "portfolio_risk_bounds": {
             k: list(v) for k, v in PORTFOLIO_RISK_NORMALIZATION_BOUNDS.items()

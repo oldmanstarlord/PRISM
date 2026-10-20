@@ -89,6 +89,22 @@ export interface PipelineStatus {
   latest_error: string | null;
 }
 
+export interface DataCoverageResponse {
+  status: "completed" | "partial" | "failed" | "unavailable";
+  run_id?: string;
+  universe_count?: number;
+  verified_ticker_count?: number;
+  enough_history_count?: number;
+  quality_pass_count?: number;
+  metrics_ready_count?: number;
+  fundamentals_ready_count?: number;
+  data_date?: string | null;
+  last_update_time?: string;
+  reason?: string;
+  excluded_symbols: Array<{ symbol: string; reasons: string[] }>;
+  spot_checks?: { status: string; reason?: string; selected_symbols?: string[] };
+}
+
 export interface PortfolioPerformancePoint {
   trade_date: string;
   portfolio_index: number;
@@ -496,6 +512,10 @@ export interface NewsArticleItem {
   sentiment_label: "positive" | "neutral" | "negative";
   relevance_score: number;
   source_url?: string | null;
+  explanation?: string;
+  what_the_news_is?: string;
+  market_and_sector_impact?: string;
+  actionable_advice?: string;
 }
 
 export interface StockNewsSignal {
@@ -554,6 +574,9 @@ export interface NewsArticleCard {
   affected_holdings: string[];
   holding_exposure_weight_pct: number;
   explanation: string;
+  what_the_news_is?: string;
+  market_and_sector_impact?: string;
+  actionable_advice?: string;
 }
 
 export interface HoldingNewsSummary {

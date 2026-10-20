@@ -15,6 +15,7 @@ from backend.app.db.models import NewsArticle, NewsEntityMatch, NewsSignal
 from backend.app.news.deduplicator import compute_exact_hash, compute_simhash, is_near_duplicate
 from backend.app.news.entity_matcher import EntityMatcher
 from backend.app.news.event_classifier import EventClassifier
+from backend.app.news.explainer import generate_news_explanation
 from backend.app.news.exposure_aggregator import ExposureAggregator
 from backend.app.news.feed_provider import NewsFeedProvider
 from backend.app.news.schemas import (
@@ -56,9 +57,7 @@ class NewsIntelligenceService:
     ) -> list[NewsArticleCard]:
         """Process raw ingested articles through entity matching, deduplication, and NLP."""
         holdings_by_symbol = (
-            {h["symbol"].upper(): h for h in holdings if h.get("symbol")}
-            if holdings
-            else {}
+            {h["symbol"].upper(): h for h in holdings if h.get("symbol")} if holdings else {}
         )
 
         cards: list[NewsArticleCard] = []
@@ -130,17 +129,19 @@ class NewsIntelligenceService:
                 float(holdings_by_symbol[s].get("weight", 0.0)) * 100.0 for s in affected
             )
 
-            # Explanatory narrative
-            reason_parts = []
-            if affected:
-                reason_parts.append(f"Linked to holdings: {', '.join(affected)}")
-            if event_cat != "routine_coverage":
-                reason_parts.append(
-                    f"Classified as {event_cat.upper()} event ({event_conf * 100:.0f}% confidence)"
-                )
-            sent_str = f"Sentiment {sentiment_res['sentiment_label'].upper()}"
-            reason_parts.append(f"{sent_str} ({sentiment_res['sentiment_score']:+.2f})")
-            explanation = " · ".join(reason_parts)
+            # Generate structured ~60-70 word analytical synthesis:
+            # 1. What the news is
+            # 2. How it will affect market, stocks, and sectors
+            # 3. Actionable investor advice / what you should do
+            exp_data = generate_news_explanation(
+                headline=headline,
+                snippet=snippet,
+                entities=entities,
+                event_category=event_cat,
+                sentiment_label=sentiment_res["sentiment_label"],
+                sentiment_score=sentiment_res["sentiment_score"],
+                holdings_by_symbol=holdings_by_symbol,
+            )
 
             card_id = str(uuid4())
 
@@ -161,7 +162,10 @@ class NewsIntelligenceService:
                 signals=signals,
                 affected_holdings=affected,
                 holding_exposure_weight_pct=round(exposure_pct, 2),
-                explanation=explanation,
+                explanation=exp_data["explanation"],
+                what_the_news_is=exp_data["what_the_news_is"],
+                market_and_sector_impact=exp_data["market_and_sector_impact"],
+                actionable_advice=exp_data["actionable_advice"],
             )
             cards.append(card)
 
@@ -291,9 +295,7 @@ class NewsIntelligenceService:
 
         total_tracked = len(processed_cards)
         dedup_count = sum(1 for c in processed_cards if not c.is_duplicate)
-        ambiguous_count = sum(
-            1 for c in processed_cards for e in c.entities if e.is_ambiguous
-        )
+        ambiguous_count = sum(1 for c in processed_cards for e in c.entities if e.is_ambiguous)
 
         return PortfolioNewsIntelligence(
             as_of=now_iso,

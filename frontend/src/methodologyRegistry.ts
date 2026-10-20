@@ -63,7 +63,7 @@ export const METRIC_REGISTRY: Record<string, MetricDoc> = {
     formulaPlain: "sigma_ann = sqrt(252) * std(R_p, ddof=1)",
     units: "% annualized",
     defaultWindow: "250 trading days (~1Y)",
-    minObservations: 30,
+    minObservations: 180,
     returnType: "simple",
     assumptions: [
       "252 trading sessions per calendar year in Indian equity markets.",
@@ -422,15 +422,15 @@ export const METRIC_REGISTRY: Record<string, MetricDoc> = {
     formulaPlain:
       "Score = 0.30*S_vol + 0.25*S_down + 0.20*S_mdd + 0.15*S_beta + 0.10*S_instab",
     units: "Score (0–100)",
-    defaultWindow: "252 trading days (or 126d fallback)",
+    defaultWindow: "252 trading days",
     minObservations: 30,
     returnType: "ratio",
     assumptions: [
-      "Normalized to [0, 100] via fixed empirical calibration bounds.",
+      "Normalized to [0, 100] using that date's persisted NIFTY 200 P10/P90 cutoffs.",
       "Labelled HEURISTIC: diagnostic synthesis, not an ML prediction or buy/sell signal.",
     ],
     limitations: [
-      "Fixed normalization parameters; full historical calibration scheduled for Phase 4.",
+      "Unavailable when any factor or cross-sectional calibration is unavailable.",
     ],
   },
   PORTFOLIO_RISK_SCORE_HEURISTIC: {

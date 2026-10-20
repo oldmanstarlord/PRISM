@@ -17,7 +17,14 @@ def run_news_ingestion(
 ) -> dict[str, int | str]:
     """Execute news feed ingestion, matching, deduplication, and persistence."""
     default_symbols = [
-        "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "BHARTIARTL", "SBIN", "ITC"
+        "RELIANCE",
+        "TCS",
+        "HDFCBANK",
+        "INFY",
+        "ICICIBANK",
+        "BHARTIARTL",
+        "SBIN",
+        "ITC",
     ]
     target_symbols = symbols or default_symbols
 
@@ -27,9 +34,7 @@ def run_news_ingestion(
     # Fast, hermetic execution for pipeline
     service = NewsIntelligenceService(use_transformer=False)
 
-    holdings_mock = [
-        {"symbol": sym, "weight": 1.0 / len(target_symbols)} for sym in target_symbols
-    ]
+    holdings_mock = [{"symbol": sym, "weight": 1.0 / len(target_symbols)} for sym in target_symbols]
 
     db_session = SessionLocal() if persist_db else None
 

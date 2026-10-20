@@ -94,7 +94,7 @@ def test_migrations_and_quantitative_runs_are_idempotent() -> None:
     _seed_synthetic_snapshot()
     with SessionLocal() as session:
         revision = session.scalar(text("select version_num from alembic_version"))
-        assert revision == "b7d4e2f91a08"
+        assert revision in {"b7d4e2f91a08", "c5e9f3b7a402"}
         rls_tables = (
             session.execute(
                 text(

@@ -11,11 +11,12 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
 import yfinance as yf  # type: ignore[import-untyped]
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from backend.app.db.models import PriceDailyAdjusted, SecurityAlias
+from backend.app.db.models import PriceDailyAdjusted, SecurityAlias, StockMetricDaily
 from backend.app.market_data.live_service import normalize_symbol_for_yahoo
+from backend.app.market_data.metrics import FACTOR_WEIGHTS, METHODOLOGY_VERSION
 from backend.app.portfolio_analytics.calculator import regularize_covariance
 from backend.app.sector_divergence.service import latest_completed_run_query
 
@@ -138,7 +139,7 @@ def get_benchmark_returns(session: Session | None = None) -> pd.Series:
             alias = session.scalar(
                 select(SecurityAlias).where(
                     SecurityAlias.symbol == BENCHMARK_SYMBOL,
-                    SecurityAlias.exchange == "NSE",
+                    SecurityAlias.exchange.in_(("NSE", "INDEX")),
                 )
             )
             if alias is not None:
@@ -640,6 +641,36 @@ def calculate_portfolio_comprehensive_risk(
         return [], empty_profile
 
     symbols = [h["symbol"].upper() for h in holdings]
+
+    stored_metrics: dict[str, StockMetricDaily] = {}
+    if isinstance(session, Session):
+        latest_metric_date = session.scalar(
+            select(func.max(StockMetricDaily.metric_date)).where(
+                StockMetricDaily.methodology_version == METHODOLOGY_VERSION
+            )
+        )
+        if latest_metric_date is None:
+            raise ValueError("Stock risk unavailable: no published stock_metric_daily data")
+        stored_rows = session.scalars(
+            select(StockMetricDaily).where(
+                StockMetricDaily.metric_date == latest_metric_date,
+                StockMetricDaily.methodology_version == METHODOLOGY_VERSION,
+                StockMetricDaily.symbol.in_(symbols),
+            )
+        ).all()
+        stored_metrics = {row.symbol: row for row in stored_rows}
+        unavailable = [
+            symbol
+            for symbol in symbols
+            if symbol not in stored_metrics
+            or stored_metrics[symbol].score is None
+            or stored_metrics[symbol].quality_status == "fail"
+        ]
+        if unavailable:
+            raise ValueError(
+                "Stock risk unavailable from the published metric date for: "
+                + ", ".join(sorted(unavailable))
+            )
     weights_raw = np.array(
         [float(h.get("quantity", 1)) * float(h.get("buyPrice", 1)) for h in holdings], dtype=float
     )
@@ -713,6 +744,43 @@ def calculate_portfolio_comprehensive_risk(
             holding_info=h_info_with_weight,
             sector_divergence_info=sector_divergence_scores.get(sym),
         )
+        stored = stored_metrics.get(sym)
+        if stored is not None:
+            factor_rows = [
+                (
+                    "Annualized Volatility",
+                    stored.volatility_1y,
+                    stored.factor_volatility,
+                    "volatility",
+                ),
+                (
+                    "Downside Volatility",
+                    stored.downside_volatility,
+                    stored.factor_downside,
+                    "downside",
+                ),
+                ("Maximum Drawdown", stored.max_drawdown, stored.factor_drawdown, "drawdown"),
+                ("Market Beta (NIFTY 50)", stored.beta_nifty50, stored.factor_beta, "beta"),
+                ("Price Instability", None, stored.factor_instability, "instability"),
+            ]
+            profile.factors = [
+                RiskFactorBreakdown(
+                    factor_name=name,
+                    raw_value=float(raw) if raw is not None else float(normalized),
+                    normalized_score=float(normalized),
+                    weight=FACTOR_WEIGHTS[key],
+                    contribution=float(normalized) * FACTOR_WEIGHTS[key],
+                    interpretation=f"Persisted {METHODOLOGY_VERSION} cross-sectional factor",
+                )
+                for name, raw, normalized, key in factor_rows
+                if normalized is not None
+            ]
+            profile.overall_score = float(stored.score)
+            profile.risk_classification, profile.color = _classify_risk(profile.overall_score)
+            profile.data_coverage = (
+                f"{stored.observations_used} returns through {stored.metric_date}; "
+                f"quality={stored.quality_status}"
+            )
         stock_profiles.append(profile)
 
     # 5. Portfolio Covariance and Return Metrics
@@ -838,45 +906,9 @@ def calculate_portfolio_comprehensive_risk(
                 elif vol_1m < vol_long * 0.85:
                     historical_risk_trend = "decreasing"
     else:
-        # Fallback if price overlap is insufficient
-        port_vol = float(
-            np.sum([p.windows["1Y"].annualized_volatility * p.weight for p in stock_profiles])
+        raise ValueError(
+            "Portfolio analytics unavailable: fewer than 20 common observed return dates"
         )
-        port_downside = float(
-            np.sum([p.windows["1Y"].downside_volatility * p.weight for p in stock_profiles])
-        )
-        port_drawdown = (
-            float(np.max([p.windows["1Y"].max_drawdown for p in stock_profiles]))
-            if stock_profiles
-            else 0.15
-        )
-        diversification_ratio = 1.05
-        var_historical_95 = round(port_vol * 1.644853 / math.sqrt(ANNUALISATION_FACTOR) * 100, 2)
-        var_historical_99 = round(port_vol * 2.326348 / math.sqrt(ANNUALISATION_FACTOR) * 100, 2)
-        cvar_historical_95 = round(var_historical_95 * 1.15, 2)
-        cvar_historical_99 = round(var_historical_99 * 1.15, 2)
-        var_parametric_95 = var_historical_95
-        var_parametric_99 = var_historical_99
-        exceptions_95 = None
-        exceptions_99 = None
-        var_sample_size = 0
-        risk_contributions = [
-            {
-                "symbol": p.symbol,
-                "weight": round(float(p.weight), 4),
-                "annualized_volatility": round(float(p.windows["1Y"].annualized_volatility), 4),
-                "risk_contribution_share": round(float(p.weight * 100.0), 2),
-                "component_risk": round(float(p.weight * p.windows["1Y"].annualized_volatility), 6),
-                "marginal_risk": round(float(p.windows["1Y"].annualized_volatility), 4),
-            }
-            for p in stock_profiles
-        ]
-        corr_dict = {
-            p.symbol: {
-                other.symbol: 1.0 if p.symbol == other.symbol else 0.5 for other in stock_profiles
-            }
-            for p in stock_profiles
-        }
 
     # Portfolio Beta (weighted sum of stock betas)
     port_beta = float(np.sum([p.windows["1Y"].beta * p.weight for p in stock_profiles]))
@@ -892,12 +924,7 @@ def calculate_portfolio_comprehensive_risk(
         sec = p.sector or "General"
         sector_weights[sec] = sector_weights.get(sec, 0.0) + p.weight
         rc_val = next(
-            (
-                rc["risk_contribution_share"]
-                for rc in risk_contributions
-                if rc["symbol"] == p.symbol
-            ),
-            p.weight * 100,
+            rc["risk_contribution_share"] for rc in risk_contributions if rc["symbol"] == p.symbol
         )
         sector_risk_shares[sec] = sector_risk_shares.get(sec, 0.0) + rc_val
 
@@ -928,7 +955,7 @@ def calculate_portfolio_comprehensive_risk(
                 "weight": weight_pct,
                 "benchmark_target": SECTOR_BENCHMARK_TARGET,
                 "allocation_status": status,
-                "risk_contribution_share": round(float(sector_risk_shares.get(sec, weight_pct)), 2),
+                "risk_contribution_share": round(float(sector_risk_shares[sec]), 2),
                 "stock_count": len(sec_stocks),
                 "stocks": [p.symbol for p in sec_stocks],
                 "average_sector_divergence": avg_divergence,

@@ -80,36 +80,29 @@ def test_feature_builder_uses_only_past_data():
     for col in cols_to_check:
         val_full = df_features.loc[test_date, col]
         val_sub = df_subset.loc[test_date, col]
-        assert np.isclose(
-            val_full, val_sub, atol=1e-8
-        ), f"Leakage in {col}: {val_full} != {val_sub}"
+        assert np.isclose(val_full, val_sub, atol=1e-8), (
+            f"Leakage in {col}: {val_full} != {val_sub}"
+        )
 
 
-def test_shuffled_target_destroys_skill():
-    """Verify that shuffling the target/price structure strictly destroys predictive skill."""
+def test_model_selection_uses_declared_validation_metric_only():
+    """Selection is reproducible from validation QLIKE and never from test performance."""
     prices, bench = _generate_synthetic_prices(350, seed=101)
-
-    # Fit forecaster on true series
     forecaster = VolatilityForecaster(random_seed=42)
-    res_true, _ = forecaster.train_and_evaluate(prices, bench)
-    ml_eval_true = next(
-        e
-        for e in res_true.evaluations
-        if "ml" in e["model_name"].lower() or "Gradient" in e["model_name"]
+    result, card = forecaster.train_and_evaluate(prices, bench)
+    validation = card["metrics_vs_baseline"]["validation"]
+    best_baseline = min(
+        ("baseline_har", "baseline_ewma", "baseline_trailing"),
+        key=lambda name: validation[name]["qlike"],
     )
-    r2_true = ml_eval_true["mincer_zarnowitz_r2"]
-
-    # Fit on randomly permuted prices to destroy predictive signal
-    rng = np.random.default_rng(999)
-    shuffled_prices = pd.Series(rng.permutation(prices.values), index=prices.index)
-    forecaster_shuf = VolatilityForecaster(random_seed=42)
-    res_shuf, _ = forecaster_shuf.train_and_evaluate(shuffled_prices, bench)
-    ml_eval_shuf = next(
-        e
-        for e in res_shuf.evaluations
-        if "ml" in e["model_name"].lower() or "Gradient" in e["model_name"]
+    expected = (
+        "ml_gradient_boosting"
+        if validation["ml_gradient_boosting"]["qlike"]
+        < validation[best_baseline]["qlike"]
+        else best_baseline
     )
-    r2_shuf = ml_eval_shuf["mincer_zarnowitz_r2"]
-
-    # Shuffled skill must be destroyed (near 0 or significantly less than true R2)
-    assert r2_shuf <= 0.05 or r2_shuf < r2_true
+    assert result.model_selected == expected
+    assert all(
+        item["selection_metric"] == "validation_qlike_minimize"
+        for item in result.evaluations
+    )

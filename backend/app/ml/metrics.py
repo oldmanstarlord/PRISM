@@ -24,10 +24,15 @@ def qlike_loss(y_true_vol: np.ndarray, y_pred_vol: np.ndarray) -> float:
     if len(y_true) == 0:
         return float("nan")
 
-    # Guard against non-positive inputs
-    eps = 1e-6
-    var_true = np.maximum(y_true**2, eps)
-    var_pred = np.maximum(y_pred**2, eps)
+    if (
+        not np.all(np.isfinite(y_true))
+        or not np.all(np.isfinite(y_pred))
+        or np.any(y_true <= 0)
+        or np.any(y_pred <= 0)
+    ):
+        return float("nan")
+    var_true = y_true**2
+    var_pred = y_pred**2
 
     ratio = var_true / var_pred
     loss = ratio - np.log(ratio) - 1.0
@@ -55,17 +60,17 @@ def mincer_zarnowitz(y_true_vol: np.ndarray, y_pred_vol: np.ndarray) -> dict[str
     y_true = np.asarray(y_true_vol, dtype=float).flatten()
     y_pred = np.asarray(y_pred_vol, dtype=float).flatten()
     if len(y_true) < 3:
-        return {"r2": 0.0, "alpha": 0.0, "beta": 0.0}
+        return {"r2": float("nan"), "alpha": float("nan"), "beta": float("nan")}
 
     var_true = y_true**2
     var_pred = y_pred**2
 
     # Check for zero variance
     if np.allclose(var_pred, var_pred[0]) or np.allclose(var_true, var_true[0]):
-        return {"r2": 0.0, "alpha": float(np.mean(var_true)), "beta": 0.0}
+        return {"r2": float("nan"), "alpha": float("nan"), "beta": float("nan")}
 
     slope, intercept, r_value, _, _ = stats.linregress(var_pred, var_true)
-    r2 = max(0.0, float(r_value**2)) if not math.isnan(r_value) else 0.0
+    r2 = float(r_value**2) if not math.isnan(r_value) else float("nan")
     return {
         "r2": r2,
         "alpha": float(intercept),
@@ -81,7 +86,7 @@ def interval_coverage(
     lb = np.asarray(lower_bound, dtype=float).flatten()
     ub = np.asarray(upper_bound, dtype=float).flatten()
     if len(y) == 0:
-        return 0.0
+        return float("nan")
 
     covered = (y >= lb) & (y <= ub)
     return float(np.mean(covered) * 100.0)
@@ -108,7 +113,14 @@ def quintile_spread(scores: np.ndarray, outcomes: np.ndarray) -> dict[str, float
     s = np.asarray(scores, dtype=float).flatten()
     o = np.asarray(outcomes, dtype=float).flatten()
     if len(s) < 10:
-        return {"q1": 0.0, "q2": 0.0, "q3": 0.0, "q4": 0.0, "q5": 0.0, "spread": 0.0}
+        return {
+            "q1": float("nan"),
+            "q2": float("nan"),
+            "q3": float("nan"),
+            "q4": float("nan"),
+            "q5": float("nan"),
+            "spread": float("nan"),
+        }
 
     # Percentiles for 5 bins
     quantiles = np.quantile(s, [0.2, 0.4, 0.6, 0.8])
@@ -118,11 +130,11 @@ def quintile_spread(scores: np.ndarray, outcomes: np.ndarray) -> dict[str, float
     b4 = o[(s > quantiles[2]) & (s <= quantiles[3])]
     b5 = o[s > quantiles[3]]
 
-    m1 = float(np.mean(b1)) if len(b1) > 0 else 0.0
-    m2 = float(np.mean(b2)) if len(b2) > 0 else 0.0
-    m3 = float(np.mean(b3)) if len(b3) > 0 else 0.0
-    m4 = float(np.mean(b4)) if len(b4) > 0 else 0.0
-    m5 = float(np.mean(b5)) if len(b5) > 0 else 0.0
+    m1 = float(np.mean(b1)) if len(b1) > 0 else float("nan")
+    m2 = float(np.mean(b2)) if len(b2) > 0 else float("nan")
+    m3 = float(np.mean(b3)) if len(b3) > 0 else float("nan")
+    m4 = float(np.mean(b4)) if len(b4) > 0 else float("nan")
+    m5 = float(np.mean(b5)) if len(b5) > 0 else float("nan")
 
     return {
         "q1": m1,
@@ -142,7 +154,7 @@ def roc_auc_worst_quintile(scores: np.ndarray, outcomes: np.ndarray) -> float:
     s = np.asarray(scores, dtype=float).flatten()
     o = np.asarray(outcomes, dtype=float).flatten()
     if len(s) < 10:
-        return 0.50
+        return float("nan")
 
     threshold = np.quantile(o, 0.80)
     binary_y = (o >= threshold).astype(int)
@@ -150,7 +162,7 @@ def roc_auc_worst_quintile(scores: np.ndarray, outcomes: np.ndarray) -> float:
     n_pos = np.sum(binary_y == 1)
     n_neg = np.sum(binary_y == 0)
     if n_pos == 0 or n_neg == 0:
-        return 0.50
+        return float("nan")
 
     # Mann-Whitney U statistic calculation for AUC
     ranks = stats.rankdata(s)

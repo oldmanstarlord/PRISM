@@ -6,10 +6,13 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.app.core.auth import AuthenticatedUser, require_user
+from backend.app.db.models import StockMetricDaily
 from backend.app.db.session import get_session
+from backend.app.market_data.metrics import METHODOLOGY_VERSION
 from backend.app.portfolio_analytics.methodology_registry import get_methodology_manifest
 from backend.app.portfolio_analytics.schemas import (
     PortfolioAnalysisRequest,
@@ -86,6 +89,11 @@ def calculate_comprehensive_risk(
             holdings_dicts, session
         )
         return {
+            "data_date": session.scalar(
+                select(func.max(StockMetricDaily.metric_date)).where(
+                    StockMetricDaily.methodology_version == METHODOLOGY_VERSION
+                )
+            ),
             "stock_profiles": [p.to_dict() for p in stock_profiles],
             "portfolio_profile": portfolio_profile.to_dict(),
         }
@@ -146,7 +154,7 @@ def get_structural_monitoring(
         if total_invested > 0:
             for h in holdings_dicts:
                 wt = (
-                    (float(h.get("quantity", 1.0)) * float(h.get("buyPrice", 1.0))) / total_invested
+                    (float(h["quantity"]) * float(h["buyPrice"])) / total_invested
                 ) * 100.0
                 if wt > largest_wt:
                     largest_wt = wt
@@ -171,19 +179,19 @@ def get_structural_monitoring(
             group = [sym1]
             pair_corrs: list[float] = []
             for sym2 in symbols[idx + 1 :]:
-                rho = corr_matrix.get(sym1, {}).get(sym2, 0.0)
-                if rho >= 0.50:
+                rho = corr_matrix.get(sym1, {}).get(sym2)
+                if rho is not None and rho >= 0.50:
                     group.append(sym2)
                     pair_corrs.append(rho)
                     clustered_syms.add(sym2)
 
             if len(group) > 1:
                 clustered_syms.add(sym1)
-                avg_rho = sum(pair_corrs) / len(pair_corrs) if pair_corrs else 0.50
+                avg_rho = sum(pair_corrs) / len(pair_corrs)
                 # Calculate aggregate weight
                 agg_wt = sum(
                     (
-                        (float(h.get("quantity", 1.0)) * float(h.get("buyPrice", 1.0)))
+                        (float(h["quantity"]) * float(h["buyPrice"]))
                         / total_invested
                         * 100.0
                     )
@@ -277,12 +285,18 @@ def get_risk_history() -> dict[str, Any]:
 
 
 @router.post("/news-signals")
-def get_news_signals(payload: ComprehensiveRiskRequest, _user: CurrentUser) -> dict[str, Any]:
+def get_news_signals(payload: ComprehensiveRiskRequest) -> dict[str, Any]:
     """Return decoupled modular news intelligence with verified sourced feeds."""
     from backend.app.news.service import NewsIntelligenceService
 
     service = NewsIntelligenceService(use_transformer=False)
     holdings_dicts = [h.model_dump() for h in payload.holdings]
+    total_val = sum(float(h.get("quantity", 1.0)) * float(h.get("buyPrice", 1.0)) for h in holdings_dicts)
+    for h in holdings_dicts:
+        if total_val > 0:
+            h["weight"] = (float(h.get("quantity", 1.0)) * float(h.get("buyPrice", 1.0))) / total_val
+        else:
+            h["weight"] = 1.0 / len(holdings_dicts) if holdings_dicts else 0.0
     intel = service.get_portfolio_news_intelligence(holdings_dicts)
     res = intel.model_dump()
 
@@ -334,7 +348,11 @@ def get_news_signals(payload: ComprehensiveRiskRequest, _user: CurrentUser) -> d
             ),
             "relevance_score": a.signals[0].sentiment_confidence if a.signals else 0.85,
             "source_url": a.url,
+            "explanation": a.explanation,
+            "what_the_news_is": a.what_the_news_is,
+            "market_and_sector_impact": a.market_and_sector_impact,
+            "actionable_advice": a.actionable_advice,
         }
-        for a in intel.verified_articles[:6]
+        for a in intel.verified_articles[:8]
     ]
     return res

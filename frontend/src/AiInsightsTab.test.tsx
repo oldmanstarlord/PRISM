@@ -36,10 +36,11 @@ const mockAiResponse = {
     volatility_forecast: {
       model_name: "21-Day Realized Volatility Forecaster",
       model_version: "1.0.0",
+      model_type: "supervised volatility regression",
       data_cutoff: "2026-10-20",
       training_window: "250-750d expanding",
       features_count: 14,
-      status: "trained",
+      status: "ready",
       metrics_vs_baseline: { "ML QLIKE": 0.082, "Baseline QLIKE": 0.089, "MZ R2": 0.34 },
       is_primary_model: true,
       configuration_fingerprint: "abc123hash",
@@ -48,10 +49,11 @@ const mockAiResponse = {
     market_regime: {
       model_name: "NIFTY 50 Markov-Switching Regime Filter",
       model_version: "1.0.0",
+      model_type: "Markov switching",
       data_cutoff: "2026-10-20",
       training_window: "500d expanding",
       features_count: 1,
-      status: "trained",
+      status: "ready",
       metrics_vs_baseline: { "LogLikelihood": 1420.5 },
       is_primary_model: true,
       configuration_fingerprint: "regime123hash",
@@ -80,20 +82,24 @@ const mockAiResponse = {
       {
         symbol: "RELIANCE",
         weight: 60.0,
-        forecast_volatility: 16.2,
-        lower_bound_90: 12.0,
-        upper_bound_90: 22.5,
-        trailing_21d_vol: 15.5,
+        status: "ready",
+        prediction_date: "2026-10-20",
+        forecast_volatility: 0.162,
+        lower_bound_90: 0.12,
+        upper_bound_90: 0.225,
+        trailing_21d_vol: 0.155,
         model_selected: "ml_gradient_boosting",
         vol_change_expected: 0.7,
       },
       {
         symbol: "TCS",
         weight: 40.0,
-        forecast_volatility: 14.1,
-        lower_bound_90: 10.5,
-        upper_bound_90: 19.8,
-        trailing_21d_vol: 13.9,
+        status: "ready",
+        prediction_date: "2026-10-20",
+        forecast_volatility: 0.141,
+        lower_bound_90: 0.105,
+        upper_bound_90: 0.198,
+        trailing_21d_vol: 0.139,
         model_selected: "ml_gradient_boosting",
         vol_change_expected: 0.2,
       },
@@ -113,7 +119,7 @@ const mockAiResponse = {
       regime_conditional_correlations: { "Calm / Normal": 0.28, "Turbulent / Stressed": 0.64 },
       expected_durations_days: { "Calm / Normal": 140, "Turbulent / Stressed": 28 },
       transition_matrix: [[0.98, 0.02], [0.07, 0.93]],
-      regime_timeline: [{ date: "2026-10-20", regime: "Calm / Normal", prob_stressed: 0.12 }],
+      regime_timeline: [{ date: "2026-10-20", regime: "Calm", stressed_prob: 0.12 }],
     },
   },
   anomalies: {
@@ -126,6 +132,7 @@ const mockAiResponse = {
       unusual_holdings: [
         {
           symbol: "RELIANCE",
+          status: "ready",
           company_name: "Reliance Industries Ltd",
           anomaly_score: 0.18,
           is_anomaly: false,
@@ -142,15 +149,19 @@ const mockAiResponse = {
   score_validation: {
     status: "ready",
     score_validation: {
-      spearman_rank_ic: 0.145,
-      p_value: 0.008,
-      quintile_spread_pct: 4.8,
-      worst_quintile_auc: 0.612,
-      has_statistically_significant_skill: true,
-      isotonic_calibration_curve: [
-        { score_bracket: "Q1", min_score: 0, max_score: 20, historical_drawdown_freq_pct: 4.2, sample_size: 50 },
-        { score_bracket: "Q5", min_score: 80, max_score: 100, historical_drawdown_freq_pct: 28.5, sample_size: 50 },
-      ],
+      test_period: ["2025-01-31", "2026-09-30"],
+      test_rows: 500,
+      models: {
+        five_factor_fixed_weights: {
+          volatility_21d: {
+            mean_monthly_spearman_ic: 0.145,
+            ic_t_statistic: 2.4,
+            mean_top_minus_bottom_quintile_spread: 0.048,
+          },
+          worst_quintile_drawdown_21d_auc: 0.612,
+        },
+      },
+      baseline_comparisons: {},
     },
   },
   governance: {
@@ -187,7 +198,7 @@ describe("AiInsightsTab", () => {
 
     // Header & Badge check
     expect(await screen.findByText(/AI Risk Diagnostics & Model Estimates/i)).toBeInTheDocument();
-    expect(screen.getAllByText("Model estimate").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Persisted model output").length).toBeGreaterThan(0);
     expect(screen.getByText(/strictly do NOT forecast price direction/i)).toBeInTheDocument();
 
     // Section headings check
@@ -199,7 +210,7 @@ describe("AiInsightsTab", () => {
     expect(screen.getByText(/6\. Methodological Assumptions & Limitations/i)).toBeInTheDocument();
 
     // Metric check
-    expect(screen.getByText("15.40%")).toBeInTheDocument();
+    expect(screen.getByText("16.20%")).toBeInTheDocument();
     expect(screen.getAllByText(/Calm \/ Normal/i).length).toBeGreaterThan(0);
   });
 });

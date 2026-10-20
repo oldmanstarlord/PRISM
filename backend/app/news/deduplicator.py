@@ -29,7 +29,7 @@ def compute_simhash(text: str, hash_bits: int = 64) -> str:
     # Generate word-level shingles (unigrams + bigrams for semantic structure)
     shingles: list[str] = list(words)
     for i in range(len(words) - 1):
-        shingles.append(f"{words[i]}_{words[i+1]}")
+        shingles.append(f"{words[i]}_{words[i + 1]}")
 
     v = [0] * hash_bits
     for shingle in shingles:

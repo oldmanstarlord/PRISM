@@ -280,9 +280,7 @@ def test_euler_preserves_negative_hedging_contributions(
     "backend.app.portfolio_analytics.stock_risk._load_stock_prices_from_db",
     return_value=pd.DataFrame(),
 )
-def test_var_and_expected_shortfall_invariants(
-    _mock_load_db, mock_load_yf, mock_get_bench
-) -> None:
+def test_var_and_expected_shortfall_invariants(_mock_load_db, mock_load_yf, mock_get_bench) -> None:
     """Test mathematical invariants for Historical and Parametric VaR and Expected Shortfall:
     1. ES >= VaR at the same confidence level (sub-additivity & tail expectation)
     2. VaR_99 >= VaR_95 (monotonicity with confidence level)

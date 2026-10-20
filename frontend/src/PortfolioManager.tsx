@@ -35,6 +35,7 @@ import { Link } from "react-router-dom";
 
 import AppShell from "./AppShell";
 import { fetchJson, postJson } from "./api";
+import { useAuth } from "./authState";
 import {
   DiversificationSection,
   PortfolioRiskSection,
@@ -58,6 +59,7 @@ import {
   getNotesCountMap,
   importJournalBackup,
   saveDecision,
+  syncLocalJournalToServer,
   type DecisionContextSnapshot,
   type DecisionType,
 } from "./journalStorage";
@@ -543,6 +545,18 @@ type SortField =
   | "weight"
   | "todayPnl";
 
+type PortfolioTab =
+  | "monitoring"
+  | "dashboard"
+  | "stock-risk"
+  | "portfolio-risk"
+  | "sector-exposure"
+  | "diversification"
+  | "analysis"
+  | "news-preview"
+  | "transactions"
+  | "ai-insights";
+
 /* ─── Main Portfolio Manager Component ─── */
 
 export default function PortfolioManager() {
@@ -565,18 +579,11 @@ export default function PortfolioManager() {
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
   const [editHolding, setEditHolding] = useState<PortfolioHolding | null>(null);
   const [snackbar, setSnackbar] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<
-    | "monitoring"
-    | "dashboard"
-    | "stock-risk"
-    | "portfolio-risk"
-    | "sector-exposure"
-    | "diversification"
-    | "analysis"
-    | "news-preview"
-    | "transactions"
-    | "ai-insights"
-  >(() => {
+  const { session } = useAuth();
+  const [serverPortfolioId, setServerPortfolioId] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "loading" | "saved" | "error">("idle");
+  const [isPersistingTx, setIsPersistingTx] = useState(false);
+  const [activeTab, setActiveTab] = useState<PortfolioTab>(() => {
     try {
       const saved = localStorage.getItem("prism_portfolio_active_tab");
       if (
@@ -594,7 +601,7 @@ export default function PortfolioManager() {
           "ai-insights",
         ].includes(saved)
       ) {
-        return saved as any;
+        return saved as PortfolioTab;
       }
     } catch {
       // fallback
@@ -682,7 +689,7 @@ export default function PortfolioManager() {
     setCsvErrors(res.errors);
   }
 
-  function commitCsvImport() {
+  async function commitCsvImport() {
     if (csvErrors.length > 0 || csvPreview.length === 0) return;
     const newTxns: TransactionRecord[] = csvPreview.map((c, i) => ({
       id: generateId(),
@@ -693,6 +700,31 @@ export default function PortfolioManager() {
       date: c.date,
       timestamp: Date.now() + i,
     }));
+
+    if (serverPortfolioId) {
+      setIsPersistingTx(true);
+      try {
+        await postJson(`/portfolios/${serverPortfolioId}/transactions`, {
+          transactions: newTxns.map((tx) => ({
+            transaction_type: tx.type,
+            symbol: tx.symbol,
+            trade_date: tx.date,
+            quantity: tx.quantity,
+            price: tx.price,
+            amount: tx.quantity * tx.price,
+            fees: 0,
+            notes: `CSV Import ${tx.type} ${tx.symbol}`,
+            idempotency_key: tx.id,
+          })),
+        });
+        setSyncStatus("saved");
+      } catch (err) {
+        setIsPersistingTx(false);
+        setSnackbar("Failed to persist CSV transactions to server. Import aborted.");
+        return;
+      }
+      setIsPersistingTx(false);
+    }
 
     const updatedTxns = [...newTxns, ...transactions];
     setTransactions(updatedTxns);
@@ -757,6 +789,100 @@ export default function PortfolioManager() {
   useEffect(() => { saveHoldings(holdings); }, [holdings]);
   useEffect(() => { saveTransactions(transactions); }, [transactions]);
 
+  /* ─── Server-Side Persistence & Multi-User Isolation ─── */
+  useEffect(() => {
+    if (!session?.access_token) {
+      setServerPortfolioId(null);
+      setSyncStatus("idle");
+      return;
+    }
+
+    let isMounted = true;
+    setSyncStatus("loading");
+
+    async function initializeUserPortfolio() {
+      try {
+        const controller = new AbortController();
+        const ensurePayload = {
+          name: "Primary Portfolio",
+          input_mode: "quantities",
+          initial_holdings: holdings.map((h) => ({
+            symbol: h.symbol,
+            quantity: h.quantity,
+            buy_price: h.buyPrice,
+            buy_date: h.buyDate,
+          })),
+        };
+
+        const portfolioDetail = await postJson<{
+          id: string;
+          name: string;
+          holdings: Array<{
+            symbol: string;
+            company_name: string;
+            value: number;
+          }>;
+        }>("/portfolios/ensure-active", ensurePayload, controller.signal);
+
+        if (!isMounted) return;
+        setServerPortfolioId(portfolioDetail.id);
+
+        // Fetch server-persisted transactions
+        const serverTxs = await fetchJson<
+          Array<{
+            id: string;
+            transaction_type: "BUY" | "SELL" | string;
+            symbol: string | null;
+            trade_date: string;
+            quantity: number | null;
+            price: number | null;
+            amount: number;
+            fees: number;
+            realized_pnl: number | null;
+            notes: string | null;
+            idempotency_key: string | null;
+            created_at: string;
+          }>
+        >(`/portfolios/${portfolioDetail.id}/transactions`, controller.signal);
+
+        if (!isMounted) return;
+
+        if (serverTxs && serverTxs.length > 0) {
+          const mappedTxs: TransactionRecord[] = serverTxs.map((t) => ({
+            id: t.id,
+            type: t.transaction_type === "SELL" ? "SELL" : "BUY",
+            symbol: t.symbol || "UNKNOWN",
+            quantity: Number(t.quantity ?? 1),
+            price: Number(t.price ?? 0),
+            date: t.trade_date,
+            timestamp: new Date(t.created_at).getTime(),
+            realizedPnl: t.realized_pnl !== null ? Number(t.realized_pnl) : undefined,
+          }));
+          setTransactions(mappedTxs);
+          const derived = deriveHoldingsFromLedger(mappedTxs, securities);
+          if (derived.holdings.length > 0) {
+            setHoldings(derived.holdings);
+          }
+        }
+
+        void syncLocalJournalToServer().then(() => {
+          if (isMounted) void refreshNotesCountMap();
+        });
+
+        setSyncStatus("saved");
+      } catch (err) {
+        if (!isMounted) return;
+        console.warn("Portfolio server synchronization error:", err);
+        setSyncStatus("error");
+      }
+    }
+
+    void initializeUserPortfolio();
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.access_token]);
+
   /* Fetch NIFTY 200 universe for autocomplete */
   useEffect(() => {
     const controller = new AbortController();
@@ -794,6 +920,24 @@ export default function PortfolioManager() {
       void refreshQuotes(holdings.map((h) => h.symbol));
     }
   }, [holdings.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [autoRefreshQuotes, setAutoRefreshQuotes] = useState(true);
+  const [refreshCountdown, setRefreshCountdown] = useState(20);
+
+  // Dynamic live quote polling loop every 20 seconds
+  useEffect(() => {
+    if (!autoRefreshQuotes || holdings.length === 0) return;
+    const interval = setInterval(() => {
+      setRefreshCountdown((prev) => {
+        if (prev <= 1) {
+          void refreshQuotes(undefined, true);
+          return 20;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [autoRefreshQuotes, holdings.length, refreshQuotes]);
 
   /* ─── Financial Calculations ─── */
 
@@ -1017,7 +1161,50 @@ export default function PortfolioManager() {
       ]);
 
       if (resPreview) setAnalysis(resPreview);
-      if (resComp) setComprehensiveRisk(resComp);
+      if (resComp) {
+        setComprehensiveRisk(resComp);
+        if (serverPortfolioId && resComp.portfolio_profile) {
+          const profile = resComp.portfolio_profile;
+          const topSec = profile.sector_exposure?.[0];
+          const sortedHoldings = [...holdings].sort(
+            (a, b) => b.quantity * b.buyPrice - a.quantity * a.buyPrice
+          );
+          const totalVal = holdings.reduce(
+            (sum, h) => sum + h.quantity * h.buyPrice,
+            0
+          );
+          const largestHolding = sortedHoldings[0];
+          const largestWeight =
+            totalVal > 0 && largestHolding
+              ? (largestHolding.quantity * largestHolding.buyPrice) / totalVal
+              : 0;
+
+          void postJson(`/portfolios/${serverPortfolioId}/risk-history`, {
+            valuation_date: new Date().toISOString().slice(0, 10),
+            portfolio_risk_score: profile.portfolio_risk_score,
+            portfolio_classification:
+              profile.portfolio_classification || "Moderate",
+            annualized_volatility: profile.annualized_volatility,
+            downside_volatility: profile.downside_volatility,
+            max_drawdown: profile.max_drawdown,
+            diversification_score: profile.diversification_score,
+            effective_holdings: profile.effective_holdings,
+            top_sector: topSec?.sector || "Diversified",
+            top_sector_weight: topSec?.weight ?? 0,
+            largest_holding: largestHolding?.symbol || "N/A",
+            largest_holding_weight: largestWeight,
+            indicators_summary: {
+              var_95: profile.var_historical_95,
+              var_99: profile.var_historical_99,
+              effective_sectors: profile.effective_sectors,
+            },
+            methodology_version: "1.0.0",
+            data_cutoff: new Date().toISOString().slice(0, 10),
+          }).catch((err) => {
+            console.warn("Failed to persist risk history snapshot:", err);
+          });
+        }
+      }
       if (resMonitoring) setStructuralMonitoring(resMonitoring);
       if (resNews) setNewsSummary(resNews);
     } catch (reason) {
@@ -1035,8 +1222,39 @@ export default function PortfolioManager() {
   }, [holdings.length, structuralMonitoring, runAnalysis]);
 
   /* ─── Add Holding (Multiple purchases weighted-average cost basis) ─── */
-  function addHolding(holding: Omit<PortfolioHolding, "id">) {
-    const existing = holdings.find((h) => h.symbol.toUpperCase() === holding.symbol.toUpperCase());
+  async function addHolding(holding: Omit<PortfolioHolding, "id">) {
+    const symbolNorm = holding.symbol.toUpperCase();
+    const tradeDate = holding.buyDate || new Date().toISOString().slice(0, 10);
+    const clientTxId = generateId();
+
+    if (serverPortfolioId) {
+      setIsPersistingTx(true);
+      try {
+        await postJson(`/portfolios/${serverPortfolioId}/transactions`, {
+          transactions: [
+            {
+              transaction_type: "BUY",
+              symbol: symbolNorm,
+              trade_date: tradeDate,
+              quantity: holding.quantity,
+              price: holding.buyPrice,
+              amount: holding.quantity * holding.buyPrice,
+              fees: 0,
+              notes: `Buy ${holding.quantity} @ ₹${holding.buyPrice}`,
+              idempotency_key: clientTxId,
+            },
+          ],
+        });
+        setSyncStatus("saved");
+      } catch (err) {
+        setIsPersistingTx(false);
+        setSnackbar("Failed to record transaction on server. Action cancelled.");
+        return;
+      }
+      setIsPersistingTx(false);
+    }
+
+    const existing = holdings.find((h) => h.symbol.toUpperCase() === symbolNorm);
     if (existing) {
       // Weighted average buy price calculation
       const totalQty = existing.quantity + holding.quantity;
@@ -1054,27 +1272,57 @@ export default function PortfolioManager() {
     }
     setTransactions((prev) => [
       {
-        id: generateId(),
+        id: clientTxId,
         type: "BUY",
-        symbol: holding.symbol.toUpperCase(),
+        symbol: symbolNorm,
         quantity: holding.quantity,
         price: holding.buyPrice,
-        date: holding.buyDate,
+        date: tradeDate,
         timestamp: Date.now(),
       },
       ...prev,
     ]);
-    setSnackbar(`Bought ${holding.quantity} shares of ${holding.symbol.toUpperCase()} @ ₹${holding.buyPrice}`);
+    setSnackbar(`Bought ${holding.quantity} shares of ${symbolNorm} @ ₹${holding.buyPrice}`);
     setAnalysis(null);
-    void refreshQuotes([holding.symbol.toUpperCase()]);
+    void refreshQuotes([symbolNorm]);
   }
 
   /* ─── Sell Holding (Partial or full sales with realized P&L) ─── */
-  function sellHolding(symbol: string, quantity: number, sellPrice: number) {
-    const existing = holdings.find((h) => h.symbol.toUpperCase() === symbol.toUpperCase());
+  async function sellHolding(symbol: string, quantity: number, sellPrice: number) {
+    const symbolNorm = symbol.toUpperCase();
+    const existing = holdings.find((h) => h.symbol.toUpperCase() === symbolNorm);
     if (!existing) return;
 
     const realizedPnl = (sellPrice - existing.buyPrice) * quantity;
+    const tradeDate = new Date().toISOString().slice(0, 10);
+    const clientTxId = generateId();
+
+    if (serverPortfolioId) {
+      setIsPersistingTx(true);
+      try {
+        await postJson(`/portfolios/${serverPortfolioId}/transactions`, {
+          transactions: [
+            {
+              transaction_type: "SELL",
+              symbol: symbolNorm,
+              trade_date: tradeDate,
+              quantity,
+              price: sellPrice,
+              amount: quantity * sellPrice,
+              fees: 0,
+              notes: `Sell ${quantity} @ ₹${sellPrice}`,
+              idempotency_key: clientTxId,
+            },
+          ],
+        });
+        setSyncStatus("saved");
+      } catch (err) {
+        setIsPersistingTx(false);
+        setSnackbar("Failed to record sell transaction on server. Action cancelled.");
+        return;
+      }
+      setIsPersistingTx(false);
+    }
 
     if (quantity >= existing.quantity) {
       setHoldings((prev) => prev.filter((h) => h.id !== existing.id));
@@ -1088,22 +1336,40 @@ export default function PortfolioManager() {
 
     setTransactions((prev) => [
       {
-        id: generateId(),
+        id: clientTxId,
         type: "SELL",
-        symbol: symbol.toUpperCase(),
+        symbol: symbolNorm,
         quantity,
         price: sellPrice,
-        date: new Date().toISOString().slice(0, 10),
+        date: tradeDate,
         timestamp: Date.now(),
         realizedPnl: Math.round(realizedPnl * 100) / 100,
       },
       ...prev,
     ]);
-    setSnackbar(`Sold ${quantity} shares of ${symbol.toUpperCase()} @ ₹${sellPrice}`);
+    setSnackbar(`Sold ${quantity} shares of ${symbolNorm} @ ₹${sellPrice}`);
     setAnalysis(null);
   }
 
   function removeHolding(id: string) {
+    const h = holdings.find((item) => item.id === id);
+    if (h && serverPortfolioId) {
+      void postJson(`/portfolios/${serverPortfolioId}/transactions`, {
+        transactions: [
+          {
+            transaction_type: "SELL",
+            symbol: h.symbol.toUpperCase(),
+            trade_date: new Date().toISOString().slice(0, 10),
+            quantity: h.quantity,
+            price: h.buyPrice,
+            amount: h.quantity * h.buyPrice,
+            fees: 0,
+            notes: `Liquidate position ${h.symbol}`,
+            idempotency_key: generateId(),
+          },
+        ],
+      }).catch((err) => console.warn("Failed to record removal transaction on server:", err));
+    }
     setHoldings((prev) => prev.filter((h) => h.id !== id));
     setAnalysis(null);
     setSnackbar("Holding removed");
@@ -1136,9 +1402,33 @@ export default function PortfolioManager() {
           className="no-print"
         >
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700, fontSize: "1.25rem" }}>
-              Portfolio Holdings
-            </Typography>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, fontSize: "1.25rem" }}>
+                Portfolio Holdings
+              </Typography>
+              {session?.user ? (
+                <Chip
+                  size="small"
+                  label={
+                    syncStatus === "loading" || isPersistingTx
+                      ? "Saving..."
+                      : syncStatus === "error"
+                      ? "Sync Error"
+                      : "Cloud Persisted"
+                  }
+                  color={syncStatus === "error" ? "error" : "success"}
+                  variant="outlined"
+                  sx={{ height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }}
+                />
+              ) : (
+                <Chip
+                  size="small"
+                  label="Local Mode"
+                  variant="outlined"
+                  sx={{ height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }}
+                />
+              )}
+            </Stack>
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.78rem" }}>
               {holdings.length} stock{holdings.length !== 1 ? "s" : ""} · Currency: <strong>INR (₹)</strong>
               {lastQuotesUpdated && ` · Market quotes updated at ${lastQuotesUpdated}`}
@@ -1332,18 +1622,20 @@ export default function PortfolioManager() {
             onRefresh={() => void runAnalysis()}
             portfolioId="default"
             financials={{
-              marketValue: totalMarketValue && totalMarketValue > 0 ? totalMarketValue : totalInvestedValue,
+              marketValue: totalMarketValue && totalMarketValue > 0 ? totalMarketValue : null,
               investedCost: totalInvestedValue,
               cash: derivedLedger.cash,
               realizedPnl: derivedLedger.totalRealizedPnl,
-              unrealizedPnl: totalUnrealizedPnl ?? 0,
-              returnPct: totalReturnPercent ?? 0,
+              unrealizedPnl: totalUnrealizedPnl,
+              returnPct: totalReturnPercent,
               volatility: analysis?.performance?.annualized_volatility,
               maxDrawdown: analysis?.performance?.max_drawdown,
-              concentrationHhi: analysis?.concentration?.holding_hhi ?? 0.125,
-              dataFreshness: structuralMonitoring?.data_freshness ?? (lastQuotesUpdated ? "Live sync" : "EOD 15m delayed"),
-              asOfDate: new Date().toISOString().slice(0, 10),
-              period: "1Y (Daily, 252d window)",
+              concentrationHhi: analysis?.concentration?.holding_hhi,
+              dataFreshness: structuralMonitoring?.data_freshness,
+              asOfDate: analysis?.envelope.data_cutoff,
+              period: analysis
+                ? `${analysis.envelope.lookback_start} to ${analysis.envelope.data_cutoff}`
+                : undefined,
             }}
             newsSummary={newsSummary}
             onNavigateTab={(tab) => setActiveTab(tab as typeof activeTab)}
@@ -1355,6 +1647,143 @@ export default function PortfolioManager() {
            ═══════════════════════════════════════════════ */}
         {activeTab === "dashboard" && (
           <>
+            {/* Live Data Stream Status & Refresh Controls */}
+            <Paper
+              sx={{
+                p: 2,
+                borderRadius: 0,
+                border: "none",
+                bgcolor: "#292D2A",
+                color: "#F9EBD7",
+                boxShadow: "0 4px 14px rgba(41,45,42,0.12)",
+                mb: 2,
+              }}
+            >
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}
+              >
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+                  <Box
+                    component="span"
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      bgcolor: autoRefreshQuotes ? "#046A38" : "#8A5A00",
+                      boxShadow: autoRefreshQuotes ? "0 0 8px #046A38" : "none",
+                    }}
+                  />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#F9EBD7" }}>
+                    {autoRefreshQuotes ? "Live Market Stream Active" : "Stream Paused"}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={autoRefreshQuotes ? `⏱ Auto-sync in ${refreshCountdown}s` : "Manual Mode"}
+                    sx={{
+                      height: 20,
+                      fontWeight: 700,
+                      fontSize: "0.70rem",
+                      bgcolor: "rgba(227, 215, 196, 0.15)",
+                      color: "#E3D7C4",
+                      borderRadius: "2px",
+                    }}
+                  />
+                  {lastQuotesUpdated && (
+                    <Typography variant="caption" sx={{ color: "#E3D7C4" }}>
+                      Last quote update: {lastQuotesUpdated}
+                    </Typography>
+                  )}
+                </Stack>
+
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                  <Button
+                    size="small"
+                    onClick={() => setAutoRefreshQuotes(!autoRefreshQuotes)}
+                    sx={{
+                      fontSize: "0.74rem",
+                      color: "#E3D7C4",
+                      bgcolor: "rgba(227, 215, 196, 0.12)",
+                      "&:hover": { bgcolor: "rgba(227, 215, 196, 0.22)" },
+                    }}
+                  >
+                    {autoRefreshQuotes ? "Pause Polling" : "Resume Polling"}
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setRefreshCountdown(20);
+                      void refreshQuotes(undefined, true);
+                    }}
+                    disabled={quotesLoading}
+                    startIcon={quotesLoading ? <CircularProgress size={12} sx={{ color: "#F9EBD7" }} /> : undefined}
+                    sx={{
+                      fontSize: "0.74rem",
+                      fontWeight: 700,
+                      color: "#F9EBD7",
+                      bgcolor: "#046A38",
+                      "&:hover": { bgcolor: "#034d28" },
+                    }}
+                  >
+                    {quotesLoading ? "Syncing Quotes…" : "Sync Live Quotes Now"}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Paper>
+
+            {/* Plain-English Institutional Explanations Card */}
+            <Paper
+              sx={{
+                p: 2.5,
+                borderRadius: 0,
+                border: "none",
+                bgcolor: "#F9EBD7",
+                boxShadow: "0 4px 12px rgba(41,45,42,0.10)",
+                mb: 2,
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#292D2A", mb: 0.5 }}>
+                💡 Understanding Portfolio Valuation & Performance
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#686B64", display: "block", mb: 1.5 }}>
+                A quick institutional primer on how your portfolio metrics are calculated and what they mean.
+              </Typography>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 1.5 }}>
+                <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
+                    Invested Capital (Cost Basis)
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
+                    Total actual money committed to current holdings (Σ Quantity × Purchase Price). Represents your capital base.
+                  </Typography>
+                </Box>
+                <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
+                    Current Market Value
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
+                    Real-time valuation (Σ Quantity × Live NSE Quote). Streams live prices from yfinance and auto-updates dynamically.
+                  </Typography>
+                </Box>
+                <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
+                    Unrealized P&L
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
+                    Paper profit or loss (Market Value − Cost Basis). Realized only upon selling.
+                  </Typography>
+                </Box>
+                <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
+                    Today's Net P&L
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
+                    Intraday day-over-day price change (Σ Quantity × (Current Price − Previous Close)).
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+
             {/* ─── 6 SUMMARY CARDS ─── */}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
               {/* Card 1: Total Invested Value */}

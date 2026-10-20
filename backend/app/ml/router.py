@@ -2,11 +2,10 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.app.core.auth import require_user
 from backend.app.db.models import Security, SecurityAlias
 from backend.app.db.session import get_session
 from backend.app.ml.schemas import (
@@ -24,7 +23,6 @@ from backend.app.ml.service import MlInferenceService
 router = APIRouter(
     prefix="/ml",
     tags=["ml-insights"],
-    dependencies=[Depends(require_user)],
 )
 
 DatabaseSession = Annotated[Session, Depends(get_session)]
@@ -43,9 +41,9 @@ def _get_company_names(session: Session, symbols: list[str]) -> dict[str, str]:
 
 
 @router.get("/status", response_model=ModelStatusResponse)
-def get_model_status() -> ModelStatusResponse:
+def get_model_status(session: DatabaseSession) -> ModelStatusResponse:
     """Return model status, training cutoff, version, and validation metrics vs baseline."""
-    statuses = _ml_service.registry.get_all_model_statuses()
+    statuses = _ml_service.get_model_statuses(session)
     return ModelStatusResponse(models=statuses)
 
 
@@ -58,15 +56,11 @@ def get_volatility_forecast(
     symbols = [h.symbol for h in request.holdings]
     weights = [h.weight for h in request.holdings]
     res = _ml_service.get_volatility_insights(symbols, weights, session)
-    if res.get("status") == "insufficient_data":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=res.get("error", "Insufficient historical observations"),
-        )
     return VolatilityForecastResponse(
         status=res["status"],
         portfolio_forecast=res.get("portfolio_forecast"),
         holdings_forecasts=res.get("holdings_forecasts", []),
+        error=res.get("error") or res.get("portfolio_reason"),
     )
 
 
@@ -74,14 +68,10 @@ def get_volatility_forecast(
 def get_market_regime(session: DatabaseSession) -> MarketRegimeResponse:
     """Compute 2-state Markov-switching filtered regime probabilities on NIFTY 50."""
     res = _ml_service.get_market_regime_insights(session)
-    if res.get("status") == "insufficient_data":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=res.get("error", "Insufficient benchmark return history"),
-        )
     return MarketRegimeResponse(
         status=res["status"],
         market_regime=res.get("market_regime"),
+        error=res.get("error"),
     )
 
 
@@ -93,14 +83,10 @@ def get_holdings_anomalies(
     """Detect statistical anomalies across holdings using Isolation Forest vs Robust Z-score."""
     company_names = _get_company_names(session, request.symbols)
     res = _ml_service.get_anomaly_insights(request.symbols, session, company_names=company_names)
-    if res.get("status") == "insufficient_data":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=res.get("error", "Insufficient observations for anomaly detection"),
-        )
     return AnomalyDetectionResponse(
         status=res["status"],
         anomaly_analysis=res.get("anomaly_analysis"),
+        error=res.get("error"),
     )
 
 
@@ -108,14 +94,10 @@ def get_holdings_anomalies(
 def get_risk_score_validation(session: DatabaseSession) -> ScoreValidationResponse:
     """Walk-forward validation of heuristic 5-factor risk score against forward vol and drawdown."""
     res = _ml_service.get_risk_score_validation_insights([], session)
-    if res.get("status") == "insufficient_data":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=res.get("error", "Insufficient return history for score validation"),
-        )
     return ScoreValidationResponse(
         status=res["status"],
         score_validation=res.get("score_validation"),
+        error=res.get("error"),
     )
 
 

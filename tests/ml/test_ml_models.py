@@ -72,19 +72,36 @@ def test_market_regime_uses_filtered_probabilities_only():
 def test_anomaly_detector_generates_rankings_without_claiming_accuracy():
     """Verify anomaly detector computes outlier rankings, flag rate, and stability."""
     rng = np.random.default_rng(88)
-    dates = pd.date_range("2024-01-01", periods=100, freq="B")
+    dates = pd.date_range("2024-01-01", periods=160, freq="B")
     prices_dict = {}
     for sym in ["RELIANCE", "TCS", "INFY", "HDFCBANK"]:
-        ret = rng.normal(0.0005, 0.015, 100)
+        ret = rng.normal(0.0005, 0.015, len(dates))
         prices_dict[sym] = 100.0 * np.cumprod(1.0 + ret)
 
     # Induce an artificial anomaly in INFY on last day
     prices_dict["INFY"][-1] *= 1.15
     prices_df = pd.DataFrame(prices_dict, index=dates)
-    bench_returns = pd.Series(rng.normal(0.0002, 0.010, 100), index=dates)
+    bench_returns = pd.Series(rng.normal(0.0002, 0.010, len(dates)), index=dates)
+    volumes_df = pd.DataFrame(
+        {
+            symbol: rng.integers(100_000, 2_000_000, len(dates))
+            for symbol in prices_df.columns
+        },
+        index=dates,
+    )
+    sectors = {
+        "RELIANCE": "Energy",
+        "HDFCBANK": "Financials",
+        "TCS": "Technology",
+        "INFY": "Technology",
+    }
+    sectors["RELIANCE"] = "Diversified"
+    sectors["HDFCBANK"] = "Diversified"
 
     detector = AnomalyDetector(random_seed=42)
-    res, card = detector.detect_anomalies(prices_df, bench_returns)
+    res, card = detector.detect_anomalies(
+        prices_df, bench_returns, volumes_df, sectors=sectors
+    )
 
     assert len(res.all_evaluated_holdings) == 4
     assert 0.0 <= res.flag_rate_percent <= 100.0

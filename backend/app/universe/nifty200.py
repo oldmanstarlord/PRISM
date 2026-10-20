@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.db.models import Security, SecurityAlias, Universe, UniverseMembership
+from backend.app.market_data.yahoo import YahooFinanceClient
 
 NIFTY_200_URL = "https://www.niftyindices.com/IndexConstituent/ind_nifty200list.csv"
 EXPECTED_COLUMNS = ("Company Name", "Industry", "Symbol", "Series", "ISIN Code")
@@ -32,6 +33,12 @@ class ImportResult:
     memberships_added: int
     memberships_closed: int
     current_members: int
+
+
+@dataclass(frozen=True, slots=True)
+class VerificationResult:
+    verified: int
+    failed: dict[str, str]
 
 
 def fetch_constituent_csv(url: str = NIFTY_200_URL) -> str:
@@ -140,6 +147,7 @@ def import_constituents(
         security = security_by_isin[item.isin]
         alias = alias_by_security.get(security.id)
         if alias is not None and alias.symbol == item.symbol:
+            alias.provider_symbol = f"{item.symbol}.NS"
             continue
         if alias is not None:
             alias.valid_to = effective_date - timedelta(days=1)
@@ -151,6 +159,7 @@ def import_constituents(
                 valid_from=effective_date,
                 source=source,
                 ingested_at=ingested_at,
+                provider_symbol=f"{item.symbol}.NS",
             )
         )
         aliases_created += 1
@@ -195,3 +204,43 @@ def import_constituents(
         memberships_closed=memberships_closed,
         current_members=len(incoming_security_ids),
     )
+
+
+def verify_yfinance_aliases(
+    session: Session,
+    *,
+    as_of: date,
+    client: YahooFinanceClient | None = None,
+) -> VerificationResult:
+    """Test and record every active NIFTY 200 alias without normalizing punctuation."""
+    provider = client or YahooFinanceClient()
+    aliases = session.scalars(
+        select(SecurityAlias)
+        .join(UniverseMembership, UniverseMembership.security_id == SecurityAlias.security_id)
+        .join(Universe, Universe.id == UniverseMembership.universe_id)
+        .where(
+            Universe.name == "NIFTY 200",
+            SecurityAlias.exchange == "NSE",
+            SecurityAlias.valid_from <= as_of,
+            (SecurityAlias.valid_to.is_(None) | (SecurityAlias.valid_to >= as_of)),
+            UniverseMembership.valid_from <= as_of,
+            (UniverseMembership.valid_to.is_(None) | (UniverseMembership.valid_to >= as_of)),
+        )
+        .order_by(SecurityAlias.symbol)
+    ).all()
+    if len(aliases) != 200:
+        raise ValueError(f"Expected 200 active NIFTY 200 aliases, received {len(aliases)}")
+
+    checked_at = datetime.now(UTC)
+    failures: dict[str, str] = {}
+    for alias in aliases:
+        provider_symbol = f"{alias.symbol}.NS"
+        verified, reason = provider.verify(provider_symbol, as_of)
+        alias.provider_symbol = provider_symbol
+        alias.verification_status = "verified" if verified else "failed"
+        alias.verification_reason = reason
+        alias.verified_at = checked_at
+        if not verified:
+            failures[alias.symbol] = reason or "verification_failed_without_provider_reason"
+    session.flush()
+    return VerificationResult(verified=len(aliases) - len(failures), failed=failures)

@@ -4,9 +4,12 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
+from backend.app.db.models import DataCoverageRun, StockMetricDaily
 from backend.app.db.session import get_session
+from backend.app.market_data.foundation import coverage_payload
 from backend.app.market_data.live_service import (
     fetch_batch_quotes,
     fetch_benchmark,
@@ -14,6 +17,7 @@ from backend.app.market_data.live_service import (
     fetch_quote,
     get_market_data_health,
 )
+from backend.app.market_data.metrics import METHODOLOGY_VERSION
 
 router = APIRouter(prefix="/market-data", tags=["market data"])
 DatabaseSession = Annotated[Session, Depends(get_session)]
@@ -80,3 +84,73 @@ def get_history(
 def get_health(session: DatabaseSession) -> dict[str, Any]:
     """Report provider health, database coverage, benchmark status, and limitations."""
     return get_market_data_health(session)
+
+
+@router.get("/coverage/latest")
+def get_latest_coverage(session: DatabaseSession) -> dict[str, Any]:
+    """Return the most recently published all-universe coverage report."""
+    row = session.scalar(
+        select(DataCoverageRun).order_by(desc(DataCoverageRun.last_update_time)).limit(1)
+    )
+    if row is None:
+        return {
+            "status": "unavailable",
+            "reason": "no_data_coverage_run_has_been_published",
+            "excluded_symbols": [],
+        }
+    return coverage_payload(row)
+
+
+@router.get("/stock-metrics/latest")
+def get_latest_stock_metrics(session: DatabaseSession) -> dict[str, Any]:
+    """Expose persisted stock metrics and explicit unavailable rows for dashboard tabs."""
+    metric_date = session.scalar(
+        select(func.max(StockMetricDaily.metric_date)).where(
+            StockMetricDaily.methodology_version == METHODOLOGY_VERSION
+        )
+    )
+    if metric_date is None:
+        return {"status": "unavailable", "data_date": None, "results": []}
+    rows = session.scalars(
+        select(StockMetricDaily)
+        .where(
+            StockMetricDaily.metric_date == metric_date,
+            StockMetricDaily.methodology_version == METHODOLOGY_VERSION,
+        )
+        .order_by(StockMetricDaily.symbol)
+    ).all()
+
+    def number(value: Any) -> float | None:
+        return float(value) if value is not None else None
+
+    return {
+        "status": "available",
+        "data_date": metric_date,
+        "methodology_version": METHODOLOGY_VERSION,
+        "results": [
+            {
+                "symbol": row.symbol,
+                "quality_status": row.quality_status,
+                "availability": "available" if row.score is not None else "unavailable",
+                "score": number(row.score),
+                "volatility_1m": number(row.volatility_1m),
+                "volatility_3m": number(row.volatility_3m),
+                "volatility_6m": number(row.volatility_6m),
+                "volatility_1y": number(row.volatility_1y),
+                "downside_volatility": number(row.downside_volatility),
+                "max_drawdown": number(row.max_drawdown),
+                "beta_nifty50": number(row.beta_nifty50),
+                "average_traded_value_20d": number(row.average_traded_value_20d),
+                "factors": {
+                    "volatility": number(row.factor_volatility),
+                    "downside": number(row.factor_downside),
+                    "drawdown": number(row.factor_drawdown),
+                    "beta": number(row.factor_beta),
+                    "instability": number(row.factor_instability),
+                },
+                "observations_used": row.observations_used,
+                "unavailable_reasons": row.missing_reasons,
+            }
+            for row in rows
+        ],
+    }

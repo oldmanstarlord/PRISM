@@ -17,7 +17,7 @@ def compute_ewma_volatility(
         return pd.Series(dtype=float, index=returns.index)
 
     var = np.zeros(n, dtype=float)
-    var[0] = arr[0] ** 2 if arr[0] != 0 else 0.0001
+    var[0] = arr[0] ** 2
 
     one_minus_decay = 1.0 - decay
     for t in range(1, n):
@@ -39,7 +39,7 @@ def compute_realized_volatility(
     """
     sq_ret = returns**2
     # Rolling sum of squared daily returns
-    roll_var = sq_ret.rolling(window=window, min_periods=max(5, window // 2)).mean()
+    roll_var = sq_ret.rolling(window=window, min_periods=window).mean()
     vol = np.sqrt(roll_var)
     if annualize:
         vol = vol * np.sqrt(252.0)
@@ -55,14 +55,9 @@ def compute_forward_realized_volatility(
     Never used as a feature at date t.
     """
     sq_ret = returns**2
-    # Forward rolling mean of squared returns (shifted backwards by horizon)
-    fwd_var = (
-        sq_ret.iloc[::-1]
-        .rolling(window=horizon, min_periods=max(5, horizon // 2))
-        .mean()
-        .iloc[::-1]
-        .shift(-1)
-    )
+    # Exact [t+1, t+horizon] window. Incomplete tail labels remain missing.
+    fwd_var = sq_ret.shift(-1).rolling(window=horizon, min_periods=horizon).mean()
+    fwd_var = fwd_var.shift(-(horizon - 1))
     vol = np.sqrt(fwd_var)
     if annualize:
         vol = vol * np.sqrt(252.0)
@@ -73,12 +68,11 @@ def compute_forward_max_drawdown(prices: pd.Series, horizon: int = 21) -> pd.Ser
     """Compute forward maximum drawdown over [t+1, t+horizon]."""
     p = prices.values
     n = len(p)
-    mdd = np.zeros(n, dtype=float)
+    mdd = np.full(n, np.nan, dtype=float)
 
     for i in range(n):
-        end = min(i + 1 + horizon, n)
-        if end <= i + 1:
-            mdd[i] = np.nan
+        end = i + 1 + horizon
+        if end > n:
             continue
         window_prices = p[i + 1 : end]
         # Include current price p[i] as peak reference
@@ -99,7 +93,7 @@ def build_volatility_features(
 
     All features at date t use strictly information <= t.
     """
-    simple_returns = prices.pct_change().dropna()
+    simple_returns = prices.pct_change(fill_method=None).dropna()
     dates = simple_returns.index
 
     # 1. Trailing realized volatilities across multiple scales (HAR structure)
@@ -146,20 +140,16 @@ def build_volatility_features(
 
     # 5. Volume features if provided
     if volumes is not None and not volumes.empty:
-        vol_aligned = volumes.reindex(dates).ffill()
-        sma_20 = vol_aligned.rolling(20, min_periods=5).mean()
-        vol_spike = (vol_aligned / np.maximum(sma_20, 1.0)).rename("volume_spike_20d")
+        vol_aligned = volumes.reindex(dates)
+        sma_20 = vol_aligned.rolling(20, min_periods=20).mean()
+        vol_spike = (vol_aligned / sma_20.replace(0, np.nan)).rename("volume_spike_20d")
         features.append(vol_spike)
-    else:
-        features.append(pd.Series(1.0, index=dates, name="volume_spike_20d"))
 
     # 6. Benchmark volatility context
     if benchmark_returns is not None and not benchmark_returns.empty:
-        b_aligned = benchmark_returns.reindex(dates).fillna(0.0)
+        b_aligned = benchmark_returns.reindex(dates)
         b_vol_21d = compute_realized_volatility(b_aligned, window=21).rename("benchmark_vol_21d")
         features.append(b_vol_21d)
-    else:
-        features.append(pd.Series(0.15, index=dates, name="benchmark_vol_21d"))
 
     df_features = pd.concat(features, axis=1)
     return df_features.dropna()
@@ -178,7 +168,7 @@ def build_anomaly_features(
     3. vol_ratio_5_20: Short-term volatility surge (5d vol / 20d vol).
     4. benchmark_divergence: Daily return minus benchmark return.
     """
-    simple_returns = prices.pct_change().dropna()
+    simple_returns = prices.pct_change(fill_method=None).dropna()
     dates = simple_returns.index
 
     # 1. 60-day return z-score
@@ -195,18 +185,23 @@ def build_anomaly_features(
 
     # 3. Volume spike ratio
     if volumes is not None and not volumes.empty:
-        vol_aligned = volumes.reindex(dates).ffill()
-        sma_20 = vol_aligned.rolling(20, min_periods=5).mean()
-        vol_spike = (vol_aligned / np.maximum(sma_20, 1.0)).rename("volume_spike_20d")
+        vol_aligned = volumes.reindex(dates)
+        sma_20 = vol_aligned.rolling(20, min_periods=20).mean()
+        vol_spike = (vol_aligned / sma_20.replace(0, np.nan)).rename("volume_spike_20d")
     else:
-        vol_spike = pd.Series(1.0, index=dates, name="volume_spike_20d")
+        vol_spike = None
 
     # 4. Benchmark divergence
     if benchmark_returns is not None and not benchmark_returns.empty:
-        b_aligned = benchmark_returns.reindex(dates).fillna(0.0)
+        b_aligned = benchmark_returns.reindex(dates)
         bench_div = (simple_returns - b_aligned).rename("benchmark_divergence")
     else:
-        bench_div = pd.Series(0.0, index=dates, name="benchmark_divergence")
+        bench_div = None
 
-    df = pd.concat([ret_zscore, vol_spike, vol_ratio, bench_div], axis=1)
+    features = [ret_zscore, vol_ratio]
+    if vol_spike is not None:
+        features.append(vol_spike)
+    if bench_div is not None:
+        features.append(bench_div)
+    df = pd.concat(features, axis=1)
     return df.dropna()

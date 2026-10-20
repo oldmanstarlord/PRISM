@@ -33,28 +33,36 @@ class RegimeTimelinePoint:
 
 @dataclass(slots=True)
 class MarketRegimeResult:
-    current_regime: str  # "Calm" | "Stressed"
-    calm_probability: float  # e.g. 0.82
-    stressed_probability: float  # e.g. 0.18
-    calm_volatility_annualized: float  # e.g. 11.4%
-    stressed_volatility_annualized: float  # e.g. 24.8%
-    calm_expected_duration_days: float  # e.g. 45 days
-    stressed_expected_duration_days: float  # e.g. 14 days
+    current_regime: str | None  # "Calm" | "Stressed"
+    calm_probability: float | None
+    stressed_probability: float | None
+    calm_volatility_annualized: float | None
+    stressed_volatility_annualized: float | None
+    calm_expected_duration_days: float | None
+    stressed_expected_duration_days: float | None
     transition_matrix: list[list[float]]  # 2x2 matrix [[P_cc, P_cs], [P_sc, P_ss]]
-    state_stability_score: float  # Persistence metric (0 to 1)
+    state_stability_score: float | None  # Persistence metric (0 to 1)
     is_interpretable: bool  # True if stressed vol > calm vol
-    regime_conditional_correlation_calm: float
-    regime_conditional_correlation_stressed: float
+    regime_conditional_correlation_calm: float | None
+    regime_conditional_correlation_stressed: float | None
+    calm_mean_return: float | None
+    stressed_mean_return: float | None
     data_cutoff: str
     sample_sessions: int
     recent_timeline: list[dict[str, Any]]
+    status: str = "ready"
+    failure_reason: str | None = None
 
     @property
     def active_regime_name(self) -> str:
+        if self.current_regime is None:
+            return "Unavailable"
         return "Calm / Normal" if "calm" in self.current_regime.lower() else "Turbulent / Stressed"
 
     @property
-    def filtered_probability(self) -> float:
+    def filtered_probability(self) -> float | None:
+        if self.current_regime is None:
+            return None
         return (
             self.calm_probability
             if "calm" in self.current_regime.lower()
@@ -62,21 +70,25 @@ class MarketRegimeResult:
         )
 
     @property
-    def regime_conditional_volatilities(self) -> dict[str, float]:
+    def regime_conditional_volatilities(self) -> dict[str, float | None]:
         return {
-            "Calm / Normal": self.calm_volatility_annualized / 100.0,
-            "Turbulent / Stressed": self.stressed_volatility_annualized / 100.0,
+            "Calm / Normal": self.calm_volatility_annualized / 100.0
+            if self.calm_volatility_annualized is not None
+            else None,
+            "Turbulent / Stressed": self.stressed_volatility_annualized / 100.0
+            if self.stressed_volatility_annualized is not None
+            else None,
         }
 
     @property
-    def regime_conditional_correlations(self) -> dict[str, float]:
+    def regime_conditional_correlations(self) -> dict[str, float | None]:
         return {
             "Calm / Normal": self.regime_conditional_correlation_calm,
             "Turbulent / Stressed": self.regime_conditional_correlation_stressed,
         }
 
     @property
-    def expected_durations_days(self) -> dict[str, float]:
+    def expected_durations_days(self) -> dict[str, float | None]:
         return {
             "Calm / Normal": self.calm_expected_duration_days,
             "Turbulent / Stressed": self.stressed_expected_duration_days,
@@ -94,6 +106,10 @@ class MarketRegimeResult:
         d["regime_conditional_correlations"] = self.regime_conditional_correlations
         d["expected_durations_days"] = self.expected_durations_days
         d["regime_timeline"] = self.regime_timeline
+        d["regime_conditional_mean_returns"] = {
+            "Calm / Normal": self.calm_mean_return,
+            "Turbulent / Stressed": self.stressed_mean_return,
+        }
         return d
 
 
@@ -102,6 +118,10 @@ class MarketRegimeDetector:
 
     def __init__(self, k_regimes: int = 2) -> None:
         self.k_regimes = k_regimes
+        self.fitted_params: np.ndarray | None = None
+        self.calm_idx: int | None = None
+        self.stressed_idx: int | None = None
+        self.training_result: MarketRegimeResult | None = None
 
     def fit_predict(
         self,
@@ -112,25 +132,33 @@ class MarketRegimeDetector:
         b_rets = benchmark_returns.dropna()
         n_obs = len(b_rets)
         if n_obs < 60:
-            # Insufficient observations: default neutral state
-            fallback = MarketRegimeResult(
-                current_regime="Calm",
-                calm_probability=0.50,
-                stressed_probability=0.50,
-                calm_volatility_annualized=12.0,
-                stressed_volatility_annualized=22.0,
-                calm_expected_duration_days=20.0,
-                stressed_expected_duration_days=10.0,
-                transition_matrix=[[0.90, 0.10], [0.20, 0.80]],
-                state_stability_score=0.85,
-                is_interpretable=True,
-                regime_conditional_correlation_calm=0.35,
-                regime_conditional_correlation_stressed=0.65,
+            unavailable = MarketRegimeResult(
+                current_regime=None,
+                calm_probability=None,
+                stressed_probability=None,
+                calm_volatility_annualized=None,
+                stressed_volatility_annualized=None,
+                calm_expected_duration_days=None,
+                stressed_expected_duration_days=None,
+                transition_matrix=[],
+                state_stability_score=None,
+                is_interpretable=False,
+                regime_conditional_correlation_calm=None,
+                regime_conditional_correlation_stressed=None,
+                calm_mean_return=None,
+                stressed_mean_return=None,
                 data_cutoff=str(b_rets.index[-1]) if n_obs > 0 else "unknown",
                 sample_sessions=n_obs,
                 recent_timeline=[],
+                status="insufficient_data",
+                failure_reason="requires_at_least_60_benchmark_returns",
             )
-            return fallback, {}
+            return unavailable, {
+                "name": "market_regime_nifty50",
+                "version": "2.0.0",
+                "status": "insufficient_data",
+                "failure_reason": unavailable.failure_reason,
+            }
 
         # 1. Fit 2-state Markov Switching model with switching variance
         try:
@@ -140,38 +168,40 @@ class MarketRegimeDetector:
                 switching_variance=True,
             )
             res = model.fit(disp=False, maxiter=200)
+            self.fitted_params = np.asarray(res.params, dtype=float)
 
             # Filtered probabilities array of shape (T, 2)
             filtered_probs = res.filtered_marginal_probabilities
             p_matrix = res.regime_transition  # shape (2, 2)
         except Exception as exc:
-            logger.warning(
-                "Statsmodels MarkovRegression fit failed (%s); using rolling vol proxy", exc
-            )
-            # Robust fallback using 21-day rolling volatility thresholding
-            roll_vol = b_rets.rolling(21, min_periods=10).std() * np.sqrt(252.0)
-            median_vol = float(roll_vol.median())
-            is_stressed = (roll_vol > median_vol * 1.3).astype(float)
-            p_stressed = float(is_stressed.iloc[-1])
-            p_calm = 1.0 - p_stressed
-            fallback = MarketRegimeResult(
-                current_regime="Stressed" if p_stressed > 0.5 else "Calm",
-                calm_probability=round(p_calm, 4),
-                stressed_probability=round(p_stressed, 4),
-                calm_volatility_annualized=round(median_vol * 0.85 * 100, 2),
-                stressed_volatility_annualized=round(median_vol * 1.6 * 100, 2),
-                calm_expected_duration_days=30.0,
-                stressed_expected_duration_days=12.0,
-                transition_matrix=[[0.92, 0.08], [0.15, 0.85]],
-                state_stability_score=0.88,
-                is_interpretable=True,
-                regime_conditional_correlation_calm=0.32,
-                regime_conditional_correlation_stressed=0.62,
+            reason = f"{type(exc).__name__}: {exc}"
+            failed = MarketRegimeResult(
+                current_regime=None,
+                calm_probability=None,
+                stressed_probability=None,
+                calm_volatility_annualized=None,
+                stressed_volatility_annualized=None,
+                calm_expected_duration_days=None,
+                stressed_expected_duration_days=None,
+                transition_matrix=[],
+                state_stability_score=None,
+                is_interpretable=False,
+                regime_conditional_correlation_calm=None,
+                regime_conditional_correlation_stressed=None,
+                calm_mean_return=None,
+                stressed_mean_return=None,
                 data_cutoff=str(b_rets.index[-1]),
                 sample_sessions=n_obs,
                 recent_timeline=[],
+                status="failed",
+                failure_reason=reason,
             )
-            return fallback, {}
+            return failed, {
+                "name": "market_regime_nifty50",
+                "version": "2.0.0",
+                "status": "failed",
+                "failure_reason": reason,
+            }
 
         # 2. Interpretability Alignment: Map lower-volatility state to "Calm", higher to "Stressed"
         # Compute empirical return standard deviation in each regime
@@ -191,17 +221,21 @@ class MarketRegimeDetector:
         else:
             calm_idx, stressed_idx = 1, 0
             calm_vol, stressed_vol = vol_1, vol_0
+        self.calm_idx = calm_idx
+        self.stressed_idx = stressed_idx
 
         p_calm_series = filtered_probs[:, calm_idx]
         p_stressed_series = filtered_probs[:, stressed_idx]
+        calm_mean = float(np.average(b_rets.values, weights=p_calm_series))
+        stressed_mean = float(np.average(b_rets.values, weights=p_stressed_series))
 
         # Transition matrix mapped to Calm (0) and Stressed (1)
         p_arr = np.array(p_matrix)
         while p_arr.ndim > 2:
             p_arr = p_arr[:, :, -1]
         p_cc = float(p_arr[calm_idx, calm_idx])
-        p_cs = float(p_arr[calm_idx, stressed_idx])
-        p_sc = float(p_arr[stressed_idx, calm_idx])
+        p_cs = float(p_arr[stressed_idx, calm_idx])
+        p_sc = float(p_arr[calm_idx, stressed_idx])
         p_ss = float(p_arr[stressed_idx, stressed_idx])
 
         # Row-normalize so rows sum to exactly 1.0
@@ -225,14 +259,16 @@ class MarketRegimeDetector:
         stability = (p_cc + p_ss) / 2.0
 
         # 3. Regime-conditional correlations if stock matrix available
-        corr_calm = 0.35
-        corr_stressed = 0.65
+        corr_calm: float | None = None
+        corr_stressed: float | None = None
         if stock_returns_matrix is not None and not stock_returns_matrix.empty:
             common_dates = b_rets.index.intersection(stock_returns_matrix.index)
             if len(common_dates) > 30:
                 s_mat = stock_returns_matrix.loc[common_dates]
-                calm_mask = p_calm_series[-len(common_dates) :] > 0.50
-                stressed_mask = p_stressed_series[-len(common_dates) :] > 0.50
+                calm_probability = pd.Series(p_calm_series, index=b_rets.index)
+                stressed_probability = pd.Series(p_stressed_series, index=b_rets.index)
+                calm_mask = calm_probability.reindex(common_dates).to_numpy() > 0.50
+                stressed_mask = stressed_probability.reindex(common_dates).to_numpy() > 0.50
 
                 if np.sum(calm_mask) > 10:
                     c_mat = s_mat[calm_mask].corr().values
@@ -272,27 +308,96 @@ class MarketRegimeDetector:
             ],
             state_stability_score=round(stability, 4),
             is_interpretable=stressed_vol > calm_vol,
-            regime_conditional_correlation_calm=round(corr_calm, 4),
-            regime_conditional_correlation_stressed=round(corr_stressed, 4),
+            regime_conditional_correlation_calm=round(corr_calm, 4)
+            if corr_calm is not None
+            else None,
+            regime_conditional_correlation_stressed=round(corr_stressed, 4)
+            if corr_stressed is not None
+            else None,
+            calm_mean_return=calm_mean,
+            stressed_mean_return=stressed_mean,
             data_cutoff=dates_list[-1],
             sample_sessions=n_obs,
             recent_timeline=timeline,
         )
 
+        self.training_result = result
         model_card = {
             "name": "market_regime_nifty50",
-            "version": "2026.1",
+            "version": "2.0.0",
+            "type": "two-state Markov switching Gaussian model",
+            "status": "ready",
             "data_cutoff": dates_list[-1],
-            "methodology": (
-                "2-state Markov Switching Gaussian regression (filtered probabilities only)"
-            ),
-            "calm_volatility": f"{calm_vol * 100.0:.2f}%",
-            "stressed_volatility": f"{stressed_vol * 100.0:.2f}%",
-            "transition_matrix": [[p_cc, p_cs], [p_sc, p_ss]],
-            "stability_score": round(stability, 4),
+            "training_start": str(b_rets.index[0]),
+            "training_end": str(b_rets.index[-1]),
+            "features": ["nifty50_simple_return"],
+            "feature_schema_version": "regime-return-v2",
+            "preprocessing": {"imputation": None, "scaling": None},
+            "hyperparameters": {"k_regimes": self.k_regimes, "switching_variance": True},
+            "metrics_vs_baseline": {
+                "transition_matrix": [[p_cc, p_cs], [p_sc, p_ss]],
+                "state_stability_score": round(stability, 4),
+                "regime_conditional_mean_returns": {
+                    "calm": calm_mean,
+                    "stressed": stressed_mean,
+                },
+            },
+            "model_selected": "markov_switching",
+            "methodology_version": "ml-risk-v2",
             "no_leakage_guarantee": (
                 "Filtered marginal probabilities condition strictly on R_1..R_t"
             ),
         }
 
         return result, model_card
+
+    def predict_filtered(self, benchmark_returns: pd.Series) -> MarketRegimeResult:
+        """Apply fitted parameters and calculate filtered probabilities without re-estimation."""
+        if (
+            self.fitted_params is None
+            or self.calm_idx is None
+            or self.stressed_idx is None
+            or self.training_result is None
+        ):
+            raise RuntimeError("Regime artifact is not fitted")
+        returns = benchmark_returns.dropna().sort_index()
+        model = MarkovRegression(
+            endog=returns.to_numpy(dtype=float),
+            k_regimes=self.k_regimes,
+            switching_variance=True,
+        )
+        result = model.filter(self.fitted_params)
+        probabilities = np.asarray(result.filtered_marginal_probabilities)
+        calm = probabilities[:, self.calm_idx]
+        stressed = probabilities[:, self.stressed_idx]
+        timeline = [
+            {
+                "date": str(day),
+                "calm_prob": round(float(calm[index]), 4),
+                "stressed_prob": round(float(stressed[index]), 4),
+                "regime": "Stressed" if stressed[index] > 0.5 else "Calm",
+            }
+            for index, day in enumerate(returns.index[-60:], start=max(len(returns) - 60, 0))
+        ]
+        training = self.training_result
+        return MarketRegimeResult(
+            current_regime="Stressed" if stressed[-1] > 0.5 else "Calm",
+            calm_probability=round(float(calm[-1]), 4),
+            stressed_probability=round(float(stressed[-1]), 4),
+            calm_volatility_annualized=training.calm_volatility_annualized,
+            stressed_volatility_annualized=training.stressed_volatility_annualized,
+            calm_expected_duration_days=training.calm_expected_duration_days,
+            stressed_expected_duration_days=training.stressed_expected_duration_days,
+            transition_matrix=training.transition_matrix,
+            state_stability_score=training.state_stability_score,
+            is_interpretable=training.is_interpretable,
+            regime_conditional_correlation_calm=training.regime_conditional_correlation_calm,
+            regime_conditional_correlation_stressed=(
+                training.regime_conditional_correlation_stressed
+            ),
+            calm_mean_return=training.calm_mean_return,
+            stressed_mean_return=training.stressed_mean_return,
+            data_cutoff=str(returns.index[-1]),
+            sample_sessions=len(returns),
+            recent_timeline=timeline,
+        )

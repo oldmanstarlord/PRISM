@@ -1,12 +1,22 @@
 /**
  * PRISM Journal & Portfolio Snapshot Storage Service
  *
- * Local-first, anonymous storage for Research Notes, Investment Decisions, and Portfolio Snapshots.
- * Uses native browser IndexedDB ('prism_journal_db', version 2) with automatic in-memory fallback
- * for headless/SSR/test environments where window.indexedDB may not be available.
- *
+ * Server-persisted multi-user storage with local IndexedDB cache and in-memory fallback.
  * Every record enforces: id, schemaVersion, createdAt (ISO), and updatedAt (ISO).
  */
+
+import { apiBase, fetchJson, postJson } from "./api";
+import { supabase } from "./supabase";
+
+async function getAuthToken(): Promise<string | null> {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export interface ResearchNote {
   id: string;
@@ -222,7 +232,11 @@ function generateId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
-  return `rec-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 /* ─── Validation & Safe Parsing ─── */
@@ -459,6 +473,34 @@ export async function getNotesBySymbol(symbol: string): Promise<ResearchNote[]> 
 }
 
 export async function getAllNotes(): Promise<ResearchNote[]> {
+  const token = await getAuthToken();
+  if (token) {
+    try {
+      const controller = new AbortController();
+      const serverNotes = await fetchJson<
+        Array<{
+          id: string;
+          symbol: string;
+          content: string;
+          tags: string[];
+          created_at: string;
+          updated_at: string;
+        }>
+      >("/journal/notes", controller.signal);
+      return serverNotes.map((n) => ({
+        id: n.id,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        createdAt: n.created_at,
+        updatedAt: n.updated_at,
+        symbol: n.symbol,
+        content: n.content,
+        tags: n.tags,
+      }));
+    } catch {
+      // Fallback to local
+    }
+  }
+
   if (!isIndexedDBSupported()) {
     return Array.from(memoryStore.notes.values());
   }
@@ -512,6 +554,35 @@ export async function saveNote(
     tags: Array.from(new Set(input.tags.map((t) => t.trim()).filter(Boolean))),
   };
 
+  const token = await getAuthToken();
+  if (token) {
+    try {
+      const controller = new AbortController();
+      const serverNote = await postJson<{
+        id: string;
+        symbol: string;
+        content: string;
+        tags: string[];
+        created_at: string;
+        updated_at: string;
+      }>(
+        "/journal/notes",
+        {
+          id: note.id,
+          symbol: note.symbol,
+          content: note.content,
+          tags: note.tags,
+        },
+        controller.signal
+      );
+      note.id = serverNote.id;
+      note.createdAt = serverNote.created_at;
+      note.updatedAt = serverNote.updated_at;
+    } catch (err) {
+      console.warn("Failed to save note to server:", err);
+    }
+  }
+
   if (!isIndexedDBSupported()) {
     memoryStore.notes.set(note.id, note);
     return note;
@@ -533,6 +604,18 @@ export async function saveNote(
 }
 
 export async function deleteNote(id: string): Promise<void> {
+  const token = await getAuthToken();
+  if (token) {
+    try {
+      await fetch(`${apiBase}/journal/notes/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (err) {
+      console.warn("Failed to delete note from server:", err);
+    }
+  }
+
   if (!isIndexedDBSupported()) {
     memoryStore.notes.delete(id);
     return;
@@ -596,6 +679,50 @@ export async function getDecisionsBySymbol(symbol: string): Promise<InvestmentDe
 }
 
 export async function getAllDecisions(): Promise<InvestmentDecision[]> {
+  const token = await getAuthToken();
+  if (token) {
+    try {
+      const controller = new AbortController();
+      const serverDecisions = await fetchJson<
+        Array<{
+          id: string;
+          symbol: string;
+          decision_type: string;
+          decision_date: string;
+          rationale: string;
+          tags: string[];
+          snapshot: DecisionContextSnapshot;
+          snapshot_id?: string;
+          created_at: string;
+          updated_at: string;
+        }>
+      >("/journal/decisions", controller.signal);
+      return serverDecisions.map((d) => {
+        const rawType = (d.decision_type || "BUY").toUpperCase();
+        let formattedType: DecisionType = "Buy";
+        if (rawType === "SELL") formattedType = "Sell";
+        else if (rawType === "HOLD") formattedType = "Hold";
+        else if (rawType === "REVIEW") formattedType = "Review";
+
+        return {
+          id: d.id,
+          schemaVersion: CURRENT_SCHEMA_VERSION,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+          symbol: d.symbol,
+          decisionType: formattedType,
+          decisionDate: d.decision_date,
+          rationale: d.rationale,
+          tags: d.tags,
+          snapshot: d.snapshot,
+          snapshotId: d.snapshot_id,
+        };
+      });
+    } catch {
+      // Fallback to local
+    }
+  }
+
   if (!isIndexedDBSupported()) {
     return Array.from(memoryStore.decisions.values());
   }
@@ -681,6 +808,43 @@ export async function saveDecision(
     snapshotId: input.snapshotId || existingSnapshotId || undefined,
   };
 
+  const token = await getAuthToken();
+  if (token) {
+    try {
+      const controller = new AbortController();
+      const serverDec = await postJson<{
+        id: string;
+        symbol: string;
+        decision_type: string;
+        decision_date: string;
+        rationale: string;
+        tags: string[];
+        snapshot: DecisionContextSnapshot;
+        snapshot_id?: string;
+        created_at: string;
+        updated_at: string;
+      }>(
+        "/journal/decisions",
+        {
+          id: decision.id,
+          symbol: decision.symbol,
+          decision_type: decision.decisionType.toUpperCase(),
+          decision_date: decision.decisionDate,
+          rationale: decision.rationale,
+          tags: decision.tags,
+          snapshot: decision.snapshot,
+          snapshot_id: decision.snapshotId || null,
+        },
+        controller.signal
+      );
+      decision.id = serverDec.id;
+      decision.createdAt = serverDec.created_at;
+      decision.updatedAt = serverDec.updated_at;
+    } catch (err) {
+      console.warn("Failed to save decision to server:", err);
+    }
+  }
+
   if (!isIndexedDBSupported()) {
     memoryStore.decisions.set(decision.id, decision);
     return decision;
@@ -707,6 +871,18 @@ export async function getDecisionsForSnapshot(snapshotId: string): Promise<Inves
 }
 
 export async function deleteDecision(id: string): Promise<void> {
+  const token = await getAuthToken();
+  if (token) {
+    try {
+      await fetch(`${apiBase}/journal/decisions/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (err) {
+      console.warn("Failed to delete decision from server:", err);
+    }
+  }
+
   if (!isIndexedDBSupported()) {
     memoryStore.decisions.delete(id);
     return;
@@ -723,6 +899,45 @@ export async function deleteDecision(id: string): Promise<void> {
     });
   } catch {
     memoryStore.decisions.delete(id);
+  }
+}
+
+export async function syncLocalJournalToServer(): Promise<{ notesSynced: number; decisionsSynced: number } | null> {
+  const token = await getAuthToken();
+  if (!token) return null;
+
+  try {
+    const localNotes = await getAllNotes();
+    const localDecisions = await getAllDecisions();
+    if (!localNotes.length && !localDecisions.length) return null;
+
+    const controller = new AbortController();
+    const res = await postJson<{ notes_synced: number; decisions_synced: number }>(
+      "/journal/sync",
+      {
+        notes: localNotes.map((n) => ({
+          id: n.id,
+          symbol: n.symbol,
+          content: n.content,
+          tags: n.tags,
+        })),
+        decisions: localDecisions.map((d) => ({
+          id: d.id,
+          symbol: d.symbol,
+          decision_type: d.decisionType.toUpperCase(),
+          decision_date: d.decisionDate,
+          rationale: d.rationale,
+          tags: d.tags,
+          snapshot: d.snapshot,
+          snapshot_id: d.snapshotId || null,
+        })),
+      },
+      controller.signal
+    );
+    return { notesSynced: res.notes_synced, decisionsSynced: res.decisions_synced };
+  } catch (err) {
+    console.warn("Journal sync failed:", err);
+    return null;
   }
 }
 

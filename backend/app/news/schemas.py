@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class NewsRequestModel(BaseModel):
     model_config = ConfigDict(allow_inf_nan=False)
 
+
 SentimentLabel = Literal["positive", "neutral", "negative", "uncertain"]
 EventCategory = Literal[
     "earnings",
@@ -92,6 +93,9 @@ class NewsArticleCard(BaseModel):
     affected_holdings: list[str] = Field(default_factory=list)
     holding_exposure_weight_pct: float = Field(default=0.0, ge=0.0, le=100.0)
     explanation: str = Field(default="")
+    what_the_news_is: str = Field(default="")
+    market_and_sector_impact: str = Field(default="")
+    actionable_advice: str = Field(default="")
 
 
 class HoldingNewsSummary(BaseModel):

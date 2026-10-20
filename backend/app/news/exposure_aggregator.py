@@ -84,18 +84,14 @@ class ExposureAggregator:
                         has_ambiguous = True
 
             mean_sentiment = (
-                round(sum(sentiment_scores) / len(sentiment_scores), 4)
-                if sentiment_scores
-                else 0.0
+                round(sum(sentiment_scores) / len(sentiment_scores), 4) if sentiment_scores else 0.0
             )
 
             # 7-day sentiment drift
             recent_avg = (
                 sum(recent_scores) / len(recent_scores) if recent_scores else mean_sentiment
             )
-            older_avg = (
-                sum(older_scores) / len(older_scores) if older_scores else mean_sentiment
-            )
+            older_avg = sum(older_scores) / len(older_scores) if older_scores else mean_sentiment
             sentiment_drift = round(recent_avg - older_avg, 4)
 
             # Dominant sentiment classification

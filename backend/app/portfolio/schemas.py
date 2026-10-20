@@ -101,6 +101,7 @@ class TransactionCreateInput(BaseModel):
     amount: Decimal | None = None
     fees: Decimal = Field(default=Decimal("0"), ge=0)
     notes: str | None = Field(default=None, max_length=500)
+    idempotency_key: str | None = Field(default=None, max_length=128)
 
     @field_validator("symbol")
     @classmethod
@@ -134,6 +135,7 @@ class TransactionResponse(BaseModel):
     fees: Decimal
     realized_pnl: Decimal | None
     notes: str | None
+    idempotency_key: str | None = None
     created_at: datetime
 
 
@@ -167,4 +169,47 @@ class RiskHistoryResponse(BaseModel):
     largest_holding: str
     largest_holding_weight: float
     indicators_summary: dict[str, Any]
+    methodology_version: str = "1.0.0"
+    data_cutoff: date | None = None
     computed_at: datetime
+
+
+class RiskHistoryCreateInput(BaseModel):
+    valuation_date: date
+    portfolio_risk_score: Decimal
+    portfolio_classification: str
+    annualized_volatility: Decimal
+    downside_volatility: Decimal
+    max_drawdown: Decimal
+    diversification_score: Decimal
+    effective_holdings: Decimal
+    top_sector: str
+    top_sector_weight: Decimal
+    largest_holding: str
+    largest_holding_weight: Decimal
+    indicators_summary: dict[str, Any] = Field(default_factory=dict)
+    methodology_version: str = "1.0.0"
+    data_cutoff: date | None = None
+    snapshot_id: UUID | None = None
+
+
+class InitialHoldingInput(BaseModel):
+    symbol: str = Field(min_length=1, max_length=40)
+    quantity: Decimal = Field(gt=0)
+    buy_price: Decimal = Field(gt=0)
+    buy_date: date | None = None
+
+    @field_validator("symbol")
+    @classmethod
+    def normalize_symbol(cls, value: str) -> str:
+        norm = value.strip().upper()
+        if not norm:
+            raise ValueError("symbol cannot be blank")
+        return norm
+
+
+class EnsurePortfolioRequest(BaseModel):
+    name: str = Field(default="Primary Portfolio", min_length=1, max_length=120)
+    input_mode: InputMode = "quantities"
+    initial_holdings: list[InitialHoldingInput] = Field(default_factory=list)
+

@@ -1,66 +1,158 @@
-"""ML Inference Service Orchestration.
+"""Read-only ML dashboard service backed by persisted runs and predictions."""
 
-Executes point-in-time inference across:
-1. 21-day volatility forecasting (portfolio and holdings).
-2. Market regime detection (NIFTY 50 filtered probabilities).
-3. Holdings anomaly and unusual behaviour detection.
-4. Heuristic risk-score validation and calibration curve.
-"""
+from __future__ import annotations
 
-import logging
+from datetime import date, timedelta
 from typing import Any
 
-import numpy as np
-import pandas as pd  # type: ignore[import-untyped]
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from backend.app.ml.models.anomaly_detector import AnomalyDetector
-from backend.app.ml.models.market_regime import MarketRegimeDetector
-from backend.app.ml.models.risk_score_validator import RiskScoreValidator
-from backend.app.ml.models.volatility_forecast import VolatilityForecaster
-from backend.app.ml.registry import ModelRegistry
-from backend.app.portfolio_analytics.stock_risk import (
-    _load_stock_prices_from_db,
-    _load_stock_prices_yfinance,
-    get_benchmark_returns,
-)
+from backend.app.db.models import ModelPrediction, ModelRun
 
-logger = logging.getLogger(__name__)
+MODEL_TITLES = {
+    "volatility_forecast_21d": "21-Session Volatility Forecast",
+    "market_regime_nifty50": "NIFTY 50 Market Regime",
+    "anomaly_isolation_forest": "NIFTY 200 Anomaly Detection",
+    "risk_score_calibration": "Five-Factor Risk Score Validation",
+}
+USABLE_RUN_STATUSES = {"ready", "baseline_selected"}
+FRESHNESS_DAYS = 7
 
 
-def _load_prices_for_symbols(
-    symbols: list[str], session: Session | None, days: int = 500
-) -> pd.DataFrame:
-    """Helper to load adjusted closing price history for given symbols."""
-    prices_df = pd.DataFrame()
-    if session is not None:
-        try:
-            prices_df = _load_stock_prices_from_db(session, symbols, days=days)
-        except Exception as exc:
-            logger.warning(
-                "DB price load failed (%s); attempting secondary source", type(exc).__name__
-            )
+def _latest_run(session: Session, model_name: str, *, usable: bool = False) -> ModelRun | None:
+    statement = select(ModelRun).where(ModelRun.model_name == model_name)
+    if usable:
+        statement = statement.where(ModelRun.status.in_(USABLE_RUN_STATUSES))
+    return session.scalar(statement.order_by(desc(ModelRun.trained_at)).limit(1))
 
-    if prices_df.empty or len(prices_df.columns) < len(symbols):
-        try:
-            yf_df = _load_stock_prices_yfinance(symbols, period="2y")
-            if not yf_df.empty:
-                prices_df = yf_df.tail(days)
-        except Exception as exc:
-            logger.warning("Secondary price load failed (%s)", type(exc).__name__)
 
-    return prices_df
+def _display_status(run: ModelRun, prediction_date: date | None) -> str:
+    if run.status in {"failed", "insufficient_data", "untrained", "unavailable"}:
+        return run.status
+    if prediction_date is not None and prediction_date < date.today() - timedelta(
+        days=FRESHNESS_DAYS
+    ):
+        return "stale"
+    if run.status == "baseline_selected":
+        return "baseline_selected"
+    return "ready"
+
+
+def _prediction_payload(row: ModelPrediction) -> dict[str, Any]:
+    return {
+        "symbol": row.symbol,
+        "status": row.status,
+        "failure_reason": row.failure_reason,
+        "prediction_date": row.prediction_date,
+        "data_cutoff": row.data_cutoff,
+        "predicted_value": float(row.predicted_value)
+        if row.predicted_value is not None
+        else None,
+        "lower_bound": float(row.lower_bound) if row.lower_bound is not None else None,
+        "upper_bound": float(row.upper_bound) if row.upper_bound is not None else None,
+        "confidence_level": float(row.confidence_level)
+        if row.confidence_level is not None
+        else None,
+        "baseline_value": float(row.baseline_value)
+        if row.baseline_value is not None
+        else None,
+        "model_selected": row.model_selected,
+        "model_version": row.model_version,
+        "methodology_version": row.methodology_version,
+        "horizon_sessions": row.horizon_sessions,
+        "quality_status": row.quality_status,
+        "created_at": row.created_at,
+        "details": row.explanation,
+    }
 
 
 class MlInferenceService:
-    """Orchestrates machine learning risk model inference."""
+    """Dashboard queries only; training and artifact inference live in scheduled jobs."""
 
-    def __init__(self, registry: ModelRegistry | None = None) -> None:
-        self.registry = registry or ModelRegistry()
-        self.vol_forecaster = VolatilityForecaster()
-        self.regime_detector = MarketRegimeDetector()
-        self.anomaly_detector = AnomalyDetector()
-        self.score_validator = RiskScoreValidator()
+    def get_model_statuses(self, session: Session) -> dict[str, dict[str, Any]]:
+        result: dict[str, dict[str, Any]] = {}
+        for model_name, title in MODEL_TITLES.items():
+            latest = _latest_run(session, model_name)
+            serving = _latest_run(session, model_name, usable=True)
+            if latest is None:
+                result[model_name] = {
+                    "model_name": title,
+                    "model_version": None,
+                    "model_type": None,
+                    "status": "untrained",
+                    "data_cutoff": None,
+                    "trained_at": None,
+                    "last_successful_training_date": None,
+                    "test_period": None,
+                    "metrics_vs_baseline": {},
+                    "failure_reason": "no_model_run_recorded",
+                }
+                continue
+            prediction_date = session.scalar(
+                select(func.max(ModelPrediction.prediction_date)).where(
+                    ModelPrediction.run_id == (serving.id if serving else latest.id)
+                )
+            )
+            result[model_name] = {
+                "model_name": title,
+                "model_version": latest.model_version,
+                "model_type": latest.model_type,
+                "status": _display_status(latest, prediction_date),
+                "underlying_training_status": latest.status,
+                "data_cutoff": latest.data_cutoff,
+                "prediction_date": prediction_date,
+                "trained_at": latest.trained_at,
+                "last_successful_training_date": serving.trained_at if serving else None,
+                "training_window": (
+                    f"{latest.training_window_start} to {latest.training_window_end}"
+                    if latest.training_window_start and latest.training_window_end
+                    else None
+                ),
+                "test_period": (
+                    f"{latest.test_window_start} to {latest.test_window_end}"
+                    if latest.test_window_start and latest.test_window_end
+                    else None
+                ),
+                "features_count": len(latest.features),
+                "metrics_vs_baseline": latest.metrics,
+                "baseline_comparison": latest.baseline_comparison,
+                "model_selected": latest.model_selected,
+                "model_selected_rationale": latest.selection_reason,
+                "methodology_version": latest.methodology_version,
+                "configuration_fingerprint": latest.configuration_hash,
+                "artifact_checksum": latest.artifact_checksum,
+                "failure_reason": latest.error_summary,
+            }
+        return result
+
+    def _predictions(
+        self,
+        session: Session,
+        model_name: str,
+        target_type: str,
+        symbols: list[str] | None = None,
+    ) -> tuple[ModelRun | None, list[ModelPrediction]]:
+        run = _latest_run(session, model_name, usable=True)
+        if run is None:
+            return None, []
+        latest_date = session.scalar(
+            select(func.max(ModelPrediction.prediction_date)).where(
+                ModelPrediction.run_id == run.id,
+                ModelPrediction.target_type == target_type,
+            )
+        )
+        if latest_date is None:
+            return run, []
+        statement = select(ModelPrediction).where(
+            ModelPrediction.run_id == run.id,
+            ModelPrediction.target_type == target_type,
+            ModelPrediction.prediction_date == latest_date,
+        )
+        if symbols is not None:
+            statement = statement.where(ModelPrediction.symbol.in_(symbols))
+        rows = session.scalars(statement.order_by(ModelPrediction.symbol)).all()
+        return run, list(rows)
 
     def get_volatility_insights(
         self,
@@ -68,93 +160,75 @@ class MlInferenceService:
         weights: list[float],
         session: Session | None = None,
     ) -> dict[str, Any]:
-        """Compute 21-day forward volatility forecast for portfolio and holdings."""
-        if not symbols:
-            return {"status": "insufficient_data", "error": "No holdings provided"}
-
-        prices_df = _load_prices_for_symbols(symbols, session)
-        if prices_df.empty or len(prices_df) < 60:
-            return {
-                "status": "insufficient_data",
-                "error": "Insufficient historical price sessions for volatility model",
-            }
-
-        bench_returns = get_benchmark_returns(session)
-
-        # 1. Portfolio synthetic price index
-        returns_df = prices_df.pct_change().dropna()
-        avail_syms = [s for s in symbols if s in returns_df.columns]
-        if not avail_syms:
-            return {"status": "insufficient_data", "error": "None of the holdings have price data"}
-
-        # Normalize weights for available symbols
-        w_map = dict(zip(symbols, weights, strict=False))
-        avail_weights = np.array([w_map.get(s, 0.0) for s in avail_syms])
-        w_sum = np.sum(avail_weights)
-        if w_sum > 0:
-            avail_weights = avail_weights / w_sum
-        else:
-            avail_weights = np.ones(len(avail_syms)) / len(avail_syms)
-
-        port_returns = returns_df[avail_syms].dot(avail_weights)
-        port_prices = (1.0 + port_returns).cumprod() * 1000.0
-
-        # Run model for portfolio
-        port_result, port_card = self.vol_forecaster.train_and_evaluate(port_prices, bench_returns)
-
-        # 2. Holding-level forecasts
-        holdings_forecasts = []
-        for sym, w in zip(avail_syms, avail_weights, strict=False):
-            s_price = prices_df[sym].dropna()
-            if len(s_price) >= 60:
-                h_res, _ = self.vol_forecaster.train_and_evaluate(s_price, bench_returns)
-                holdings_forecasts.append(
+        if session is None:
+            return {"status": "unavailable", "error": "database_session_required"}
+        run, rows = self._predictions(
+            session, "volatility_forecast_21d", "volatility_21d", symbols
+        )
+        if run is None:
+            return {"status": "untrained", "error": "no_validated_volatility_model"}
+        by_symbol = {row.symbol: row for row in rows}
+        weight_map = dict(zip(symbols, weights, strict=False))
+        forecasts = []
+        for symbol in symbols:
+            row = by_symbol.get(symbol)
+            if row is None:
+                forecasts.append(
                     {
-                        "symbol": sym,
-                        "weight": round(float(w) * 100.0, 2),
-                        "forecast_volatility": round(h_res.predicted_volatility * 100.0, 2),
-                        "lower_bound_90": round(h_res.lower_bound_90 * 100.0, 2),
-                        "upper_bound_90": round(h_res.upper_bound_90 * 100.0, 2),
-                        "trailing_21d_vol": round(h_res.baseline_trailing_vol * 100.0, 2),
-                        "model_selected": h_res.model_selected,
-                        "vol_change_expected": round(
-                            (h_res.predicted_volatility - h_res.baseline_trailing_vol) * 100.0,
-                            2,
-                        ),
+                        "symbol": symbol,
+                        "weight": weight_map.get(symbol),
+                        "status": "unavailable",
+                        "failure_reason": "no_persisted_prediction_for_latest_model_run",
                     }
                 )
-
+                continue
+            payload = _prediction_payload(row)
+            payload.update(
+                {
+                    "weight": weight_map.get(symbol),
+                    "forecast_volatility": payload["predicted_value"],
+                    "lower_bound_90": payload["lower_bound"],
+                    "upper_bound_90": payload["upper_bound"],
+                    "trailing_21d_vol": payload["baseline_value"],
+                }
+            )
+            forecasts.append(payload)
+        prediction_dates = [row.prediction_date for row in rows]
+        row_statuses = {row.status for row in rows}
+        status = (
+            next(iter(row_statuses))
+            if len(row_statuses) == 1
+            and next(iter(row_statuses)) in {"failed", "insufficient_data", "unavailable"}
+            else _display_status(run, max(prediction_dates) if prediction_dates else None)
+        )
         return {
-            "status": "ready",
-            "portfolio_forecast": {
-                "predicted_volatility_pct": round(port_result.predicted_volatility * 100.0, 2),
-                "lower_bound_90_pct": round(port_result.lower_bound_90 * 100.0, 2),
-                "upper_bound_90_pct": round(port_result.upper_bound_90 * 100.0, 2),
-                "model_selected": port_result.model_selected,
-                "trailing_volatility_pct": round(port_result.baseline_trailing_vol * 100.0, 2),
-                "ewma_volatility_pct": round(port_result.baseline_ewma_vol * 100.0, 2),
-                "har_volatility_pct": round(port_result.baseline_har_vol * 100.0, 2),
-                "evaluations": port_result.evaluations,
-                "feature_importances": port_result.feature_importances,
-                "horizon_days": port_result.horizon_days,
-                "data_cutoff": port_result.data_cutoff,
-            },
-            "holdings_forecasts": holdings_forecasts,
+            "status": status,
+            "data_cutoff": run.data_cutoff,
+            "portfolio_forecast": None,
+            "portfolio_reason": (
+                "Portfolio volatility remains on-demand and is not derived by summing "
+                "stock forecasts."
+            ),
+            "holdings_forecasts": forecasts,
         }
 
     def get_market_regime_insights(self, session: Session | None = None) -> dict[str, Any]:
-        """Compute filtered market regime states for NIFTY 50."""
-        bench_returns = get_benchmark_returns(session)
-        if bench_returns.empty or len(bench_returns) < 60:
-            return {
-                "status": "insufficient_data",
-                "error": "Insufficient benchmark history for regime detection",
-            }
-
-        regime_res, _ = self.regime_detector.fit_predict(bench_returns)
+        if session is None:
+            return {"status": "unavailable", "error": "database_session_required"}
+        run, rows = self._predictions(
+            session, "market_regime_nifty50", "market_regime", ["^NSEI"]
+        )
+        if run is None or not rows:
+            return {"status": "untrained", "error": "no_persisted_regime_output"}
+        row = rows[0]
         return {
-            "status": "ready",
-            "market_regime": regime_res.to_dict(),
+            "status": (
+                row.status
+                if row.status in {"failed", "insufficient_data", "unavailable"}
+                else _display_status(run, row.prediction_date)
+            ),
+            "market_regime": row.explanation,
+            "error": row.failure_reason,
         }
 
     def get_anomaly_insights(
@@ -163,25 +237,55 @@ class MlInferenceService:
         session: Session | None = None,
         company_names: dict[str, str] | None = None,
     ) -> dict[str, Any]:
-        """Detect statistical outliers and unusual cross-sectional holding behaviour."""
-        if not symbols:
-            return {"status": "insufficient_data", "error": "No holdings provided"}
-
-        prices_df = _load_prices_for_symbols(symbols, session)
-        if prices_df.empty or len(prices_df) < 30:
-            return {
-                "status": "insufficient_data",
-                "error": "Insufficient price observations for anomaly detection",
-            }
-
-        bench_returns = get_benchmark_returns(session)
-        res, _ = self.anomaly_detector.detect_anomalies(
-            prices_df, bench_returns, company_names=company_names
+        company_map = company_names or {}
+        if session is None:
+            return {"status": "unavailable", "error": "database_session_required"}
+        run, rows = self._predictions(
+            session, "anomaly_isolation_forest", "anomaly_score", symbols
         )
-
+        if run is None:
+            return {"status": "untrained", "error": "no_validated_anomaly_model"}
+        present = {row.symbol for row in rows}
+        results = []
+        for row in rows:
+            payload = _prediction_payload(row)
+            details = dict(row.explanation or {})
+            payload.update(details)
+            payload["company_name"] = company_map.get(row.symbol or "", row.symbol)
+            payload["anomaly_score"] = payload["predicted_value"]
+            payload["is_anomaly"] = details.get("is_anomaly_ml")
+            payload["rationale"] = details.get("explanation")
+            results.append(payload)
+        results.extend(
+            {
+                "symbol": symbol,
+                "status": "unavailable",
+                "failure_reason": "no_persisted_anomaly_result",
+            }
+            for symbol in symbols
+            if symbol not in present
+        )
+        prediction_dates = [row.prediction_date for row in rows]
+        row_statuses = {row.status for row in rows}
+        output_status = (
+            next(iter(row_statuses))
+            if len(row_statuses) == 1
+            and next(iter(row_statuses)) in {"failed", "insufficient_data", "unavailable"}
+            else _display_status(run, max(prediction_dates) if prediction_dates else None)
+        )
         return {
-            "status": "ready",
-            "anomaly_analysis": res.to_dict(),
+            "status": output_status,
+            "anomaly_analysis": {
+                "data_cutoff": run.data_cutoff,
+                "methodology": run.methodology_version,
+                "results": results,
+                "unusual_holdings": results,
+                "flag_rate_pct": run.metrics.get("latest_flag_rate_pct"),
+                "stability_score": run.metrics.get("temporal_stability_jaccard"),
+                "disclaimer": (
+                    "Anomaly scores describe unusual observed behaviour and do not predict loss."
+                ),
+            },
         }
 
     def get_risk_score_validation_insights(
@@ -189,24 +293,16 @@ class MlInferenceService:
         symbols: list[str],
         session: Session | None = None,
     ) -> dict[str, Any]:
-        """Validate 5-factor heuristic stock risk score against forward volatility & drawdowns."""
-        bench_returns = get_benchmark_returns(session)
-        if bench_returns.empty or len(bench_returns) < 84:
-            return {
-                "status": "insufficient_data",
-                "error": "Insufficient benchmark return series for score validation",
-            }
-
-        # Build proxy historical score series from benchmark rolling stats
-        # (vol 30%, down 25%, mdd 20%, beta 15%, instab 10%)
-        roll_vol = bench_returns.rolling(60, min_periods=20).std() * np.sqrt(252.0)
-        norm_vol = np.clip((roll_vol - 0.10) / (0.35 - 0.10) * 100.0, 0, 100)
-        synth_prices = (1.0 + bench_returns).cumprod() * 1000.0
-
-        res, _ = self.score_validator.validate_score(norm_vol.fillna(50.0).values, synth_prices)
+        del symbols
+        if session is None:
+            return {"status": "unavailable", "error": "database_session_required"}
+        run = _latest_run(session, "risk_score_calibration")
+        if run is None:
+            return {"status": "untrained", "error": "no_risk_score_validation_run"}
         return {
-            "status": "ready",
-            "score_validation": res.to_dict(),
+            "status": run.status,
+            "score_validation": run.metrics if run.status in USABLE_RUN_STATUSES else None,
+            "error": run.error_summary,
         }
 
     def get_comprehensive_ai_insights(
@@ -216,27 +312,21 @@ class MlInferenceService:
         session: Session | None = None,
         company_names: dict[str, str] | None = None,
     ) -> dict[str, Any]:
-        """Consolidated payload for the 'AI Insights' tab."""
-        model_statuses = self.registry.get_all_model_statuses()
-        vol_insights = self.get_volatility_insights(symbols, weights, session)
-        regime_insights = self.get_market_regime_insights(session)
-        anomaly_insights = self.get_anomaly_insights(symbols, session, company_names=company_names)
-        score_val_insights = self.get_risk_score_validation_insights(symbols, session)
-
+        if session is None:
+            raise ValueError("database_session_required")
         return {
-            "model_statuses": model_statuses,
-            "volatility": vol_insights,
-            "regime": regime_insights,
-            "anomalies": anomaly_insights,
-            "score_validation": score_val_insights,
+            "model_statuses": self.get_model_statuses(session),
+            "volatility": self.get_volatility_insights(symbols, weights, session),
+            "regime": self.get_market_regime_insights(session),
+            "anomalies": self.get_anomaly_insights(
+                symbols, session, company_names=company_names
+            ),
+            "score_validation": self.get_risk_score_validation_insights(symbols, session),
             "governance": {
-                "methodology_version": "2026.1",
+                "methodology_version": "ml-risk-v2",
                 "disclaimer": (
-                    "PRISM AI Insights provides diagnostic risk forecasts and classifications. "
-                    "All outputs are model estimates of risk "
-                    "(volatility, regime, statistical outliers). "
-                    "PRISM strictly does NOT provide price-direction predictions, "
-                    "return forecasts, or buy/sell signals."
+                    "Persisted point-in-time risk estimates only. PRISM does NOT forecast "
+                    "price direction, returns, or trading actions."
                 ),
                 "is_model_estimate": True,
             },

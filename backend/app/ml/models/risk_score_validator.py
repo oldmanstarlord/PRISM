@@ -40,13 +40,13 @@ class ScoreCalibrationPoint:
 
 @dataclass(slots=True)
 class RiskScoreValidationResult:
-    spearman_ic_vol_21d: float
-    spearman_ic_vol_63d: float
-    spearman_ic_drawdown_21d: float
-    spearman_ic_drawdown_63d: float
-    quintile_vol_spread_21d: float  # Q5 - Q1 (% annualized)
-    quintile_drawdown_spread_21d: float  # Q5 - Q1 (% decline)
-    auc_worst_quintile_drawdown: float
+    spearman_ic_vol_21d: float | None
+    spearman_ic_vol_63d: float | None
+    spearman_ic_drawdown_21d: float | None
+    spearman_ic_drawdown_63d: float | None
+    quintile_vol_spread_21d: float | None  # Q5 - Q1 (% annualized)
+    quintile_drawdown_spread_21d: float | None  # Q5 - Q1 (% decline)
+    auc_worst_quintile_drawdown: float | None
     calibration_curve: list[dict[str, Any]]
     quintile_volatility_means: dict[str, float]
     has_measured_skill: bool
@@ -54,9 +54,11 @@ class RiskScoreValidationResult:
     data_cutoff: str
     evaluated_observations: int
     governance_notice: str
+    status: str = "ready"
+    failure_reason: str | None = None
 
     @property
-    def worst_quintile_auc(self) -> float:
+    def worst_quintile_auc(self) -> float | None:
         return self.auc_worst_quintile_drawdown
 
     @property
@@ -74,11 +76,11 @@ class RiskScoreValidationResult:
                 "score_bracket": c.get("score_bucket", "Q"),
                 "min_score": float(c.get("score_bucket", "0-20").split("-")[0]),
                 "max_score": float(c.get("score_bucket", "0-20").split("-")[1]),
-                "historical_drawdown_freq_pct": c.get("historical_drawdown_frequency_pct", 0.0),
+                "historical_drawdown_freq_pct": c.get("historical_drawdown_frequency_pct"),
                 "historical_drawdown_frequency_pct": c.get(
-                    "historical_drawdown_frequency_pct", 0.0
+                    "historical_drawdown_frequency_pct"
                 ),
-                "sample_size": c.get("sample_count", 0),
+                "sample_size": c.get("sample_count"),
             }
             for c in self.calibration_curve
         ]
@@ -110,72 +112,30 @@ class RiskScoreValidator:
             n = min_len
 
         if n < 84:
-            # Need at least ~4 months of data
-            fallback = RiskScoreValidationResult(
-                spearman_ic_vol_21d=0.22,
-                spearman_ic_vol_63d=0.26,
-                spearman_ic_drawdown_21d=0.19,
-                spearman_ic_drawdown_63d=0.24,
-                quintile_vol_spread_21d=8.4,
-                quintile_drawdown_spread_21d=5.2,
-                auc_worst_quintile_drawdown=0.64,
-                calibration_curve=[
-                    {
-                        "score_bucket": "0-20",
-                        "score_midpoint": 10.0,
-                        "historical_drawdown_frequency_pct": 4.5,
-                        "average_forward_volatility_pct": 14.2,
-                        "sample_count": 20,
-                    },
-                    {
-                        "score_bucket": "20-40",
-                        "score_midpoint": 30.0,
-                        "historical_drawdown_frequency_pct": 8.0,
-                        "average_forward_volatility_pct": 17.5,
-                        "sample_count": 20,
-                    },
-                    {
-                        "score_bucket": "40-60",
-                        "score_midpoint": 50.0,
-                        "historical_drawdown_frequency_pct": 14.5,
-                        "average_forward_volatility_pct": 21.0,
-                        "sample_count": 20,
-                    },
-                    {
-                        "score_bucket": "60-80",
-                        "score_midpoint": 70.0,
-                        "historical_drawdown_frequency_pct": 22.0,
-                        "average_forward_volatility_pct": 26.5,
-                        "sample_count": 20,
-                    },
-                    {
-                        "score_bucket": "80-100",
-                        "score_midpoint": 90.0,
-                        "historical_drawdown_frequency_pct": 34.0,
-                        "average_forward_volatility_pct": 34.2,
-                        "sample_count": 20,
-                    },
-                ],
-                quintile_volatility_means={
-                    "q1": 14.2,
-                    "q2": 17.5,
-                    "q3": 21.0,
-                    "q4": 26.5,
-                    "q5": 34.2,
-                },
-                has_measured_skill=True,
-                skill_verdict=(
-                    "Historical empirical sample shows positive ranking correlation (IC: +0.22). "
-                    "Higher score tiers experienced greater forward volatility and drawdowns."
-                ),
+            unavailable = RiskScoreValidationResult(
+                spearman_ic_vol_21d=None,
+                spearman_ic_vol_63d=None,
+                spearman_ic_drawdown_21d=None,
+                spearman_ic_drawdown_63d=None,
+                quintile_vol_spread_21d=None,
+                quintile_drawdown_spread_21d=None,
+                auc_worst_quintile_drawdown=None,
+                calibration_curve=[],
+                quintile_volatility_means={},
+                has_measured_skill=False,
+                skill_verdict="Insufficient complete forward observations for validation.",
                 data_cutoff=str(p_series.index[-1]) if n > 0 else "unknown",
                 evaluated_observations=n,
-                governance_notice=(
-                    "Historical empirical frequency based on historical calibration. "
-                    "NOT a probability of future loss."
-                ),
+                governance_notice="No validation statistics were estimated.",
+                status="insufficient_data",
+                failure_reason="requires_at_least_84_aligned_observations",
             )
-            return fallback, {}
+            return unavailable, {
+                "name": "risk_score_calibration",
+                "status": "insufficient_data",
+                "failure_reason": unavailable.failure_reason,
+                "evaluated_observations": n,
+            }
 
         # Compute forward targets
         simple_returns = p_series.pct_change().dropna()
@@ -191,13 +151,36 @@ class RiskScoreValidator:
         valid_idx = np.where(valid_mask.values[: len(scores_arr)])[0]
 
         if len(valid_idx) < 30:
-            valid_idx = np.arange(len(scores_arr))
+            insufficient = RiskScoreValidationResult(
+                spearman_ic_vol_21d=None,
+                spearman_ic_vol_63d=None,
+                spearman_ic_drawdown_21d=None,
+                spearman_ic_drawdown_63d=None,
+                quintile_vol_spread_21d=None,
+                quintile_drawdown_spread_21d=None,
+                auc_worst_quintile_drawdown=None,
+                calibration_curve=[],
+                quintile_volatility_means={},
+                has_measured_skill=False,
+                skill_verdict="Insufficient complete forward targets for validation.",
+                data_cutoff=str(p_series.index[-1]),
+                evaluated_observations=len(valid_idx),
+                governance_notice="No missing target was imputed.",
+                status="insufficient_data",
+                failure_reason="requires_at_least_30_complete_forward_targets",
+            )
+            return insufficient, {
+                "name": "risk_score_calibration",
+                "status": "insufficient_data",
+                "failure_reason": insufficient.failure_reason,
+                "evaluated_observations": len(valid_idx),
+            }
 
         s_val = scores_arr[valid_idx]
-        v21_val = fwd_vol_21.iloc[valid_idx].fillna(0.18).values
-        v63_val = fwd_vol_63.iloc[valid_idx].fillna(0.20).values
-        m21_val = fwd_mdd_21.iloc[valid_idx].fillna(0.06).values
-        m63_val = fwd_mdd_63.iloc[valid_idx].fillna(0.10).values
+        v21_val = fwd_vol_21.iloc[valid_idx].values
+        v63_val = fwd_vol_63.iloc[valid_idx].values
+        m21_val = fwd_mdd_21.iloc[valid_idx].values
+        m63_val = fwd_mdd_63.iloc[valid_idx].values
 
         # 1. Spearman Rank IC
         ic_v21 = spearman_ic(s_val, v21_val)
@@ -224,9 +207,7 @@ class RiskScoreValidator:
                 freq = float(np.mean(binary_drawdown[mask]) * 100.0)
                 mean_vol = float(np.mean(v21_val[mask]) * 100.0)
             else:
-                # Monotonic heuristic fallback
-                freq = float(low * 0.35)
-                mean_vol = float(12.0 + low * 0.22)
+                continue
             curve.append(
                 {
                     "score_bucket": f"{low}-{high}",

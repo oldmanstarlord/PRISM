@@ -26,7 +26,7 @@ import { useNavigate } from "react-router-dom";
 
 import AppShell from "./AppShell";
 import { fetchJson } from "./api";
-import type { Horizon, PipelineStatus, RankingsResponse } from "./types";
+import type { DataCoverageResponse, Horizon, PipelineStatus, RankingsResponse } from "./types";
 
 const bandColor = { normal: "default", moderate: "warning", strong: "error", extreme: "error" } as const;
 
@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
+  const [coverage, setCoverage] = useState<DataCoverageResponse | null>(null);
 
   // Search & Filter & Sort state
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,26 +53,50 @@ export default function Dashboard() {
   const [sortField, setSortField] = useState<SortField>("magnitude");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [filterPreset, setFilterPreset] = useState<FilterPreset>("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const loadRankings = (signal?: AbortSignal) => {
+    setIsRefreshing(true);
     fetchJson<RankingsResponse>(
       `/sector-divergence/latest/rankings?horizon=${horizon}&limit=200`,
-      controller.signal,
+      signal ?? new AbortController().signal,
     )
       .then(setData)
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Unable to load results");
       })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+      .finally(() => {
+        setLoading(false);
+        setIsRefreshing(false);
+      });
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadRankings(controller.signal);
+    // Auto-refresh rankings every 30 seconds for live updates
+    const timer = setInterval(() => {
+      loadRankings();
+    }, 30_000);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+    };
   }, [horizon]);
 
   useEffect(() => {
     const controller = new AbortController();
     fetchJson<PipelineStatus>("/pipeline/status", controller.signal)
       .then(setPipeline)
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchJson<DataCoverageResponse>("/market-data/coverage/latest", controller.signal)
+      .then(setCoverage)
       .catch(() => undefined);
     return () => controller.abort();
   }, []);
@@ -166,6 +191,37 @@ export default function Dashboard() {
           </Alert>
         )}
 
+        {coverage && (
+          <Paper sx={{ p: 2.5 }} aria-label="NIFTY 200 data coverage">
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: "column", md: "row" }} sx={{ gap: 2, justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="h6">NIFTY 200 data coverage</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Data date: {coverage.data_date ?? "unavailable"}; status: {coverage.status}
+                  </Typography>
+                </Box>
+                {coverage.universe_count !== undefined && (
+                  <Typography variant="body2">
+                    Verified {coverage.verified_ticker_count}/{coverage.universe_count} · History {coverage.enough_history_count}/{coverage.universe_count} · Quality pass {coverage.quality_pass_count}/{coverage.universe_count} · Metrics {coverage.metrics_ready_count}/{coverage.universe_count} · Fundamentals {coverage.fundamentals_ready_count}/{coverage.universe_count}
+                  </Typography>
+                )}
+              </Stack>
+              {coverage.excluded_symbols.length > 0 && (
+                <Alert severity="warning">
+                  {coverage.excluded_symbols.length} unavailable: {coverage.excluded_symbols.slice(0, 8).map((item) => `${item.symbol} (${item.reasons.join(", ")})`).join("; ")}
+                  {coverage.excluded_symbols.length > 8 ? "; …" : ""}
+                </Alert>
+              )}
+              {coverage.spot_checks?.status === "unavailable" && (
+                <Typography variant="caption" color="text.secondary">
+                  Independent spot-check: unavailable ({coverage.spot_checks.reason}).
+                </Typography>
+              )}
+            </Stack>
+          </Paper>
+        )}
+
         {/* ─── Top Header with Days Tracker ─── */}
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -179,7 +235,7 @@ export default function Dashboard() {
               Select a company to inspect its exact peer comparison.
             </Typography>
           </Box>
-          <Box>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
             <FormControl size="small" sx={{ minWidth: 190 }}>
               <InputLabel id="horizon-label">Days Tracker (Horizon)</InputLabel>
               <Select
@@ -197,8 +253,79 @@ export default function Dashboard() {
                 <MenuItem value={20}>20 trading days</MenuItem>
               </Select>
             </FormControl>
-          </Box>
+
+            <Button
+              size="small"
+              onClick={() => loadRankings()}
+              disabled={isRefreshing}
+              startIcon={isRefreshing ? <CircularProgress size={12} sx={{ color: "#F9EBD7" }} /> : undefined}
+              sx={{
+                fontSize: "0.76rem",
+                fontWeight: 700,
+                color: "#F9EBD7",
+                bgcolor: "#046A38",
+                px: 1.5,
+                py: 0.8,
+                borderRadius: 0,
+                "&:hover": { bgcolor: "#034d28" },
+              }}
+            >
+              {isRefreshing ? "Syncing…" : "Refresh"}
+            </Button>
+          </Stack>
         </Stack>
+
+        {/* ─── Institutional Guide: How Sector Divergence Works ─── */}
+        <Paper
+          sx={{
+            p: 2.5,
+            borderRadius: 0,
+            border: "none",
+            bgcolor: "#F9EBD7",
+            boxShadow: "0 4px 12px rgba(41,45,42,0.10)",
+          }}
+        >
+          <Typography component="div" variant="subtitle2" sx={{ fontWeight: 800, color: "#292D2A", mb: 0.5 }}>
+            💡 Institutional Guide: Cross-Sectional Drift & Horizon Dynamics
+          </Typography>
+          <Typography variant="caption" sx={{ color: "#686B64", display: "block", mb: 1.5 }}>
+            Sector divergence identifies individual stocks decoupling from their industry peers to distinguish stock-specific idiosyncratic alpha from broad sector tides.
+          </Typography>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 1.5 }}>
+            <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
+                1-Day Horizon
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
+                Captures intraday/overnight earnings beats, guidance surprises, or targeted news shocks before peer diffusion.
+              </Typography>
+            </Box>
+            <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
+                5-Day Horizon
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
+                Reflects weekly swing momentum, sector-level index rebalancing, and intermediate institutional positioning.
+              </Typography>
+            </Box>
+            <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
+                20-Day Horizon
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
+                Measures persistent monthly structural divergence, separating secular multi-week alpha from short-term market noise.
+              </Typography>
+            </Box>
+            <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
+                Z-Score (Sigma σ)
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
+                Standard deviations away from leave-one-out peer median. |Z| ≥ 2.0σ signals rare (top 5%) structural dislocation.
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
 
         {error && <Alert severity="warning">Results are not available ({error}).</Alert>}
 

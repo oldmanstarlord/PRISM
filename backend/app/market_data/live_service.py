@@ -233,65 +233,12 @@ def _fallback_from_database(symbol: str, session: Session) -> LiveQuote | None:
             error=None,
         )
     except Exception as exc:
-        logger.warning(
-            "Database quote query failed for symbol %s: %s", symbol, type(exc).__name__
-        )
+        logger.warning("Database quote query failed for symbol %s: %s", symbol, type(exc).__name__)
         return None
 
 
-def fetch_quote(
-    symbol: str,
-    session: Session | None = None,
-    force_refresh: bool = False,
-) -> LiveQuote:
-    """Fetch quote for a single symbol.
-
-    In API request paths (when session is provided), quotes are strictly served
-    from the persisted database with zero live network calls.
-    """
-    raw_symbol, yf_symbol = normalize_symbol_for_yahoo(symbol)
-
-    if not force_refresh:
-        cached = _cache.get_quote(raw_symbol)
-        if cached:
-            return cached
-
-    # When database session is available, serve from persisted database only
-    if session is not None:
-        db_quote = _fallback_from_database(raw_symbol, session)
-        if db_quote is not None:
-            _cache.set_quote(raw_symbol, db_quote)
-            return db_quote
-
-        # Symbol not in database: return explicit unavailable state without calling live provider
-        error_quote = LiveQuote(
-            symbol=raw_symbol,
-            ticker=yf_symbol,
-            company_name=raw_symbol,
-            sector=None,
-            industry=None,
-            latest_price=None,
-            previous_close=None,
-            change=None,
-            change_percent=None,
-            day_open=None,
-            day_high=None,
-            day_low=None,
-            volume=None,
-            currency="INR",
-            as_of=datetime.now(UTC).isoformat(),
-            quote_type="unknown",
-            is_market_open=None,
-            source="unavailable",
-            data_quality="error",
-            error=(
-                f"Price series not found in database for {raw_symbol}. "
-                "Verified ingestion via pipeline required."
-            ),
-        )
-        return error_quote
-
-    # Outside request paths without DB session (e.g. standalone scripts or mocked tests)
+def _fetch_from_yfinance(raw_symbol: str, yf_symbol: str) -> LiveQuote | None:
+    """Fetch live quote from yfinance."""
     try:
         ticker = yf.Ticker(yf_symbol)
         fast = ticker.fast_info
@@ -325,7 +272,7 @@ def fetch_quote(
             fast_high = getattr(fast, "day_high", None)
             fast_low = getattr(fast, "day_low", None)
             fast_vol = getattr(fast, "last_volume", None)
-            quote = LiveQuote(
+            return LiveQuote(
                 symbol=raw_symbol,
                 ticker=yf_symbol,
                 company_name=company_name or raw_symbol,
@@ -347,10 +294,47 @@ def fetch_quote(
                 data_quality="live",
                 error=None,
             )
-            _cache.set_quote(raw_symbol, quote)
-            return quote
     except Exception as exc:
         logger.info("yfinance quote lookup failed for %s: %s", yf_symbol, exc)
+    return None
+
+
+def fetch_quote(
+    symbol: str,
+    session: Session | None = None,
+    force_refresh: bool = False,
+) -> LiveQuote:
+    """Fetch quote for a single symbol.
+
+    Prioritizes fresh live quotes from yfinance when force_refresh=True,
+    with clean database persistence fallback.
+    """
+    raw_symbol, yf_symbol = normalize_symbol_for_yahoo(symbol)
+
+    if not force_refresh:
+        cached = _cache.get_quote(raw_symbol)
+        if cached:
+            return cached
+
+    # When force_refresh is requested, attempt live yfinance quote first
+    if force_refresh:
+        live_q = _fetch_from_yfinance(raw_symbol, yf_symbol)
+        if live_q is not None and live_q.latest_price is not None:
+            _cache.set_quote(raw_symbol, live_q)
+            return live_q
+
+    # Persisted database query
+    if session is not None:
+        db_quote = _fallback_from_database(raw_symbol, session)
+        if db_quote is not None:
+            _cache.set_quote(raw_symbol, db_quote)
+            return db_quote
+
+    # Live lookup if not found in database or session is None
+    live_q = _fetch_from_yfinance(raw_symbol, yf_symbol)
+    if live_q is not None:
+        _cache.set_quote(raw_symbol, live_q)
+        return live_q
 
     return LiveQuote(
         symbol=raw_symbol,
@@ -372,7 +356,7 @@ def fetch_quote(
         is_market_open=None,
         source="unavailable",
         data_quality="error",
-        error=f"Price unavailable for {raw_symbol}.",
+        error=f"Price unavailable for {raw_symbol}. Price series not found in database. Verified ingestion via pipeline required.",
     )
 
 
@@ -456,9 +440,7 @@ def fetch_benchmark(
             _cache.set_benchmark(quote)
             return quote
     except Exception as exc:
-        logger.warning(
-            "Failed to fetch benchmark %s: %s", BENCHMARK_SYMBOL, type(exc).__name__
-        )
+        logger.warning("Failed to fetch benchmark %s: %s", BENCHMARK_SYMBOL, type(exc).__name__)
 
     return BenchmarkQuote(
         symbol=BENCHMARK_SYMBOL,
@@ -574,9 +556,7 @@ def fetch_historical_ohlcv(
                     _cache.set_history(raw_symbol, period, bars)
                     return [b.to_dict() for b in bars]
         except Exception as exc:
-            logger.warning(
-                "Database OHLCV query failed for %s: %s", raw_symbol, type(exc).__name__
-            )
+            logger.warning("Database OHLCV query failed for %s: %s", raw_symbol, type(exc).__name__)
 
     # Outside request path without DB session (e.g. tests)
     try:
@@ -612,9 +592,7 @@ def fetch_historical_ohlcv(
         _cache.set_history(raw_symbol, period, bars_list)
         return [b.to_dict() for b in bars_list]
     except Exception as exc:
-        logger.error(
-            "Failed to fetch historical OHLCV for %s: %s", yf_symbol, type(exc).__name__
-        )
+        logger.error("Failed to fetch historical OHLCV for %s: %s", yf_symbol, type(exc).__name__)
         return []
 
 

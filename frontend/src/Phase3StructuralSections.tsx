@@ -87,12 +87,12 @@ import type {
 } from "./types";
 
 export interface StructuralOverviewFinancials {
-  marketValue: number;
-  investedCost: number;
-  cash: number;
-  realizedPnl: number;
-  unrealizedPnl: number;
-  returnPct: number;
+  marketValue: number | null;
+  investedCost: number | null;
+  cash: number | null;
+  realizedPnl: number | null;
+  unrealizedPnl: number | null;
+  returnPct: number | null;
   volatility?: number | null;
   maxDrawdown?: number | null;
   concentrationHhi?: number | null;
@@ -171,25 +171,24 @@ export function StructuralMonitoringDashboard({
 
   // Derived Financials for the 10-stat Executive Strip
   const mktVal = financials?.marketValue ?? monitoring.portfolio_value;
-  const invCost = financials?.investedCost ?? (mktVal / Math.max(0.01, 1 + monitoring.overall_return / 100));
-  const cashVal = financials?.cash ?? 0;
-  const realizedPnl = financials?.realizedPnl ?? 0;
-  const unrealizedPnl = financials?.unrealizedPnl ?? (mktVal - invCost);
+  const invCost = financials?.investedCost ?? null;
+  const unrealizedPnl = financials?.unrealizedPnl ?? null;
   const returnPct = financials?.returnPct ?? monitoring.overall_return;
   const annualVol = financials?.volatility != null
     ? financials.volatility * 100
     : analysis?.performance?.annualized_volatility != null
     ? analysis.performance.annualized_volatility * 100
-    : monitoring.portfolio_risk_score * 0.22;
+    : null;
   const maxDd = financials?.maxDrawdown != null
     ? financials.maxDrawdown * 100
     : analysis?.performance?.max_drawdown != null
     ? analysis.performance.max_drawdown * 100
     : null;
-  const concHhi = financials?.concentrationHhi ?? analysis?.concentration?.holding_hhi ?? 0.125;
   const freshness = financials?.dataFreshness ?? monitoring.data_freshness;
-  const asOf = financials?.asOfDate ?? new Date().toISOString().slice(0, 10);
-  const period = financials?.period ?? "1Y (Daily, 252d window)";
+  const asOf = financials?.asOfDate ?? analysis?.envelope.data_cutoff ?? null;
+  const period = financials?.period ?? (
+    analysis ? `${analysis.envelope.lookback_start} to ${analysis.envelope.data_cutoff}` : null
+  );
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -218,12 +217,12 @@ export function StructuralMonitoringDashboard({
                 </Typography>
                 <Chip
                   size="small"
-                  label={`As of: ${asOf}`}
+                  label={`As of: ${asOf ?? "Unavailable"}`}
                   sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.72rem", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }}
                 />
                 <Chip
                   size="small"
-                  label={`Period: ${period}`}
+                  label={`Period: ${period ?? "Unavailable"}`}
                   sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.72rem", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }}
                 />
                 <Chip
@@ -306,7 +305,9 @@ export function StructuralMonitoringDashboard({
                 Invested Cost
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 800, color: "#292D2A", fontFamily: "JetBrains Mono" }}>
-                ₹{invCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                {invCost == null
+                  ? "Unavailable"
+                  : `₹${invCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
               </Typography>
               <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
                 Cost basis (WAC)
@@ -323,21 +324,25 @@ export function StructuralMonitoringDashboard({
                 sx={{
                   fontWeight: 800,
                   fontFamily: "JetBrains Mono",
-                  color: unrealizedPnl >= 0 ? "#046A38" : "#E34222",
+                  color: unrealizedPnl == null || unrealizedPnl >= 0 ? "#046A38" : "#E34222",
                 }}
               >
-                {unrealizedPnl >= 0 ? "+" : ""}₹{unrealizedPnl.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                {unrealizedPnl == null
+                  ? "Unavailable"
+                  : `${unrealizedPnl >= 0 ? "+" : ""}₹${unrealizedPnl.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
               </Typography>
               <Typography
                 variant="caption"
                 sx={{
-                  color: returnPct >= 0 ? "#046A38" : "#E34222",
+                  color: returnPct == null || returnPct >= 0 ? "#046A38" : "#E34222",
                   fontWeight: 700,
                   fontSize: "0.72rem",
                   display: "block",
                 }}
               >
-                Return (% Total): {returnPct >= 0 ? "+" : ""}{returnPct.toFixed(2)}%
+                Return (% Total): {returnPct == null
+                  ? "Unavailable"
+                  : `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`}
               </Typography>
             </Box>
 
@@ -347,7 +352,7 @@ export function StructuralMonitoringDashboard({
                 Ann. Volatility
               </Typography>
               <Typography variant="h6" sx={{ fontWeight: 800, color: "#292D2A", fontFamily: "JetBrains Mono" }}>
-                {annualVol.toFixed(1)}%
+                {annualVol == null ? "Unavailable" : `${annualVol.toFixed(1)}%`}
               </Typography>
               <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
                 252d empirical risk (σ)
@@ -1756,9 +1761,78 @@ export function FutureNewsSignalsSection({
                       </Typography>
                     )}
 
+                    {/* ─── 60-70 WORD EXPLAINABLE ANALYSIS PANEL ─── */}
+                    <Box
+                      sx={{
+                        my: 1.5,
+                        p: 2,
+                        bgcolor: "#F9EBD7",
+                        borderLeft: "4px solid",
+                        borderColor: isPos ? "#046A38" : isNeg ? "#B8321A" : "#8A5A00",
+                        boxShadow: "0 2px 6px rgba(41,45,42,0.06)",
+                      }}
+                    >
+                      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontWeight: 800,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            color: isPos ? "#046A38" : isNeg ? "#B8321A" : "#8A5A00",
+                          }}
+                        >
+                          Explainable Market & Risk Breakdown (~60–70 Words)
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={isPos ? "BULLISH CATALYST" : isNeg ? "DOWNSIDE VOLATILITY" : "NEUTRAL / MONITOR"}
+                          sx={{
+                            height: 20,
+                            fontSize: "0.62rem",
+                            fontWeight: 700,
+                            borderRadius: 0,
+                            bgcolor: isPos ? "#DCE9DE" : isNeg ? "#F6D9CC" : "#E3D7C4",
+                            color: isPos ? "#046A38" : isNeg ? "#B8321A" : "#292D2A",
+                          }}
+                        />
+                      </Stack>
+
+                      <Stack spacing={1}>
+                        <Box>
+                          <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
+                            📰 What The News Is:
+                          </Typography>
+                          <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
+                            {art.what_the_news_is || (art.explanation ? art.explanation.split(" · ")[0] : art.headline)}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
+                            📊 Market & Sector Impact:
+                          </Typography>
+                          <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
+                            {art.market_and_sector_impact || (isPos ? "Expected to stimulate near-term upward valuation expansion across the sector." : isNeg ? "Induces downward pricing pressure and elevated volatility across peer holdings." : "Prompts a cautious wait-and-see reaction across the sector with limited systemic spillover.")}
+                          </Typography>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="caption" sx={{ fontWeight: 750, color: "#046A38", display: "inline-block", mr: 0.75 }}>
+                            💡 Actionable Advice (What You Should Do):
+                          </Typography>
+                          <Typography variant="body2" sx={{ display: "inline", color: "#046A38", fontWeight: 600, fontSize: "0.83rem", lineHeight: 1.5 }}>
+                            {art.actionable_advice || (isPos ? "Maintain existing allocation to participate in momentum; maintain trailing stop-losses." : isNeg ? "Avoid panic-selling; review downside stop-losses and trim if sector ceiling is breached." : "Maintain disciplined hold; monitor upcoming quarterly operational execution without knee-jerk adjustments.")}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Box>
+
                     <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: 1, pt: 1, borderTop: "1px solid rgba(41,45,42,0.06)" }}>
                       <Typography variant="caption" sx={{ color: "#686B64" }}>
-                        {art.explanation || "Diagnostic news entity linkage"}
+                        {art.affected_holdings && art.affected_holdings.length > 0
+                          ? `Portfolio Exposure: ${art.affected_holdings.join(", ")} (${art.holding_exposure_weight_pct.toFixed(1)}% of capital)`
+                          : (art.explanation ? `Synthesis: ${art.explanation}` : "Diagnostic news entity linkage")}
                       </Typography>
                       <Button
                         size="small"
@@ -1816,9 +1890,76 @@ export function FutureNewsSignalsSection({
                       art.headline
                     )}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem", mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem", mt: 0.5, mb: 1 }}>
                     {art.summary}
                   </Typography>
+
+                  {/* ─── 60-70 WORD EXPLAINABLE ANALYSIS PANEL ─── */}
+                  <Box
+                    sx={{
+                      my: 1.5,
+                      p: 2,
+                      bgcolor: "#F9EBD7",
+                      borderLeft: "4px solid",
+                      borderColor: art.sentiment_label === "positive" ? "#046A38" : art.sentiment_label === "negative" ? "#B8321A" : "#8A5A00",
+                      boxShadow: "0 2px 6px rgba(41,45,42,0.06)",
+                    }}
+                  >
+                    <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          fontWeight: 800,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: art.sentiment_label === "positive" ? "#046A38" : art.sentiment_label === "negative" ? "#B8321A" : "#8A5A00",
+                        }}
+                      >
+                        Explainable Market & Risk Breakdown (~60–70 Words)
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={art.sentiment_label === "positive" ? "BULLISH CATALYST" : art.sentiment_label === "negative" ? "DOWNSIDE VOLATILITY" : "NEUTRAL / MONITOR"}
+                        sx={{
+                          height: 20,
+                          fontSize: "0.62rem",
+                          fontWeight: 700,
+                          borderRadius: 0,
+                          bgcolor: art.sentiment_label === "positive" ? "#DCE9DE" : art.sentiment_label === "negative" ? "#F6D9CC" : "#E3D7C4",
+                          color: art.sentiment_label === "positive" ? "#046A38" : art.sentiment_label === "negative" ? "#B8321A" : "#292D2A",
+                        }}
+                      />
+                    </Stack>
+
+                    <Stack spacing={1}>
+                      <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
+                          📰 What The News Is:
+                        </Typography>
+                        <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
+                          {art.what_the_news_is || art.summary || art.headline}
+                        </Typography>
+                      </Box>
+
+                      <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
+                          📊 Market & Sector Impact:
+                        </Typography>
+                        <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
+                          {art.market_and_sector_impact || (art.sentiment_label === "positive" ? "Provides positive sentiment across sector peers, supporting valuation momentum." : art.sentiment_label === "negative" ? "Induces downward pricing pressure across sector peers, elevating near-term volatility." : "Prompts a rangebound wait-and-see posture across sector competitors.")}
+                        </Typography>
+                      </Box>
+
+                      <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 750, color: "#046A38", display: "inline-block", mr: 0.75 }}>
+                          💡 Actionable Advice (What You Should Do):
+                        </Typography>
+                        <Typography variant="body2" sx={{ display: "inline", color: "#046A38", fontWeight: 600, fontSize: "0.83rem", lineHeight: 1.5 }}>
+                          {art.actionable_advice || (art.sentiment_label === "positive" ? "Hold positions to capture trend upside; maintain disciplined trailing stops." : art.sentiment_label === "negative" ? "Exercise caution; avoid panic selling and review position size against your risk ceiling." : "Hold steady without reactive adjustments; monitor upcoming disclosures.")}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Box>
                 </Paper>
               ))
             )}

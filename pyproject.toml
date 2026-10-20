@@ -8,6 +8,7 @@ dependencies = [
   "alembic>=1.16",
   "fastapi>=0.116",
   "httpx>=0.28",
+  "joblib>=1.4",
   "numpy>=2.2",
   "pandas>=2.2",
   "psycopg[binary,pool]>=3.2",
@@ -37,7 +38,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers --basetemp=.pytest_tmp"
 markers = [
   "integration: requires an explicitly configured PostgreSQL test database",
 ]

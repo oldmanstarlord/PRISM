@@ -742,3 +742,106 @@ data cutoff, window, observation coverage, implementation/methodology version, c
 input fingerprint, and assumptions. Browser-only notes, journal entries, review-inbox items, and
 snapshots are not equivalent to server-side multi-user audit records and remain a production
 limitation until owner-scoped database persistence is implemented and verified.
+## NIFTY 200 Data Foundation (`nifty200-risk-percentile-v1`)
+
+The daily stock-metric publication uses only persisted, provider-observed values. Missing
+observations remain `NULL`; they are never replaced by zero, a cross-sectional average, or a
+synthetic return.
+
+- Prices and returns: adjusted close is used for risk metrics. Daily return is the natural-log
+  return, `r[t] = ln(P[t] / P[t-1])`. Raw close and raw volume are retained for traded value.
+- Annualization: volatility and downside volatility use `sqrt(252)`. Volatility uses sample
+  standard deviation (`ddof=1`). Downside volatility is
+  `sqrt(252) * sqrt(mean(min(r[t], 0)^2))`.
+- Windows and minimums: 1M is 21 returns (minimum 15), 3M is 63 (minimum 45), 6M is 126
+  (minimum 90), and 1Y is 252 (minimum 180). Downside volatility and maximum drawdown require
+  180 returns. A history shorter than 252 sessions is independently flagged
+  `insufficient_history`.
+- Maximum drawdown: the largest observed peak-to-trough loss over at most the trailing 253
+  adjusted closes, `abs(min(P[t] / running_max(P)[t] - 1))`.
+- Beta: `cov(r_stock, r_NIFTY50) / var(r_NIFTY50)` over at most 252 same-date returns. At least
+  60 common returns and positive benchmark variance are required. The benchmark is `^NSEI`.
+- Liquidity: 20-session average traded value is `mean(raw_close[t] * raw_volume[t])`; at least
+  15 observed sessions are required.
+- Five factor values: annualized 1Y volatility, downside volatility, maximum drawdown,
+  `abs(beta)`, and instability (`1M volatility / 1Y volatility`). Higher values always mean
+  higher measured risk.
+- Calibration and score: for each metric date and factor, the observed NIFTY 200 cross-section
+  supplies P10 and P90 (linear quantiles). The factor score is
+  `clip(100 * (x - P10) / (P90 - P10), 0, 100)`. A zero percentile range is unavailable, not
+  assigned a neutral value. The weighted score is 30% volatility, 25% downside volatility,
+  20% drawdown, 15% beta, and 10% instability, and is `NULL` unless all five factors exist.
+  Cut-offs and eligible counts are persisted in `score_calibration`.
+- Quality: expected sessions come only from the persisted NSE trading calendar. Checks cover
+  missing sessions, non-positive prices, five-session zero-volume streaks, adjusted moves over
+  40% without a recorded corporate action, stale last dates, and insufficient history.
+  Unavailable calendars are reported explicitly. A failed quality result prevents a score.
+- Revisions: incremental fetches re-request the last 10 stored sessions. Any adjusted-close
+  change triggers a full five-year symbol refetch. Raw and adjusted revisions remain versioned;
+  idempotent upserts prevent duplicate published metric/calibration rows.
+- Fundamentals: only provider-returned fields are stored. The provider reporting date is used
+  when available; a snapshot older than 120 days is stale.
+- Reproducible spot checks: ten symbols are selected using the SHA-256-derived seed from the
+  metric date and methodology version. If no independent source is configured, the check is
+  published as unavailable rather than simulated.
+
+## ML Risk Validation (`ml-risk-v2`)
+
+All ML inputs come from the Step 1 adjusted-price, raw-volume, quality, universe, and benchmark
+tables at an explicit data cutoff. Quality failures are excluded. Training jobs create immutable
+versioned artifacts and cards; daily inference only loads a checksum-verified artifact. API
+requests query `model_run` and `model_prediction` and never fit a model or contact a provider.
+
+### 21-session volatility
+
+The target at date `t` is
+`sqrt(252 * mean(simple_return[t+1:t+21]^2))`. An incomplete 21-session label is missing. Features
+use information through `t`: trailing 1/5/21/63-session realized volatility, EWMA variance with
+decay 0.94, trailing return skew/kurtosis, downside-volatility ratio, observed 20-session volume
+ratio, and NIFTY 50 trailing volatility. A required missing feature makes that schema unavailable;
+there is no imputation.
+
+Training, validation, and test observations are chronological. A 21-session purge separates
+training from validation and validation from test. Individual and pooled (stock-identity)
+HistGradientBoosting candidates are selected by minimum validation QLIKE against trailing-21,
+EWMA, and HAR(1,5,21) baselines. Ties select the baseline. MAE, RMSE, QLIKE, sample count, and test
+dates are reported on the untouched test set. Fitted weights are not updated with test labels.
+A 90% interval uses the 90th percentile absolute validation residual; unseen test coverage and
+mean width are reported and are not forced to 90%.
+
+### NIFTY 50 market regime
+
+The two-state Gaussian Markov regression uses simple NIFTY 50 returns and switching variance.
+Only filtered probabilities conditional on observations through the stated date are published.
+States are named after fitting by estimated conditional volatility, so the lower-volatility state
+is calm and the higher-volatility state stressed. Weighted mean return, annualized volatility,
+transition probabilities, and expected duration `1 / (1 - p_ii)` are stored for each state.
+Shifted-window stability compares the volatility-aligned calm/stressed labels, not raw state IDs.
+
+### Cross-sectional anomalies
+
+The fixed schema is daily simple return, one-day change in trailing 20-session realized
+volatility, one-day change in 60-session beta to NIFTY 50, observed volume divided by its exact
+20-session mean, and return minus the same-day sector peer mean. A sector requires at least two
+eligible members. RobustScaler and Isolation Forest are fitted only on historical complete rows
+with seed 42 and contamination 10%. The stored score is the empirical percentile of the raw
+Isolation Forest score in the training distribution. Feature contributions are normalized
+absolute robust deviations from training medians; they are explanations of unusual observations,
+not causal attributions or forecasts. Independent event review is explicitly unavailable unless
+a point-in-time event source is configured.
+
+### Five-factor score validation
+
+The score remains an analytical score. At each historical month end, the already persisted
+point-in-time percentile factors and fixed weights (30/25/20/15/10 percent) are evaluated against
+forward 21- and 63-session realized volatility and peak-to-trough drawdown. Incomplete forward
+windows and incomplete factor rows are excluded, not imputed. Cross-sectional average-rank
+Spearman IC and top-minus-bottom quintile spread are calculated separately by month. The IC
+t-statistic is the mean monthly IC divided by its ordinary standard error and is descriptive
+because monthly samples may be dependent. Drawdown AUC defines the positive class as that month's
+highest 20% forward 21-session drawdowns. Results are compared without refitting against a
+volatility-only score and an equal-weight five-factor score on the later chronological test period.
+
+Dashboard statuses use this precedence: an actual failed/insufficient/unavailable operation is
+shown as such; otherwise an output older than seven calendar days is stale; otherwise a selected
+baseline is `baseline_selected`; otherwise it is `ready`. Missing fields remain absent or `NULL`.
