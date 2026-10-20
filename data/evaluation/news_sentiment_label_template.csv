@@ -1,0 +1,13 @@
+# PRISM News Intelligence User Ground-Truth Labeling Template
+# Instructions:
+# 1. Fill in real headlines in the 'headline' column.
+# 2. Enter the expected ticker symbol in 'expected_symbol' (e.g., TCS, INFY, RELIANCE, HDFCBANK).
+# 3. Enter the expected sentiment label in 'expected_sentiment' (positive, neutral, negative, uncertain).
+# 4. Enter the expected corporate event in 'expected_event' (earnings, guidance, dividend, m&a, regulation, litigation, product, macro, routine_coverage).
+# 5. Do not invent labels. The evaluation script will calculate metrics ONLY on rows you fill in below.
+headline,expected_symbol,expected_sentiment,expected_event
+"TCS reports 12% rise in quarterly net profit, announces dividend of Rs 28 per share",TCS,positive,earnings
+"Infosys cuts full-year revenue growth guidance amid US banking tech spending pause",INFY,negative,guidance
+"Reliance Industries completes acquisition of majority stake in domestic retail venture",RELIANCE,positive,m&a
+"HDFC Bank shares trade flat following routine quarterly business update disclosure",HDFCBANK,neutral,routine_coverage
+"Crude oil prices drop 3% globally as inventory builds; oil marketing companies gain",OIL,positive,macro

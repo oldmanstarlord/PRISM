@@ -360,6 +360,7 @@ export interface EulerRiskContribution {
   weight: number;
   annualized_volatility: number;
   risk_contribution_share: number;
+  component_risk?: number;
   marginal_risk: number;
 }
 
@@ -395,6 +396,17 @@ export interface PortfolioRiskProfile {
   correlation_matrix: Record<string, Record<string, number>>;
   historical_risk_trend: "increasing" | "stable" | "decreasing" | string;
   summary_findings: string[];
+  var_historical_95?: number;
+  var_historical_99?: number;
+  cvar_historical_95?: number;
+  cvar_historical_99?: number;
+  var_parametric_95?: number;
+  var_parametric_99?: number;
+  var_backtest_exceptions_95?: number | null;
+  var_backtest_exceptions_99?: number | null;
+  var_sample_size?: number;
+  var_horizon_days?: number;
+  var_label?: string;
 }
 
 export interface ComprehensiveRiskResponse {
@@ -417,6 +429,8 @@ export interface MonitoringIndicator {
   triggered: boolean;
   explanation: string;
   recommendation_disclaimer: string;
+  contributing_holdings?: string[];
+  assumptions?: string[];
 }
 
 export interface HistoricalRiskPoint {
@@ -498,6 +512,65 @@ export interface StockNewsSignal {
   data_freshness: string;
 }
 
+export interface NewsEntityMatch {
+  symbol: string;
+  company_name: string;
+  isin?: string | null;
+  match_type: string;
+  confidence: number;
+  is_ambiguous: boolean;
+  status: string;
+  ambiguity_reason?: string | null;
+}
+
+export interface NewsSignalItem {
+  symbol?: string | null;
+  is_market_wide: boolean;
+  sentiment_score: number;
+  sentiment_label: "positive" | "neutral" | "negative" | "uncertain";
+  sentiment_confidence: number;
+  model_name: string;
+  model_version: string;
+  processing_time_ms: number;
+  event_category: string;
+  event_confidence: number;
+}
+
+export interface NewsArticleCard {
+  id: string;
+  source_id: string;
+  url: string;
+  headline: string;
+  publisher: string;
+  published_at: string;
+  retrieved_at: string;
+  language: string;
+  snippet?: string | null;
+  is_duplicate: boolean;
+  primary_article_id?: string | null;
+  processing_status: string;
+  entities: NewsEntityMatch[];
+  signals: NewsSignalItem[];
+  affected_holdings: string[];
+  holding_exposure_weight_pct: number;
+  explanation: string;
+}
+
+export interface HoldingNewsSummary {
+  symbol: string;
+  company_name?: string | null;
+  weight_pct: number;
+  article_count_24h: number;
+  article_count_7d: number;
+  dominant_sentiment: "positive" | "neutral" | "negative" | "uncertain";
+  mean_sentiment_score: number;
+  sentiment_drift_7d: number;
+  primary_event_categories: string[];
+  has_ambiguous_matches: boolean;
+  heuristic_news_risk_multiplier: number;
+  multiplier_formula: string;
+}
+
 export interface PortfolioNewsSummary {
   as_of: string;
   contract_version: string;
@@ -508,5 +581,13 @@ export interface PortfolioNewsSummary {
   stock_signals: StockNewsSignal[];
   sample_articles: NewsArticleItem[];
   methodology_disclaimer: string;
+  provider_name?: string;
+  provider_status?: "configured" | "not_configured" | "rate_limited" | "feed_unavailable";
+  provider_disclaimer?: string;
+  deduplicated_article_count?: number;
+  ambiguous_match_count?: number;
+  verified_articles?: NewsArticleCard[];
+  holding_summaries?: HoldingNewsSummary[];
 }
+
 

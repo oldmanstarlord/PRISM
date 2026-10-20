@@ -20,16 +20,14 @@ class PortfolioHoldingInput(BaseModel):
 
 
 class StressScenarioInput(BaseModel):
-    kind: Literal["stock", "industry"]
-    target: str
-    shock_percent: float = Field(ge=-30.0, le=30.0)
+    kind: Literal["stock", "industry", "market", "correlation"]
+    target: str = ""
+    shock_percent: float = Field(ge=-50.0, le=100.0)
 
     @field_validator("target")
     @classmethod
     def normalize_target(cls, value: str) -> str:
         target = value.strip()
-        if not target:
-            raise ValueError("stress target is required")
         return target
 
     @field_validator("shock_percent")
@@ -172,7 +170,7 @@ class StressHoldingResult(BaseModel):
 
 
 class StressScenarioResult(BaseModel):
-    kind: Literal["stock", "industry"]
+    kind: Literal["stock", "industry", "market", "correlation"]
     target: str
     shock_percent: float
     method: str

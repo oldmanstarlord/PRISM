@@ -428,9 +428,7 @@ class PortfolioHolding(Base):
         ForeignKey("portfolio_snapshot.id", ondelete="CASCADE"), nullable=False, index=True
     )
     owner_id: Mapped[UUID] = mapped_column(nullable=False)
-    security_id: Mapped[UUID] = mapped_column(
-        ForeignKey("security.id"), nullable=False, index=True
-    )
+    security_id: Mapped[UUID] = mapped_column(ForeignKey("security.id"), nullable=False, index=True)
     symbol: Mapped[str] = mapped_column(String(40), nullable=False)
     quantity: Mapped[Decimal | None] = mapped_column(Numeric(24, 8))
     target_weight: Mapped[Decimal | None] = mapped_column(Numeric(18, 12))
@@ -454,3 +452,226 @@ class AuditEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class PortfolioTransaction(Base):
+    __tablename__ = "portfolio_transaction"
+    __table_args__ = (
+        CheckConstraint(
+            "transaction_type IN ('BUY', 'SELL', 'FEES', 'DIVIDEND', 'DEPOSIT', 'WITHDRAWAL')",
+            name="ck_transaction_type",
+        ),
+        CheckConstraint("fees >= 0", name="ck_transaction_fees"),
+        CheckConstraint("quantity IS NULL OR quantity > 0", name="ck_transaction_quantity"),
+        CheckConstraint("price IS NULL OR price > 0", name="ck_transaction_price"),
+        Index("ix_portfolio_transaction_portfolio_date", "portfolio_id", "trade_date"),
+        Index("ix_portfolio_transaction_owner", "owner_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    portfolio_id: Mapped[UUID] = mapped_column(
+        ForeignKey("portfolio.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    owner_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+    transaction_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    security_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("security.id"), nullable=True, index=True
+    )
+    symbol: Mapped[str | None] = mapped_column(String(40))
+    trade_date: Mapped[date] = mapped_column(Date, nullable=False)
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(24, 8))
+    price: Mapped[Decimal | None] = mapped_column(Numeric(20, 6))
+    amount: Mapped[Decimal] = mapped_column(Numeric(24, 8), nullable=False)
+    fees: Mapped[Decimal] = mapped_column(
+        Numeric(20, 6), default=Decimal("0"), server_default="0", nullable=False
+    )
+    realized_pnl: Mapped[Decimal | None] = mapped_column(Numeric(24, 8))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PortfolioRiskHistory(Base):
+    __tablename__ = "portfolio_risk_history"
+    __table_args__ = (
+        Index("ix_portfolio_risk_history_portfolio_date", "portfolio_id", "valuation_date"),
+        Index("ix_portfolio_risk_history_owner", "owner_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    portfolio_id: Mapped[UUID] = mapped_column(
+        ForeignKey("portfolio.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    owner_id: Mapped[UUID] = mapped_column(nullable=False, index=True)
+    snapshot_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("portfolio_snapshot.id", ondelete="SET NULL"), nullable=True
+    )
+    valuation_date: Mapped[date] = mapped_column(Date, nullable=False)
+    portfolio_risk_score: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False)
+    portfolio_classification: Mapped[str] = mapped_column(String(30), nullable=False)
+    annualized_volatility: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    downside_volatility: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    max_drawdown: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False)
+    diversification_score: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False)
+    effective_holdings: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
+    top_sector: Mapped[str] = mapped_column(String(160), nullable=False)
+    top_sector_weight: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False)
+    largest_holding: Mapped[str] = mapped_column(String(40), nullable=False)
+    largest_holding_weight: Mapped[Decimal] = mapped_column(Numeric(8, 4), nullable=False)
+    indicators_summary: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ModelRun(Base):
+    __tablename__ = "model_run"
+    __table_args__ = (
+        Index("ix_model_run_name_version", "model_name", "model_version"),
+        Index("ix_model_run_status_cutoff", "status", "data_cutoff"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    model_name: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    model_version: Mapped[str] = mapped_column(String(80), nullable=False)
+    data_cutoff: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    training_window_start: Mapped[date] = mapped_column(Date, nullable=False)
+    training_window_end: Mapped[date] = mapped_column(Date, nullable=False)
+    features: Mapped[list[object]] = mapped_column(
+        JSONB, default=list, server_default="[]", nullable=False
+    )
+    hyperparameters: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    metrics: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    configuration_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(30), default="completed", server_default="completed", nullable=False
+    )
+    trained_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error_summary: Mapped[str | None] = mapped_column(Text)
+
+
+class ModelPrediction(Base):
+    __tablename__ = "model_prediction"
+    __table_args__ = (
+        Index("ix_model_prediction_run_target", "run_id", "target_type"),
+        Index("ix_model_prediction_date_symbol", "prediction_date", "symbol"),
+        Index("ix_model_prediction_portfolio", "portfolio_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("model_run.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    target_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    portfolio_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("portfolio.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    security_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("security.id"), nullable=True, index=True
+    )
+    symbol: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    prediction_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    predicted_value: Mapped[Decimal] = mapped_column(Numeric(16, 6), nullable=False)
+    lower_bound: Mapped[Decimal | None] = mapped_column(Numeric(16, 6))
+    upper_bound: Mapped[Decimal | None] = mapped_column(Numeric(16, 6))
+    confidence_level: Mapped[Decimal | None] = mapped_column(Numeric(6, 4))
+    baseline_value: Mapped[Decimal | None] = mapped_column(Numeric(16, 6))
+    model_selected: Mapped[str] = mapped_column(
+        String(40), default="ml_model", server_default="ml_model", nullable=False
+    )
+    explanation: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class NewsArticle(TimestampMixin, Base):
+    __tablename__ = "news_article"
+    __table_args__ = (
+        Index("ix_news_article_published", "published_at"),
+        Index("ix_news_article_simhash", "simhash"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    source_id: Mapped[str] = mapped_column(String(160), index=True, nullable=False)
+    url: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    headline: Mapped[str] = mapped_column(Text, nullable=False)
+    publisher: Mapped[str] = mapped_column(String(160), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    retrieved_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    language: Mapped[str] = mapped_column(String(10), default="en", server_default="en")
+    snippet: Mapped[str | None] = mapped_column(Text)
+    simhash: Mapped[str | None] = mapped_column(String(64))
+    is_duplicate: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    primary_article_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("news_article.id", ondelete="SET NULL")
+    )
+    processing_status: Mapped[str] = mapped_column(
+        String(40), default="processed", server_default="processed"
+    )
+
+
+class NewsEntityMatch(Base):
+    __tablename__ = "news_entity_match"
+    __table_args__ = (
+        Index("ix_news_entity_match_article_symbol", "article_id", "symbol"),
+        Index("ix_news_entity_match_symbol", "symbol"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    article_id: Mapped[UUID] = mapped_column(
+        ForeignKey("news_article.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    symbol: Mapped[str] = mapped_column(String(40), nullable=False)
+    company_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    isin: Mapped[str | None] = mapped_column(String(12))
+    match_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    confidence: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
+    is_ambiguous: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    status: Mapped[str] = mapped_column(
+        String(40), default="auto_matched", server_default="auto_matched"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class NewsSignal(Base):
+    __tablename__ = "news_signal"
+    __table_args__ = (
+        Index("ix_news_signal_article_symbol", "article_id", "symbol"),
+        Index("ix_news_signal_symbol", "symbol"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    article_id: Mapped[UUID] = mapped_column(
+        ForeignKey("news_article.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    symbol: Mapped[str | None] = mapped_column(String(40))
+    is_market_wide: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    sentiment_score: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
+    sentiment_label: Mapped[str] = mapped_column(String(20), nullable=False)
+    sentiment_confidence: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
+    model_name: Mapped[str] = mapped_column(String(80), nullable=False)
+    model_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    processing_time_ms: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False)
+    event_category: Mapped[str] = mapped_column(String(40), nullable=False)
+    event_confidence: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+

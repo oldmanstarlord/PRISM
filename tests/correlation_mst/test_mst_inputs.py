@@ -26,9 +26,7 @@ def test_inputs_keep_latest_121_dates_without_imputation() -> None:
     observations = [observation(1, day, "100") for day in dates]
     observations += [observation(2, day, "200") for day in dates if day != dates[-2]]
 
-    inputs = prepare_inputs(
-        [member(1, "A"), member(2, "B")], observations, dates[-1], CUTOFF
-    )
+    inputs = prepare_inputs([member(1, "A"), member(2, "B")], observations, dates[-1], CUTOFF)
 
     assert len(inputs.adjusted_closes) == 121
     assert inputs.adjusted_closes.index[0] == dates[-121]

@@ -2,12 +2,15 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   _resetMemoryStoreForTests,
   exportJournalBackup,
+  getAllPortfolioSnapshots,
   getDecisionsBySymbol,
   getNotesBySymbol,
   getNotesCountMap,
   importJournalBackup,
+  isPersistenceFallbackActive,
   saveDecision,
   saveNote,
+  savePortfolioSnapshot,
   validateDecision,
   validateNote,
 } from "./journalStorage";
@@ -177,4 +180,44 @@ describe("journalStorage", () => {
       expect(notes[0].content).toContain("Capex cycle");
     });
   });
+
+  describe("Portfolio Snapshots (Create-Only & Immutability)", () => {
+    const baseSnapshotInput = {
+      name: "Q4 Strategy Snapshot",
+      description: "Baseline portfolio snapshot",
+      calculationMeta: { horizon: 250 },
+      holdings: [{ symbol: "TCS", weight: 0.5 }, { symbol: "INFY", weight: 0.5 }],
+      sectorExposures: [{ sector: "Technology", weight: 1.0 }],
+      riskMetrics: { annualizedVolatility: 0.18, maxDrawdown: 0.12 },
+      diversification: { diversificationScore: 78.5 },
+      mstContext: { runId: "test-run" },
+    };
+
+    it("creates snapshots and clones/freezes stored data", async () => {
+      const snap = await savePortfolioSnapshot(baseSnapshotInput);
+      expect(snap.id).toBeDefined();
+      expect(snap.name).toBe("Q4 Strategy Snapshot");
+      expect(Object.isFrozen(snap)).toBe(true);
+
+      const all = await getAllPortfolioSnapshots();
+      expect(all).toHaveLength(1);
+      expect(all[0].id).toBe(snap.id);
+    });
+
+    it("strictly rejects duplicate snapshot IDs to preserve immutability", async () => {
+      const customId = "snap-fixed-12345";
+      await savePortfolioSnapshot({ ...baseSnapshotInput, id: customId });
+
+      // Attempting to overwrite the snapshot with the same id must throw
+      await expect(
+        savePortfolioSnapshot({ ...baseSnapshotInput, id: customId, name: "Attempted Overwrite" })
+      ).rejects.toThrow(/already exists/i);
+    });
+
+    it("reports persistence fallback active status when using memory store", () => {
+      // In node/vitest environment, isIndexedDBSupported is false, so fallback is active
+      expect(isPersistenceFallbackActive()).toBe(true);
+    });
+  });
 });
+

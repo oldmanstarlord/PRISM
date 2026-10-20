@@ -99,9 +99,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["security_id"], ["security.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        "ix_divergence_issue_run_stage", "sector_divergence_issue", ["run_id", "stage"]
-    )
+    op.create_index("ix_divergence_issue_run_stage", "sector_divergence_issue", ["run_id", "stage"])
 
 
 def downgrade() -> None:

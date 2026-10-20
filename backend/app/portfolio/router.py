@@ -2,10 +2,10 @@
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Annotated, cast
-from uuid import UUID
+from typing import Annotated, Any, cast
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from fastapi import status as http_status
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
@@ -15,10 +15,21 @@ from backend.app.db.models import (
     AuditEvent,
     Portfolio,
     PortfolioHolding,
+    PortfolioRiskHistory,
     PortfolioSnapshot,
+    PortfolioTransaction,
     Security,
+    SecurityAlias,
 )
 from backend.app.db.session import get_session
+from backend.app.portfolio.ledger import (
+    LedgerTransactionInput,
+    LedgerValidationError,
+    export_csv_transactions,
+    parse_csv_transactions,
+    reconcile_ledger,
+    replay_ledger,
+)
 from backend.app.portfolio.schemas import (
     AuditEventResponse,
     InputMode,
@@ -29,6 +40,11 @@ from backend.app.portfolio.schemas import (
     PortfolioPreviewResponse,
     PortfolioSummary,
     PreviewHolding,
+    ReconciliationResponse,
+    RiskHistoryResponse,
+    TransactionBatchCreateRequest,
+    TransactionCreateInput,
+    TransactionResponse,
 )
 from backend.app.portfolio.service import preview_portfolio
 
@@ -128,9 +144,7 @@ def _detail(session: Session, portfolio: Portfolio) -> PortfolioDetail:
         for holding, company_name, industry in rows
     ]
     cash_value = (
-        snapshot.cash_amount
-        if portfolio.input_mode == "quantities"
-        else snapshot.cash_weight
+        snapshot.cash_amount if portfolio.input_mode == "quantities" else snapshot.cash_weight
     )
     return PortfolioDetail(
         **summary.model_dump(),
@@ -185,9 +199,7 @@ def create_portfolio(
         cash_amount=(
             preview_result.cash_value if request.input_mode == "quantities" else Decimal(0)
         ),
-        cash_weight=(
-            preview_result.cash_value if request.input_mode == "weights" else Decimal(0)
-        ),
+        cash_weight=(preview_result.cash_value if request.input_mode == "weights" else Decimal(0)),
         input_fingerprint=preview_result.preview_fingerprint,
         source="csv",
     )
@@ -310,3 +322,352 @@ def delete_portfolio(
     session.delete(portfolio)
     session.commit()
     return Response(status_code=http_status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{portfolio_id}/transactions", response_model=list[TransactionResponse])
+def get_portfolio_transactions(
+    portfolio_id: UUID,
+    session: DatabaseSession,
+    user: CurrentUser,
+) -> list[TransactionResponse]:
+    _owned_portfolio(session, portfolio_id, user.id)
+    tx_rows = session.scalars(
+        select(PortfolioTransaction)
+        .where(
+            PortfolioTransaction.portfolio_id == portfolio_id,
+            PortfolioTransaction.owner_id == user.id,
+        )
+        .order_by(desc(PortfolioTransaction.trade_date), desc(PortfolioTransaction.created_at))
+    ).all()
+    return [
+        TransactionResponse(
+            id=tx.id,
+            portfolio_id=tx.portfolio_id,
+            owner_id=tx.owner_id,
+            transaction_type=tx.transaction_type,
+            symbol=tx.symbol,
+            trade_date=tx.trade_date,
+            quantity=tx.quantity,
+            price=tx.price,
+            amount=tx.amount,
+            fees=tx.fees,
+            realized_pnl=tx.realized_pnl,
+            notes=tx.notes,
+            created_at=tx.created_at,
+        )
+        for tx in tx_rows
+    ]
+
+
+@router.post(
+    "/{portfolio_id}/transactions",
+    response_model=list[TransactionResponse],
+    status_code=http_status.HTTP_201_CREATED,
+)
+def record_transactions(
+    portfolio_id: UUID,
+    payload: TransactionBatchCreateRequest,
+    session: DatabaseSession,
+    user: CurrentUser,
+) -> list[TransactionResponse]:
+    portfolio = _owned_portfolio(session, portfolio_id, user.id)
+
+    # 1. Load existing transactions
+    existing_txs = session.scalars(
+        select(PortfolioTransaction)
+        .where(
+            PortfolioTransaction.portfolio_id == portfolio_id,
+            PortfolioTransaction.owner_id == user.id,
+        )
+        .order_by(PortfolioTransaction.trade_date.asc(), PortfolioTransaction.created_at.asc())
+    ).all()
+
+    ledger_inputs = [
+        LedgerTransactionInput(
+            id=str(tx.id),
+            transaction_type=cast(Any, tx.transaction_type),
+            trade_date=tx.trade_date,
+            symbol=tx.symbol,
+            quantity=tx.quantity,
+            price=tx.price,
+            amount=tx.amount,
+            fees=tx.fees,
+            notes=tx.notes,
+        )
+        for tx in existing_txs
+    ]
+
+    # 2. Convert incoming payload into ledger inputs
+    new_db_records: list[PortfolioTransaction] = []
+    for tx_in in payload.transactions:
+        tx_id = uuid4()
+        amt = tx_in.amount
+        if amt is None and tx_in.quantity is not None and tx_in.price is not None:
+            amt = tx_in.quantity * tx_in.price
+
+        if amt is None:
+            amt = Decimal("0")
+
+        ledger_input = LedgerTransactionInput(
+            id=str(tx_id),
+            transaction_type=tx_in.transaction_type,
+            trade_date=tx_in.trade_date,
+            symbol=tx_in.symbol,
+            quantity=tx_in.quantity,
+            price=tx_in.price,
+            amount=amt,
+            fees=tx_in.fees,
+            notes=tx_in.notes,
+        )
+        ledger_inputs.append(ledger_input)
+
+        sec_id = None
+        if tx_in.symbol:
+            sec_alias = session.scalar(
+                select(SecurityAlias).where(
+                    SecurityAlias.symbol == tx_in.symbol.upper(),
+                    SecurityAlias.exchange == "NSE",
+                )
+            )
+            if sec_alias:
+                sec_id = sec_alias.security_id
+
+        db_rec = PortfolioTransaction(
+            id=tx_id,
+            portfolio_id=portfolio.id,
+            owner_id=user.id,
+            transaction_type=tx_in.transaction_type,
+            security_id=sec_id,
+            symbol=tx_in.symbol.upper() if tx_in.symbol else None,
+            trade_date=tx_in.trade_date,
+            quantity=tx_in.quantity,
+            price=tx_in.price,
+            amount=amt,
+            fees=tx_in.fees,
+            notes=tx_in.notes,
+        )
+        new_db_records.append(db_rec)
+
+    # 3. Replay entire ledger atomically to validate consistency
+    try:
+        replay_ledger(ledger_inputs)
+    except LedgerValidationError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Ledger integrity violation: {exc}",
+        ) from exc
+
+    # 4. Save new transactions
+    for rec in new_db_records:
+        session.add(rec)
+
+    _record_audit_event(
+        session,
+        owner_id=user.id,
+        event_type="portfolio.transactions_recorded",
+        entity_id=portfolio.id,
+        details={"count": len(new_db_records)},
+    )
+    session.commit()
+
+    return [
+        TransactionResponse(
+            id=tx.id,
+            portfolio_id=tx.portfolio_id,
+            owner_id=tx.owner_id,
+            transaction_type=tx.transaction_type,
+            symbol=tx.symbol,
+            trade_date=tx.trade_date,
+            quantity=tx.quantity,
+            price=tx.price,
+            amount=tx.amount,
+            fees=tx.fees,
+            realized_pnl=tx.realized_pnl,
+            notes=tx.notes,
+            created_at=tx.created_at,
+        )
+        for tx in new_db_records
+    ]
+
+
+@router.get("/{portfolio_id}/reconciliation", response_model=ReconciliationResponse)
+def get_portfolio_reconciliation(
+    portfolio_id: UUID,
+    session: DatabaseSession,
+    user: CurrentUser,
+) -> ReconciliationResponse:
+    _owned_portfolio(session, portfolio_id, user.id)
+
+    # 1. Load transactions and replay ledger
+    tx_rows = session.scalars(
+        select(PortfolioTransaction)
+        .where(
+            PortfolioTransaction.portfolio_id == portfolio_id,
+            PortfolioTransaction.owner_id == user.id,
+        )
+        .order_by(PortfolioTransaction.trade_date.asc(), PortfolioTransaction.created_at.asc())
+    ).all()
+
+    ledger_inputs = [
+        LedgerTransactionInput(
+            id=str(tx.id),
+            transaction_type=cast(Any, tx.transaction_type),
+            trade_date=tx.trade_date,
+            symbol=tx.symbol,
+            quantity=tx.quantity,
+            price=tx.price,
+            amount=tx.amount,
+            fees=tx.fees,
+            notes=tx.notes,
+        )
+        for tx in tx_rows
+    ]
+
+    state = replay_ledger(ledger_inputs)
+
+    # 2. Compare against latest snapshot if one exists
+    latest_snap = session.scalar(
+        select(PortfolioSnapshot)
+        .where(PortfolioSnapshot.portfolio_id == portfolio_id)
+        .order_by(desc(PortfolioSnapshot.created_at))
+        .limit(1)
+    )
+
+    disp_cash = None
+    disp_holdings = None
+    if latest_snap:
+        disp_cash = latest_snap.cash_amount
+        holding_rows = session.scalars(
+            select(PortfolioHolding).where(PortfolioHolding.snapshot_id == latest_snap.id)
+        ).all()
+        disp_holdings = {h.symbol: h.quantity for h in holding_rows if h.quantity is not None}
+
+    report = reconcile_ledger(state, displayed_cash=disp_cash, displayed_holdings=disp_holdings)
+
+    return ReconciliationResponse(
+        is_reconciled=report.is_reconciled,
+        derived_cash=report.derived_cash,
+        derived_invested_cost=report.derived_invested_cost,
+        derived_holdings_count=report.derived_holdings_count,
+        realized_pnl=report.realized_pnl,
+        unrealized_pnl=report.unrealized_pnl,
+        total_net_deposits=report.total_net_deposits,
+        total_dividends=report.total_dividends,
+        total_fees=report.total_fees,
+        derived_holdings=[h.to_dict() for h in state.holdings.values()],
+        discrepancies=list(report.discrepancies),
+    )
+
+
+@router.post("/{portfolio_id}/transactions/import-csv", response_model=list[TransactionResponse])
+def import_csv_transactions(
+    portfolio_id: UUID,
+    csv_text: Annotated[str, Body(max_length=1_048_576, media_type="text/csv")],
+    session: DatabaseSession,
+    user: CurrentUser,
+) -> list[TransactionResponse]:
+    portfolio = _owned_portfolio(session, portfolio_id, user.id)
+
+    # Parse and validate CSV rows
+    parsed, errors = parse_csv_transactions(csv_text)
+    if errors:
+        raise HTTPException(
+            status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"CSV validation errors: {'; '.join(errors[:5])}",
+        )
+
+    # Batch create
+    batch_req = TransactionBatchCreateRequest(
+        transactions=[
+            TransactionCreateInput(
+                transaction_type=tx.transaction_type,
+                trade_date=tx.trade_date,
+                symbol=tx.symbol,
+                quantity=tx.quantity,
+                price=tx.price,
+                amount=tx.amount,
+                fees=tx.fees,
+                notes=tx.notes,
+            )
+            for tx in parsed
+        ]
+    )
+    return record_transactions(portfolio.id, batch_req, session, user)
+
+
+@router.get("/{portfolio_id}/transactions/export-csv")
+def export_csv_endpoint(
+    portfolio_id: UUID,
+    session: DatabaseSession,
+    user: CurrentUser,
+) -> Response:
+    _owned_portfolio(session, portfolio_id, user.id)
+    tx_rows = session.scalars(
+        select(PortfolioTransaction)
+        .where(
+            PortfolioTransaction.portfolio_id == portfolio_id,
+            PortfolioTransaction.owner_id == user.id,
+        )
+        .order_by(PortfolioTransaction.trade_date.asc(), PortfolioTransaction.created_at.asc())
+    ).all()
+
+    ledger_inputs = [
+        LedgerTransactionInput(
+            id=str(tx.id),
+            transaction_type=cast(Any, tx.transaction_type),
+            trade_date=tx.trade_date,
+            symbol=tx.symbol,
+            quantity=tx.quantity,
+            price=tx.price,
+            amount=tx.amount,
+            fees=tx.fees,
+            notes=tx.notes,
+        )
+        for tx in tx_rows
+    ]
+    csv_data = export_csv_transactions(ledger_inputs)
+    filename = f"portfolio_{portfolio_id}_transactions.csv"
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get("/{portfolio_id}/risk-history", response_model=list[RiskHistoryResponse])
+def get_portfolio_risk_history_route(
+    portfolio_id: UUID,
+    session: DatabaseSession,
+    user: CurrentUser,
+) -> list[RiskHistoryResponse]:
+    _owned_portfolio(session, portfolio_id, user.id)
+    rows = session.scalars(
+        select(PortfolioRiskHistory)
+        .where(
+            PortfolioRiskHistory.portfolio_id == portfolio_id,
+            PortfolioRiskHistory.owner_id == user.id,
+        )
+        .order_by(PortfolioRiskHistory.valuation_date.asc())
+    ).all()
+
+    return [
+        RiskHistoryResponse(
+            id=r.id,
+            portfolio_id=r.portfolio_id,
+            valuation_date=r.valuation_date,
+            portfolio_risk_score=float(r.portfolio_risk_score),
+            portfolio_classification=r.portfolio_classification,
+            annualized_volatility=float(r.annualized_volatility),
+            downside_volatility=float(r.downside_volatility),
+            max_drawdown=float(r.max_drawdown),
+            diversification_score=float(r.diversification_score),
+            effective_holdings=float(r.effective_holdings),
+            top_sector=r.top_sector,
+            top_sector_weight=float(r.top_sector_weight),
+            largest_holding=r.largest_holding,
+            largest_holding_weight=float(r.largest_holding_weight),
+            indicators_summary=r.indicators_summary,
+            computed_at=r.computed_at,
+        )
+        for r in rows
+    ]

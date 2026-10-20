@@ -22,16 +22,12 @@ def make_inputs(price: float = 100.0) -> SectorDivergenceInputs:
         signal_date=date(2026, 10, 1),
         data_cutoff=CUTOFF,
         adjusted_closes=pd.DataFrame({"TEST": [price]}, index=index),
-        adjustment_versions=pd.DataFrame(
-            {"TEST": ["yfinance-adjclose-v1-r1"]}, index=index
-        ),
+        adjustment_versions=pd.DataFrame({"TEST": ["yfinance-adjclose-v1-r1"]}, index=index),
         adjustment_times=pd.DataFrame({"TEST": [CUTOFF]}, index=index),
         security_ids=MappingProxyType({"TEST": SECURITY_ID}),
         industries=MappingProxyType({"TEST": "Test Industry"}),
         membership_sources=MappingProxyType({"TEST": "official.csv"}),
-        exclusions=(
-            InputExclusion(SECURITY_ID, "OLD", "test_reason", "test details"),
-        ),
+        exclusions=(InputExclusion(SECURITY_ID, "OLD", "test_reason", "test details"),),
         issues=(),
     )
 

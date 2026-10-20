@@ -20,6 +20,11 @@ def main() -> None:
         action="store_true",
         help="Publish from the latest stored validated snapshot without calling the provider",
     )
+    parser.add_argument(
+        "--skip-ml",
+        action="store_true",
+        help="Skip the ML risk models training/inference stage",
+    )
     args = parser.parse_args()
     with SessionLocal() as session:
         result = run_daily_pipeline(
@@ -33,6 +38,16 @@ def main() -> None:
     print(json.dumps(asdict(result), default=str, indent=2, sort_keys=True))
     if result.status != "completed":
         raise SystemExit(1)
+
+    if not args.skip_ml:
+        from jobs.train_models import train_all_models
+
+        print("Executing ML risk models training and inference stage...")
+        try:
+            ml_results = train_all_models(cutoff_date=result.published_market_date)
+            print(f"ML models updated successfully: {list(ml_results.keys())}")
+        except Exception as exc:
+            print(f"Warning: ML model training stage encountered an issue: {exc}")
 
 
 if __name__ == "__main__":

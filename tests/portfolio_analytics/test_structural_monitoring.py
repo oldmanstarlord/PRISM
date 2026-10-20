@@ -1,7 +1,7 @@
 """Tests for structural monitoring, historical risk persistence, and news intelligence contracts."""
 
-import os
-from unittest.mock import MagicMock
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -9,7 +9,6 @@ from backend.app.main import app
 from backend.app.portfolio_analytics.news_signals import generate_modular_news_preview
 from backend.app.portfolio_analytics.stock_risk import (
     PortfolioRiskProfile,
-    StockRiskProfile,
 )
 from backend.app.portfolio_analytics.structural_monitoring import (
     compute_historical_risk_series,
@@ -91,7 +90,12 @@ def sample_portfolio_profile() -> PortfolioRiskProfile:
 @pytest.fixture
 def sample_holdings() -> list[dict]:
     return [
-        {"symbol": "TCS", "quantity": 10, "buyPrice": 3500.0, "companyName": "Tata Consultancy Services"},
+        {
+            "symbol": "TCS",
+            "quantity": 10,
+            "buyPrice": 3500.0,
+            "companyName": "Tata Consultancy Services",
+        },
         {"symbol": "INFY", "quantity": 20, "buyPrice": 1500.0, "companyName": "Infosys Ltd"},
         {"symbol": "HDFCBANK", "quantity": 25, "buyPrice": 1400.0, "companyName": "HDFC Bank Ltd"},
     ]
@@ -174,7 +178,7 @@ def test_generate_modular_news_preview(sample_holdings):
         assert sig.news_risk_multiplier >= 0.5
 
 
-def test_api_structural_monitoring_endpoint():
+def test_api_structural_monitoring_endpoint(sample_portfolio_profile):
     client = TestClient(app)
     payload = {
         "holdings": [
@@ -183,7 +187,11 @@ def test_api_structural_monitoring_endpoint():
             {"symbol": "RELIANCE", "quantity": 8, "buyPrice": 2800.0, "companyName": "Reliance"},
         ]
     }
-    resp = client.post("/api/v1/portfolio-analysis/structural-monitoring", json=payload)
+    with patch(
+        "backend.app.portfolio_analytics.router.calculate_portfolio_comprehensive_risk",
+        return_value=([], sample_portfolio_profile),
+    ):
+        resp = client.post("/api/v1/portfolio-analysis/structural-monitoring", json=payload)
     assert resp.status_code == 200
     data = resp.json()
     assert "portfolio_risk_score" in data
@@ -198,11 +206,8 @@ def test_api_structural_monitoring_endpoint():
 def test_api_risk_history_endpoint():
     client = TestClient(app)
     resp = client.get("/api/v1/portfolio-analysis/risk-history")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "count" in data
-    assert "history" in data
-    assert isinstance(data["history"], list)
+    assert resp.status_code == 410
+    assert "authenticated" in resp.json()["detail"]
 
 
 def test_api_news_signals_endpoint():
@@ -214,8 +219,4 @@ def test_api_news_signals_endpoint():
         ]
     }
     resp = client.post("/api/v1/portfolio-analysis/news-signals", json=payload)
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["contract_version"] == "v1-modular-draft"
-    assert "stock_signals" in data
-    assert len(data["stock_signals"]) == 2
+    assert resp.status_code == 401

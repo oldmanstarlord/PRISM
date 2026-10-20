@@ -83,24 +83,27 @@ export const theme = createTheme({
   },
   typography: {
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    h1: { fontWeight: 700, letterSpacing: "-0.03em", color: "#292D2A" },
-    h2: { fontWeight: 700, letterSpacing: "-0.025em", color: "#292D2A" },
-    h3: { fontWeight: 700, letterSpacing: "-0.02em", color: "#292D2A" },
-    h4: { fontWeight: 700, letterSpacing: "-0.015em", color: "#292D2A" },
-    h5: { fontWeight: 700, letterSpacing: "-0.01em", color: "#292D2A" },
-    h6: { fontWeight: 600, letterSpacing: "-0.005em", color: "#292D2A" },
-    subtitle1: { fontWeight: 500, color: "#686B64" },
-    subtitle2: { fontWeight: 600, color: "#686B64", fontSize: "0.875rem" },
-    body1: { fontSize: "0.95rem", lineHeight: 1.6, fontWeight: 500, color: "#292D2A" },
-    body2: { fontSize: "0.875rem", lineHeight: 1.5, fontWeight: 500, color: "#686B64" },
+    fontSize: 13,
+    h1: { fontSize: "1.75rem", fontWeight: 700, letterSpacing: "-0.03em", color: "#292D2A" },
+    h2: { fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.025em", color: "#292D2A" },
+    h3: { fontSize: "1.3rem", fontWeight: 700, letterSpacing: "-0.02em", color: "#292D2A" },
+    h4: { fontSize: "1.15rem", fontWeight: 700, letterSpacing: "-0.015em", color: "#292D2A" },
+    h5: { fontSize: "1.0rem", fontWeight: 700, letterSpacing: "-0.01em", color: "#292D2A" },
+    h6: { fontSize: "0.875rem", fontWeight: 600, letterSpacing: "-0.005em", color: "#292D2A" },
+    subtitle1: { fontSize: "0.85rem", fontWeight: 500, color: "#686B64" },
+    subtitle2: { fontSize: "0.78rem", fontWeight: 600, color: "#686B64" },
+    body1: { fontSize: "0.82rem", lineHeight: 1.45, fontWeight: 500, color: "#292D2A" },
+    body2: { fontSize: "0.75rem", lineHeight: 1.4, fontWeight: 500, color: "#686B64" },
+    caption: { fontSize: "0.7rem", lineHeight: 1.35, color: "#686B64" },
     overline: {
-      fontSize: "0.75rem",
+      fontSize: "0.68rem",
       fontWeight: 600,
       letterSpacing: "0.08em",
       textTransform: "uppercase",
       color: "#686B64",
     },
     button: {
+      fontSize: "0.75rem",
       textTransform: "none",
       fontWeight: 600,
     },
@@ -111,6 +114,11 @@ export const theme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        html: {
+          fontSize: "82% !important",
+          WebkitTextSizeAdjust: "100%",
+          textSizeAdjust: "100%",
+        },
         body: {
           backgroundColor: "#F9EBD7",
           color: "#292D2A",
@@ -119,8 +127,8 @@ export const theme = createTheme({
           margin: 0,
           padding: 0,
           "::-webkit-scrollbar": {
-            width: 8,
-            height: 8,
+            width: 7,
+            height: 7,
           },
           "::-webkit-scrollbar-track": {
             backgroundColor: "#F9EBD7",
@@ -176,18 +184,33 @@ export const theme = createTheme({
     MuiButton: {
       defaultProps: {
         disableElevation: true,
+        size: "small",
       },
       styleOverrides: {
         root: {
           borderRadius: 0,
           textTransform: "none",
           fontWeight: 600,
-          padding: "7px 16px",
+          fontSize: "0.76rem",
+          padding: "4px 10px",
+          lineHeight: 1.35,
           transition: "all 0.15s ease-in-out",
           border: "none",
           "&:focus-visible": {
             boxShadow: SHADOWS.focusRing,
           },
+        },
+        sizeSmall: {
+          padding: "3px 8px",
+          fontSize: "0.72rem",
+        },
+        sizeMedium: {
+          padding: "4px 10px",
+          fontSize: "0.76rem",
+        },
+        sizeLarge: {
+          padding: "6px 14px",
+          fontSize: "0.82rem",
         },
         contained: {
           backgroundColor: "#046A38",
@@ -394,9 +417,10 @@ export const theme = createTheme({
           "& .MuiTableCell-root": {
             color: "#292D2A",
             fontWeight: 700,
-            fontSize: "0.8rem",
+            fontSize: "0.72rem",
             textTransform: "uppercase",
             letterSpacing: "0.05em",
+            padding: "5px 8px",
             borderBottom: "none",
             backgroundColor: "#E3D7C4",
           },
@@ -404,13 +428,21 @@ export const theme = createTheme({
       },
     },
     MuiTableCell: {
+      defaultProps: {
+        size: "small",
+      },
       styleOverrides: {
         root: {
           borderBottom: "none",
-          fontSize: "0.875rem",
-          padding: "13px 16px",
+          fontSize: "0.76rem",
+          padding: "5px 8px",
           color: "#292D2A",
           fontWeight: 500,
+          lineHeight: 1.35,
+        },
+        sizeSmall: {
+          padding: "4px 8px",
+          fontSize: "0.74rem",
         },
       },
     },
@@ -428,14 +460,22 @@ export const theme = createTheme({
       },
     },
     MuiChip: {
+      defaultProps: {
+        size: "small",
+      },
       styleOverrides: {
         root: {
           borderRadius: 0,
           fontWeight: 600,
-          fontSize: "0.78rem",
+          fontSize: "0.70rem",
+          height: "22px",
           border: "none",
           backgroundColor: "#E3D7C4",
           color: "#292D2A",
+        },
+        sizeSmall: {
+          fontSize: "0.68rem",
+          height: "20px",
         },
       },
     },
@@ -508,9 +548,10 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           borderBottom: "none",
+          minHeight: "30px",
         },
         indicator: {
-          height: 3,
+          height: 2,
           backgroundColor: "#046A38",
           borderRadius: 0,
         },
@@ -522,6 +563,9 @@ export const theme = createTheme({
           borderRadius: 0,
           textTransform: "none",
           fontWeight: 600,
+          fontSize: "0.76rem",
+          minHeight: "30px",
+          padding: "3px 8px",
           color: "#686B64",
           "&.Mui-selected": {
             color: "#046A38",

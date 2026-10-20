@@ -13,7 +13,8 @@ import {
   validateNote,
   validatePortfolioSnapshot,
 } from "./journalStorage";
-import { DEFAULT_CURATED_HOLDINGS, type PortfolioHolding } from "./PortfolioManager";
+import { DEFAULT_CURATED_HOLDINGS } from "./demoPortfolioData";
+import type { PortfolioHolding } from "./PortfolioManager";
 
 describe("Research Notes & Investment Decision Journal Verification", () => {
   beforeEach(() => {
@@ -197,10 +198,6 @@ describe("Research Notes & Investment Decision Journal Verification", () => {
     expect(decision.snapshot.portfolioWeight).toBeNull();
     expect(decision.snapshot.portfolioWeight).not.toBe(0);
     expect(decision.snapshot.sectorDivergenceScore).toBe(2.15);
-
-    // Later in time, new market conditions occur:
-    const subsequentMarketRiskScore = 4;
-    const subsequentPortfolioWeight = 12.3;
 
     // Retrieve the historical decision
     const retrieved = await getDecisionsBySymbol("LT");

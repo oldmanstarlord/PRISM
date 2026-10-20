@@ -50,21 +50,21 @@ export default function AppShell({ children, subtitle, actions }: AppShellProps)
           position: "sticky",
           top: 0,
           zIndex: 1100,
-          boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+          boxShadow: "0 4px 12px rgba(41,45,42,0.14)",
         }}
       >
         <Box
           sx={{
             width: "100%",
             boxSizing: "border-box",
-            px: { xs: "20px", sm: "36px", md: "69px" },
-            py: 1.5,
+            px: { xs: "14px", sm: "20px", md: "32px" },
+            py: 0.8,
           }}
         >
           <Stack
             direction={{ xs: "column", sm: "row" }}
             sx={{
-              gap: { xs: 1.5, sm: 2 },
+              gap: { xs: 1, sm: 1.5 },
               alignItems: { xs: "stretch", sm: "center" },
               justifyContent: "space-between",
             }}
@@ -79,10 +79,11 @@ export default function AppShell({ children, subtitle, actions }: AppShellProps)
                 sx={{ display: "flex", alignItems: "baseline", gap: 1 }}
               >
                 <Typography
-                  variant="h5"
+                  variant="h6"
                   component="h1"
                   sx={{
                     fontWeight: 700,
+                    fontSize: "1.1rem",
                     letterSpacing: "-0.5px",
                     color: "#F9EBD7",
                     "&:hover": { color: "#DCE9DE" },
@@ -92,10 +93,11 @@ export default function AppShell({ children, subtitle, actions }: AppShellProps)
                   PRISM
                 </Typography>
                 <Typography
-                  variant="body2"
+                  variant="caption"
                   sx={{
                     color: "#E3D7C4",
                     fontWeight: 500,
+                    fontSize: "0.76rem",
                     display: { xs: "none", md: "inline" },
                   }}
                 >
@@ -107,7 +109,7 @@ export default function AppShell({ children, subtitle, actions }: AppShellProps)
             {/* Navigation & Header Actions */}
             <Stack
               direction="row"
-              spacing={1}
+              spacing={0.75}
               sx={{
                 alignItems: "center",
                 flexWrap: "wrap",
@@ -127,13 +129,13 @@ export default function AppShell({ children, subtitle, actions }: AppShellProps)
                       color: active ? "#F9EBD7" : "#E3D7C4",
                       bgcolor: active ? "#046A38" : "transparent",
                       fontWeight: active ? 700 : 500,
-                      fontSize: "0.85rem",
-                      px: 1.5,
-                      py: 0.6,
+                      fontSize: "0.76rem",
+                      px: 1.2,
+                      py: 0.35,
                       borderRadius: 0,
                       textTransform: "none",
                       border: "none",
-                      boxShadow: active ? "0 3px 8px rgba(41,45,42,0.10)" : "none",
+                      boxShadow: active ? "0 2px 6px rgba(41,45,42,0.10)" : "none",
                       "&:hover": {
                         bgcolor: active ? "#034d28" : "#E3D7C4",
                         color: active ? "#F9EBD7" : "#292D2A",
@@ -154,15 +156,15 @@ export default function AppShell({ children, subtitle, actions }: AppShellProps)
         </Box>
       </Box>
 
-      {/* Main Content Area - Full screen width with 69px side margins */}
+      {/* Main Content Area - Full screen width with compact side margins */}
       <Box
         component="main"
         sx={{
           flex: 1,
           width: "100%",
           boxSizing: "border-box",
-          px: { xs: "20px", sm: "36px", md: "69px" },
-          py: { xs: 2, sm: 2.5, md: 3 },
+          px: { xs: "14px", sm: "20px", md: "32px" },
+          py: { xs: 1.5, sm: 2 },
         }}
       >
         {children}

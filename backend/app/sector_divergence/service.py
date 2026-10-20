@@ -12,7 +12,7 @@ from typing import Any
 from uuid import UUID
 
 import numpy as np
-import pandas as pd
+import pandas as pd  # type: ignore[import-untyped]
 from sqlalchemy import Select, desc, func, select
 from sqlalchemy.orm import Session
 
@@ -100,8 +100,12 @@ def input_fingerprint(inputs: SectorDivergenceInputs) -> str:
         "signal_date": inputs.signal_date.isoformat(),
         "data_cutoff": inputs.data_cutoff.isoformat(),
         "members": [
-            [symbol, str(inputs.security_ids[symbol]), inputs.industries[symbol],
-             inputs.membership_sources[symbol]]
+            [
+                symbol,
+                str(inputs.security_ids[symbol]),
+                inputs.industries[symbol],
+                inputs.membership_sources[symbol],
+            ]
             for symbol in sorted(inputs.security_ids)
         ],
         "observations": observations,
@@ -144,12 +148,24 @@ def build_company_comparison(
 
     prices = inputs.adjusted_closes.sort_index().loc[: inputs.signal_date]
     if inputs.adjusted_opens is not None and not inputs.adjusted_opens.empty:
-        open_vals = inputs.adjusted_opens.sort_index().loc[: inputs.signal_date].reindex(columns=prices.columns).astype("float64")
+        open_vals = (
+            inputs.adjusted_opens.sort_index()
+            .loc[: inputs.signal_date]
+            .reindex(columns=prices.columns)
+            .astype("float64")
+        )
         close_vals = prices.astype("float64")
-        valid_open = (open_vals > 0) & np.isfinite(open_vals) & (close_vals > 0) & np.isfinite(close_vals)
-        intraday = np.where(valid_open, np.log(close_vals / np.where(valid_open, open_vals, 1.0)), np.nan)
+        valid_open = (
+            (open_vals > 0) & np.isfinite(open_vals) & (close_vals > 0) & np.isfinite(close_vals)
+        )
+        safe_open = np.where(valid_open, open_vals, 1.0)
+        intraday = np.where(valid_open, np.log(close_vals / safe_open), np.nan)
         close_diff = np.log(close_vals).diff().to_numpy()
-        log_returns = pd.DataFrame(np.where(valid_open, intraday, close_diff), index=prices.index, columns=prices.columns)
+        log_returns = pd.DataFrame(
+            np.where(valid_open, intraday, close_diff),
+            index=prices.index,
+            columns=prices.columns,
+        )
     else:
         log_returns = np.log(prices.astype("float64")).diff()
     peer_returns = log_returns[list(peer_symbols)]

@@ -9,7 +9,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   IconButton,
   InputAdornment,
@@ -183,19 +182,6 @@ export default function StockDecisionJournal({
       await loadDecisions();
     } catch {
       // Graceful fallback
-    }
-  };
-
-  const getDecisionTypeColor = (type: DecisionType): "success" | "error" | "info" | "warning" => {
-    switch (type) {
-      case "Buy":
-        return "success";
-      case "Sell":
-        return "error";
-      case "Hold":
-        return "info";
-      case "Review":
-        return "warning";
     }
   };
 

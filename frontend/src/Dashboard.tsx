@@ -5,7 +5,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Divider,
   FormControl,
   InputAdornment,
   InputLabel,
@@ -173,10 +172,10 @@ export default function Dashboard() {
           sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 2 }}
         >
           <Box>
-            <Typography variant="h4" component="h2" sx={{ fontWeight: 700 }}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 700, fontSize: "1.25rem" }}>
               Sector divergence
             </Typography>
-            <Typography color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.78rem" }}>
               Select a company to inspect its exact peer comparison.
             </Typography>
           </Box>

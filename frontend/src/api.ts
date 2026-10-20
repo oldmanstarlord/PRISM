@@ -1,7 +1,23 @@
+import { supabase } from "./supabase";
+
 export const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
 
+async function sessionHeaders(headers?: HeadersInit): Promise<Headers> {
+  const result = new Headers(headers);
+  if (supabase) {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) {
+      result.set("Authorization", `Bearer ${data.session.access_token}`);
+    }
+  }
+  return result;
+}
+
 export async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, { signal });
+  const response = await fetch(`${apiBase}${path}`, {
+    signal,
+    headers: await sessionHeaders(),
+  });
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as { detail?: string } | null;
     throw new Error(payload?.detail ?? `API returned ${response.status}`);
@@ -10,9 +26,10 @@ export async function fetchJson<T>(path: string, signal: AbortSignal): Promise<T
 }
 
 export async function postJson<T>(path: string, body: unknown, signal: AbortSignal): Promise<T> {
+  const headers = await sessionHeaders({ "Content-Type": "application/json" });
   const response = await fetch(`${apiBase}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
     signal,
   });

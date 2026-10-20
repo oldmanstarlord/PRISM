@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import cytoscape, { type Core } from "cytoscape";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { getDecisionsCountMap, getNotesCountMap } from "./journalStorage";
 import type { PortfolioAnalysisResponse } from "./types";
@@ -36,6 +36,7 @@ function correlationLabel(value: number) {
 }
 
 export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; holdings: Holding[] }) {
+  const navigate = useNavigate();
   const container = useRef<HTMLDivElement | null>(null);
   const graph = useRef<Core | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -272,6 +273,12 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
           : null,
       });
     });
+    instance.on("dbltap", "node", (event) => {
+      const sym = event.target.data()?.symbol;
+      if (sym) {
+        navigate(`/companies/${sym}`);
+      }
+    });
     instance.on("tap", "edge", (event) => {
       const edge = event.target;
       const data = edge.data();
@@ -300,7 +307,7 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
       instance.destroy();
       graph.current = null;
     };
-  }, [graphData, mst.cluster_correlation_floor]);
+  }, [graphData, mst.cluster_correlation_floor, navigate]);
 
   const bridgeCount = graphData.nodes.filter((node) => node.classes === "bridge").length;
   const weakEdgeCount = mst.subtree_edges.filter(
@@ -312,23 +319,24 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
       <Box
         sx={{
           px: { xs: 2, md: 2.5 },
-          py: 2,
-          color: "#F9EBD7",
-          bgcolor: "#292D2A",
+          py: 1.5,
+          color: "#292D2A",
+          bgcolor: "#E3D7C4",
+          borderBottom: "1px solid rgba(41,45,42,0.08)",
         }}
       >
         <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 1.5, justifyContent: "space-between" }}>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "#F9EBD7" }}>Portfolio MST map</Typography>
-            <Typography variant="body2" sx={{ color: "#E3D7C4" }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>Portfolio MST map</Typography>
+            <Typography variant="body2" sx={{ color: "#686B64" }}>
               The smallest part of the market tree needed to connect every holding.
             </Typography>
           </Box>
           <Stack direction="row" sx={{ gap: 0.75, flexWrap: "wrap", alignItems: "center" }}>
-            <Chip size="small" label={`${holdings.length} held`} sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }} />
-            <Chip size="small" label={`${bridgeCount} bridge${bridgeCount === 1 ? "" : "s"}`} sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }} />
-            <Chip size="small" label={`${mst.subtree_edges.length} links`} sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }} />
-            <Chip size="small" label={`${mst.stability.confidence} confidence`} sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }} />
+            <Chip size="small" label={`${holdings.length} held`} sx={{ bgcolor: "#F9EBD7", color: "#292D2A", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }} />
+            <Chip size="small" label={`${bridgeCount} bridge${bridgeCount === 1 ? "" : "s"}`} sx={{ bgcolor: "#F9EBD7", color: "#292D2A", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }} />
+            <Chip size="small" label={`${mst.subtree_edges.length} links`} sx={{ bgcolor: "#F9EBD7", color: "#292D2A", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }} />
+            <Chip size="small" label={`${mst.stability.confidence} confidence`} sx={{ bgcolor: "#F9EBD7", color: "#292D2A", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }} />
           </Stack>
         </Stack>
       </Box>
@@ -472,6 +480,9 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
               {mst.stability.reason}
+            </Typography>
+            <Typography variant="caption" sx={{ display: "block", mt: 1.5, color: "#8A5A00" }}>
+              <strong>Topological Invariants:</strong> Spanning tree retains exactly N-1 edges from N(N-1)/2 pairs using Mantegna distance d = √(2(1 - ρ)) ∈ [0, 2]. Tree isolates ultrametric connectivity while discarding cycles. It visualizes empirical co-movement and does not imply causation or lead-lag relationships.
             </Typography>
           </Box>
         </Box>

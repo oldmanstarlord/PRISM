@@ -10,7 +10,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   IconButton,
   InputAdornment,
@@ -48,10 +47,12 @@ import {
   MstHoldingsInspector,
   StructuralMonitoringDashboard,
 } from "./Phase3StructuralSections";
+import { loadAlertThresholds } from "./methodologyRegistry";
 import { CorrelationMstExplainer, PortfolioRiskExplainer } from "./PrismExplainer";
 import PortfolioMstGraph from "./PortfolioMstGraph";
 import PortfolioSnapshotSection from "./PortfolioSnapshotSection";
 import StockResearchNotes from "./StockResearchNotes";
+import { AiInsightsTab } from "./AiInsightsTab";
 import {
   exportJournalBackup,
   getNotesCountMap,
@@ -60,6 +61,15 @@ import {
   type DecisionContextSnapshot,
   type DecisionType,
 } from "./journalStorage";
+import {
+  DEFAULT_CURATED_HOLDINGS,
+  DEFAULT_CURATED_TRANSACTIONS,
+} from "./demoPortfolioData";
+import {
+  exportTransactionsToCsv,
+  parseTransactionCsv,
+  type CsvTransactionRow,
+} from "./portfolioCsv";
 import type {
   BatchQuotesResponse,
   BenchmarkQuote,
@@ -109,7 +119,7 @@ export interface TransactionRecord {
   realizedPnl?: number;
 }
 
-export const DEFAULT_CURATED_HOLDINGS: PortfolioHolding[] = [
+const LEGACY_DEMO_HOLDINGS: PortfolioHolding[] = [
   // Cluster 1: Financial Services & Banking (6 stocks)
   {
     id: "hold-icicibank",
@@ -297,15 +307,9 @@ export const DEFAULT_CURATED_HOLDINGS: PortfolioHolding[] = [
   },
 ];
 
-export const DEFAULT_CURATED_TRANSACTIONS: TransactionRecord[] = DEFAULT_CURATED_HOLDINGS.map((h, i) => ({
-  id: `tx-init-${h.symbol.toLowerCase()}`,
-  type: "BUY",
-  symbol: h.symbol,
-  quantity: h.quantity,
-  price: h.buyPrice,
-  date: h.buyDate,
-  timestamp: new Date(h.buyDate).getTime() || Date.now() - (18 - i) * 86400000,
-}));
+// Keep the historical fixture available only to development builds. Rollup
+// eliminates both this branch and the fixture from production output.
+if (import.meta.env.DEV) void LEGACY_DEMO_HOLDINGS;
 
 const STORAGE_KEY = "prism_portfolio_holdings";
 const TX_STORAGE_KEY = "prism_portfolio_transactions";
@@ -348,6 +352,96 @@ function generateId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function deriveHoldingsFromLedger(
+  txns: TransactionRecord[],
+  knownSecurities: SecurityInfo[] = []
+): {
+  holdings: PortfolioHolding[];
+  cash: number;
+  totalRealizedPnl: number;
+  totalInvestedCost: number;
+} {
+  const sorted = [...txns].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.timestamp - b.timestamp
+  );
+
+  const posMap = new Map<
+    string,
+    { quantity: number; investedCost: number; buyDate: string }
+  >();
+  let cash = 1000000;
+  let totalRealized = 0;
+
+  for (const tx of sorted) {
+    const sym = tx.symbol.toUpperCase();
+    if (tx.type === "BUY") {
+      const existing = posMap.get(sym) ?? {
+        quantity: 0,
+        investedCost: 0,
+        buyDate: tx.date,
+      };
+      const newQty = existing.quantity + tx.quantity;
+      const outlay = tx.quantity * tx.price;
+      const newCost = existing.investedCost + outlay;
+      posMap.set(sym, {
+        quantity: newQty,
+        investedCost: newCost,
+        buyDate: tx.date,
+      });
+      cash -= outlay;
+    } else if (tx.type === "SELL") {
+      const existing = posMap.get(sym);
+      if (existing && existing.quantity > 0) {
+        const avgPx = existing.investedCost / existing.quantity;
+        const soldQty = Math.min(tx.quantity, existing.quantity);
+        const costBasisSold = soldQty * avgPx;
+        const proceeds = soldQty * tx.price;
+        const pnl = proceeds - costBasisSold;
+        totalRealized += pnl;
+        cash += proceeds;
+        const remainingQty = existing.quantity - soldQty;
+        const remainingCost = existing.investedCost - costBasisSold;
+        if (remainingQty > 0) {
+          posMap.set(sym, {
+            quantity: remainingQty,
+            investedCost: remainingCost,
+            buyDate: existing.buyDate,
+          });
+        } else {
+          posMap.delete(sym);
+        }
+      }
+    }
+  }
+
+  const derivedHoldings: PortfolioHolding[] = [];
+  let totalInvestedCost = 0;
+  for (const [sym, pos] of posMap.entries()) {
+    if (pos.quantity > 0) {
+      const sec = knownSecurities.find((s) => s.symbol.toUpperCase() === sym);
+      const buyPrice = Math.round((pos.investedCost / pos.quantity) * 100) / 100;
+      totalInvestedCost += pos.investedCost;
+      derivedHoldings.push({
+        id: `derived-${sym}`,
+        symbol: sym,
+        companyName: sec?.company_name || sym,
+        sector: sec?.industry,
+        quantity: pos.quantity,
+        buyPrice,
+        buyDate: pos.buyDate,
+        exchange: "NSE",
+      });
+    }
+  }
+
+  return {
+    holdings: derivedHoldings,
+    cash,
+    totalRealizedPnl: Math.round(totalRealized * 100) / 100,
+    totalInvestedCost,
+  };
+}
+
 /* ─── Currency & Percent Formatting Helpers ─── */
 
 function formatCurrency(val: number | null | undefined, maximumFractionDigits = 0): string {
@@ -372,24 +466,24 @@ function formatDecimal(val: number | null | undefined, digits = 2): string {
 
 function riskScoreFromVolatility(vol: number): { score: number; label: string; color: string } {
   const annualVol = vol * 100;
-  if (annualVol < 15) return { score: 1, label: "Low", color: "#2e7d32" };
-  if (annualVol < 25) return { score: 2, label: "Moderate", color: "#ed6c02" };
-  if (annualVol < 35) return { score: 3, label: "High", color: "#e65100" };
-  return { score: 4, label: "Very High", color: "#d32f2f" };
+  if (annualVol < 15) return { score: 1, label: "Low", color: "#046A38" };
+  if (annualVol < 25) return { score: 2, label: "Moderate", color: "#8A5A00" };
+  if (annualVol < 35) return { score: 3, label: "High", color: "#8A5A00" };
+  return { score: 4, label: "Very High", color: "#B8321A" };
 }
 
 function portfolioRiskScore(holdings: PortfolioHoldingAnalytics[]): { score: number; label: string; color: string } {
-  if (!holdings.length) return { score: 0, label: "N/A", color: "#94a3b8" };
+  if (!holdings.length) return { score: 0, label: "N/A", color: "#686B64" };
   const weightedVol = holdings.reduce((sum, h) => sum + h.weight * h.annualized_volatility, 0);
   return riskScoreFromVolatility(weightedVol);
 }
 
 function diversityGrade(effectiveHoldings: number, effectiveIndustries: number, totalHoldings: number): { grade: string; label: string; color: string } {
   const holdingRatio = totalHoldings > 0 ? effectiveHoldings / totalHoldings : 0;
-  if (holdingRatio > 0.75 && effectiveIndustries >= 3) return { grade: "A", label: "Well diversified", color: "#2e7d32" };
-  if (holdingRatio > 0.5 && effectiveIndustries >= 2) return { grade: "B", label: "Moderately diversified", color: "#ed6c02" };
-  if (holdingRatio > 0.3) return { grade: "C", label: "Concentrated", color: "#e65100" };
-  return { grade: "D", label: "Highly concentrated", color: "#d32f2f" };
+  if (holdingRatio > 0.75 && effectiveIndustries >= 3) return { grade: "A", label: "Well diversified", color: "#046A38" };
+  if (holdingRatio > 0.5 && effectiveIndustries >= 2) return { grade: "B", label: "Moderately diversified", color: "#8A5A00" };
+  if (holdingRatio > 0.3) return { grade: "C", label: "Concentrated", color: "#8A5A00" };
+  return { grade: "D", label: "Highly concentrated", color: "#B8321A" };
 }
 
 /* ─── Insight generator ─── */
@@ -399,12 +493,12 @@ function generateInsights(analysis: PortfolioAnalysisResponse): string[] {
   const { concentration, diversification, performance, holdings } = analysis;
 
   if (concentration.largest_holding_weight > 0.3) {
-    insights.push(`⚠️ ${concentration.largest_holding_symbol} dominates at ${(concentration.largest_holding_weight * 100).toFixed(1)}% — consider rebalancing to reduce single-stock risk.`);
+    insights.push(`⚠️ ${concentration.largest_holding_symbol} represents ${(concentration.largest_holding_weight * 100).toFixed(1)}%, exceeding the diagnostic concentration threshold.`);
   }
   if (diversification.effective_bets_risk < 2) {
-    insights.push("🔴 Your portfolio behaves almost like a single bet. Adding uncorrelated assets would dramatically improve risk-adjusted returns.");
+    insights.push("🔴 The portfolio behaves almost like a single risk exposure under the observed covariance structure.");
   } else if (diversification.effective_bets_risk < 3) {
-    insights.push("🟡 Low diversification benefit — most of your holdings move together. Consider adding stocks from unrelated sectors.");
+    insights.push("🟡 Low observed diversification benefit — most holdings move together in the estimation window.");
   } else {
     insights.push(`🟢 Good diversification with ${diversification.effective_bets_risk.toFixed(1)} effective independent bets across your portfolio.`);
   }
@@ -412,14 +506,14 @@ function generateInsights(analysis: PortfolioAnalysisResponse): string[] {
     insights.push(`📉 Maximum drawdown of ${(performance.max_drawdown * 100).toFixed(1)}% is significant. Stress test your portfolio to understand tail risks.`);
   }
   if (performance.annualized_volatility > 0.3) {
-    insights.push(`📊 Annual volatility of ${(performance.annualized_volatility * 100).toFixed(1)}% is above the market average. This portfolio suits aggressive investors only.`);
+    insights.push(`📊 Annual volatility of ${(performance.annualized_volatility * 100).toFixed(1)}% is elevated relative to the reference range.`);
   }
   const topRisk = [...holdings].sort((a, b) => b.risk_contribution - a.risk_contribution)[0];
   if (topRisk && topRisk.risk_contribution > 0.4) {
     insights.push(`🎯 ${topRisk.symbol} contributes ${(topRisk.risk_contribution * 100).toFixed(1)}% of total risk — it's your portfolio's risk anchor.`);
   }
   if (concentration.effective_industries < 2) {
-    insights.push("🏭 You're heavily concentrated in a single sector. A sector downturn could impact your entire portfolio.");
+    insights.push("🏭 High single-sector concentration creates common exposure to sector-wide shocks.");
   }
   return insights;
 }
@@ -481,7 +575,41 @@ export default function PortfolioManager() {
     | "analysis"
     | "news-preview"
     | "transactions"
-  >("dashboard");
+    | "ai-insights"
+  >(() => {
+    try {
+      const saved = localStorage.getItem("prism_portfolio_active_tab");
+      if (
+        saved &&
+        [
+          "monitoring",
+          "dashboard",
+          "stock-risk",
+          "portfolio-risk",
+          "sector-exposure",
+          "diversification",
+          "analysis",
+          "news-preview",
+          "transactions",
+          "ai-insights",
+        ].includes(saved)
+      ) {
+        return saved as any;
+      }
+    } catch {
+      // fallback
+    }
+    return "stock-risk";
+  });
+
+  const handleSelectTab = (tabId: typeof activeTab) => {
+    setActiveTab(tabId);
+    try {
+      localStorage.setItem("prism_portfolio_active_tab", tabId);
+    } catch {
+      // ignore
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sectorFilter, setSectorFilter] = useState("ALL");
@@ -499,6 +627,119 @@ export default function PortfolioManager() {
   const [txTagInput, setTxTagInput] = useState("");
   const [backupDialogOpen, setBackupDialogOpen] = useState(false);
   const [backupStatus, setBackupStatus] = useState<string | null>(null);
+
+  // Phase 2: Transaction CSV import & ledger reconciliation states
+  const [csvImportDialogOpen, setCsvImportDialogOpen] = useState(false);
+  const [csvInputText, setCsvInputText] = useState("");
+  const [csvPreview, setCsvPreview] = useState<CsvTransactionRow[]>([]);
+  const [csvErrors, setCsvErrors] = useState<string[]>([]);
+
+  const derivedLedger = useMemo(() => {
+    return deriveHoldingsFromLedger(transactions, securities);
+  }, [transactions, securities]);
+
+  const reconciliation = useMemo(() => {
+    const discrepancies: string[] = [];
+    const displayedSyms = new Set(holdings.map((h) => h.symbol.toUpperCase()));
+    const derivedSyms = new Set(derivedLedger.holdings.map((h) => h.symbol.toUpperCase()));
+
+    for (const sym of derivedSyms) {
+      if (!displayedSyms.has(sym)) {
+        discrepancies.push(`Position in ledger but missing from display: ${sym}`);
+      }
+    }
+    for (const sym of displayedSyms) {
+      if (!derivedSyms.has(sym)) {
+        discrepancies.push(`Position in display but missing from ledger: ${sym}`);
+      }
+    }
+
+    for (const h of holdings) {
+      const der = derivedLedger.holdings.find(
+        (d) => d.symbol.toUpperCase() === h.symbol.toUpperCase()
+      );
+      if (der && Math.abs(der.quantity - h.quantity) > 0.001) {
+        discrepancies.push(
+          `Quantity mismatch for ${h.symbol}: Display (${h.quantity}) vs Ledger (${der.quantity})`
+        );
+      }
+    }
+
+    return {
+      isReconciled: discrepancies.length === 0,
+      discrepancies,
+    };
+  }, [holdings, derivedLedger]);
+
+  function handlePreviewCsv(text: string) {
+    if (!text.trim()) {
+      setCsvPreview([]);
+      setCsvErrors([]);
+      return;
+    }
+    const res = parseTransactionCsv(text);
+    setCsvPreview(res.transactions);
+    setCsvErrors(res.errors);
+  }
+
+  function commitCsvImport() {
+    if (csvErrors.length > 0 || csvPreview.length === 0) return;
+    const newTxns: TransactionRecord[] = csvPreview.map((c, i) => ({
+      id: generateId(),
+      type: c.type === "SELL" ? "SELL" : "BUY",
+      symbol: (c.symbol || "UNKNOWN").toUpperCase(),
+      quantity: c.quantity || 1,
+      price: c.price || 0,
+      date: c.date,
+      timestamp: Date.now() + i,
+    }));
+
+    const updatedTxns = [...newTxns, ...transactions];
+    setTransactions(updatedTxns);
+    saveTransactions(updatedTxns);
+
+    // Derive holdings from new ledger
+    const derived = deriveHoldingsFromLedger(updatedTxns, securities);
+    setHoldings(derived.holdings);
+    saveHoldings(derived.holdings);
+
+    setSnackbar(
+      `Imported ${newTxns.length} transactions into ledger; derived ${derived.holdings.length} active positions.`
+    );
+    setCsvInputText("");
+    setCsvPreview([]);
+    setCsvErrors([]);
+    setAnalysis(null);
+    void refreshQuotes(
+      derived.holdings.map((h) => h.symbol),
+      true
+    );
+  }
+
+  function handleExportCsv() {
+    const csvStr = exportTransactionsToCsv(
+      transactions.map((tx) => ({
+        id: tx.id,
+        date: tx.date,
+        type: tx.type,
+        symbol: tx.symbol,
+        quantity: tx.quantity,
+        price: tx.price,
+        amount: tx.quantity * tx.price,
+        fees: 0,
+      }))
+    );
+    const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `prism-portfolio-transactions-${new Date().toISOString().substring(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setSnackbar("Transactions exported to CSV with formula-injection escaping.");
+  }
 
   const refreshNotesCountMap = useCallback(async () => {
     try {
@@ -747,6 +988,7 @@ export default function PortfolioManager() {
           buyDate: h.buyDate,
           exchange: h.exchange || "NSE",
         })),
+        thresholds: loadAlertThresholds(),
       };
 
       const [resPreview, resComp, resMonitoring, resNews] = await Promise.all([
@@ -894,10 +1136,10 @@ export default function PortfolioManager() {
           className="no-print"
         >
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, fontSize: "1.25rem" }}>
               Portfolio Holdings
             </Typography>
-            <Typography color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.78rem" }}>
               {holdings.length} stock{holdings.length !== 1 ? "s" : ""} · Currency: <strong>INR (₹)</strong>
               {lastQuotesUpdated && ` · Market quotes updated at ${lastQuotesUpdated}`}
             </Typography>
@@ -917,19 +1159,24 @@ export default function PortfolioManager() {
                 size="small"
               />
             )}
-            <Tooltip title="Load PRISM curated 18-stock diversified portfolio (~₹28L Net Worth across 3 market clusters with profitable and loss-making positions for deep analysis)">
+            {import.meta.env.DEV && (
+            <Tooltip title="DEMO fixture: load a synthetic 18-stock portfolio for local interface testing only">
               <Button
                 size="small"
                 onClick={() => {
-                  setHoldings(DEFAULT_CURATED_HOLDINGS);
-                  setTransactions(DEFAULT_CURATED_TRANSACTIONS);
-                  saveHoldings(DEFAULT_CURATED_HOLDINGS);
-                  saveTransactions(DEFAULT_CURATED_TRANSACTIONS);
-                  setAnalysis(null);
-                  setStructuralMonitoring(null);
-                  setComprehensiveRisk(null);
-                  setSnackbar("Loaded curated 18-stock portfolio (~₹28 Lakhs)");
-                  void refreshQuotes(DEFAULT_CURATED_HOLDINGS.map((h) => h.symbol), true);
+                  void import("./demoPortfolioData").then(
+                    ({ DEFAULT_CURATED_HOLDINGS, DEFAULT_CURATED_TRANSACTIONS }) => {
+                      setHoldings(DEFAULT_CURATED_HOLDINGS);
+                      setTransactions(DEFAULT_CURATED_TRANSACTIONS);
+                      saveHoldings(DEFAULT_CURATED_HOLDINGS);
+                      saveTransactions(DEFAULT_CURATED_TRANSACTIONS);
+                      setAnalysis(null);
+                      setStructuralMonitoring(null);
+                      setComprehensiveRisk(null);
+                      setSnackbar("Loaded DEMO fixture portfolio; not production data");
+                      void refreshQuotes(DEFAULT_CURATED_HOLDINGS.map((h) => h.symbol), true);
+                    },
+                  );
                 }}
                 sx={{
                   borderRadius: 0,
@@ -941,9 +1188,10 @@ export default function PortfolioManager() {
                   "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
                 }}
               >
-                ⚡ Curated Portfolio (₹28L)
+                DEMO Portfolio
               </Button>
             </Tooltip>
+            )}
             <Tooltip title="Refresh market prices via yfinance">
               <span>
                 <Button
@@ -1016,12 +1264,12 @@ export default function PortfolioManager() {
         {/* ─── Navigation Tabs ─── */}
         <Stack
           direction="row"
-          spacing={1}
+          spacing={0.5}
           className="no-print"
           sx={{
-            p: 0.75,
+            p: 0.5,
             bgcolor: "#F9EBD7",
-            boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+            boxShadow: "0 4px 12px rgba(41,45,42,0.12)",
             overflowX: "auto",
             borderRadius: 0,
           }}
@@ -1034,16 +1282,19 @@ export default function PortfolioManager() {
             { id: "sector-exposure" as const, label: "Sector Exposure" },
             { id: "diversification" as const, label: "Diversification" },
             { id: "analysis" as const, label: "Network & Stress (MST)" },
-            { id: "news-preview" as const, label: "News Signals (Preview)" },
+            { id: "news-preview" as const, label: "News Intelligence" },
             { id: "transactions" as const, label: "Transaction Ledger" },
+            { id: "ai-insights" as const, label: "AI Insights" },
           ].map((tab) => (
             <Button
               key={tab.id}
+              size="small"
               onClick={() => {
-                setActiveTab(tab.id);
+                handleSelectTab(tab.id);
                 if (
                   tab.id !== "dashboard" &&
                   tab.id !== "transactions" &&
+                  tab.id !== "ai-insights" &&
                   !structuralMonitoring &&
                   holdings.length > 0
                 ) {
@@ -1051,16 +1302,16 @@ export default function PortfolioManager() {
                 }
               }}
               sx={{
-                px: 2.5,
-                py: 1.25,
+                px: 1.25,
+                py: 0.4,
                 whiteSpace: "nowrap",
                 borderRadius: 0,
                 textTransform: "none",
-                fontSize: "0.92rem",
+                fontSize: "0.78rem",
                 color: activeTab === tab.id ? "#F9EBD7" : "#292D2A",
                 bgcolor: activeTab === tab.id ? "#046A38" : "transparent",
                 fontWeight: activeTab === tab.id ? 700 : 500,
-                boxShadow: activeTab === tab.id ? "0 4px 12px rgba(4,106,56,0.25)" : "none",
+                boxShadow: activeTab === tab.id ? "0 2px 6px rgba(4,106,56,0.20)" : "none",
                 "&:hover": {
                   bgcolor: activeTab === tab.id ? "#03532c" : "#E3D7C4",
                 },
@@ -1078,6 +1329,24 @@ export default function PortfolioManager() {
           <StructuralMonitoringDashboard
             monitoring={structuralMonitoring}
             analysis={analysis}
+            onRefresh={() => void runAnalysis()}
+            portfolioId="default"
+            financials={{
+              marketValue: totalMarketValue && totalMarketValue > 0 ? totalMarketValue : totalInvestedValue,
+              investedCost: totalInvestedValue,
+              cash: derivedLedger.cash,
+              realizedPnl: derivedLedger.totalRealizedPnl,
+              unrealizedPnl: totalUnrealizedPnl ?? 0,
+              returnPct: totalReturnPercent ?? 0,
+              volatility: analysis?.performance?.annualized_volatility,
+              maxDrawdown: analysis?.performance?.max_drawdown,
+              concentrationHhi: analysis?.concentration?.holding_hhi ?? 0.125,
+              dataFreshness: structuralMonitoring?.data_freshness ?? (lastQuotesUpdated ? "Live sync" : "EOD 15m delayed"),
+              asOfDate: new Date().toISOString().slice(0, 10),
+              period: "1Y (Daily, 252d window)",
+            }}
+            newsSummary={newsSummary}
+            onNavigateTab={(tab) => setActiveTab(tab as typeof activeTab)}
           />
         )}
 
@@ -1487,7 +1756,7 @@ export default function PortfolioManager() {
                                 <MuiLink
                                   component={Link}
                                   to={`/companies/${h.symbol}`}
-                                  sx={{ fontWeight: 700, color: "#00796b", textDecoration: "none" }}
+                                  sx={{ fontWeight: 700, color: "#046A38", textDecoration: "none" }}
                                 >
                                   {h.symbol}
                                 </MuiLink>
@@ -1506,13 +1775,80 @@ export default function PortfolioManager() {
                                         height: 20,
                                         fontSize: "0.68rem",
                                         fontWeight: 700,
-                                        bgcolor: "rgba(0, 121, 107, 0.1)",
-                                        color: "#00796b",
-                                        "&:hover": { bgcolor: "rgba(0, 121, 107, 0.2)" },
+                                        bgcolor: "rgba(4, 106, 56, 0.12)",
+                                        color: "#046A38",
+                                        "&:hover": { bgcolor: "rgba(4, 106, 56, 0.2)" },
                                       }}
                                     />
                                   </Tooltip>
                                 ) : null}
+                                {newsSummary?.stock_signals?.find((s) => s.symbol.toUpperCase() === h.symbol.toUpperCase()) ? (
+                                  (() => {
+                                    const s = newsSummary.stock_signals.find((ns) => ns.symbol.toUpperCase() === h.symbol.toUpperCase())!;
+                                    const isPos = s.sentiment_label === "positive";
+                                    const isNeg = s.sentiment_label === "negative";
+                                    return (
+                                      <Tooltip title={`${s.news_volume_7d || s.news_volume_24h} news articles · Sentiment: ${s.sentiment_label.toUpperCase()} · Click to open News Intelligence`}>
+                                        <Chip
+                                          size="small"
+                                          label={`📰 ${s.news_volume_7d || s.news_volume_24h || 1} ${isPos ? "▲" : isNeg ? "▼" : "■"}`}
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setActiveTab("news-preview");
+                                          }}
+                                          sx={{
+                                            cursor: "pointer",
+                                            height: 20,
+                                            borderRadius: 0,
+                                            fontSize: "0.68rem",
+                                            fontWeight: 700,
+                                            bgcolor: isPos ? "#DCE9DE" : isNeg ? "#F6D9CC" : "#E3D7C4",
+                                            color: isPos ? "#046A38" : isNeg ? "#B8321A" : "#292D2A",
+                                            border: "none",
+                                            "&:hover": { bgcolor: "#E3D7C4" },
+                                          }}
+                                        />
+                                      </Tooltip>
+                                    );
+                                  })()
+                                ) : null}
+                                {(() => {
+                                  const analyticsHolding = analysis?.holdings?.find(
+                                    (ah) => ah.symbol.toUpperCase() === h.symbol.toUpperCase()
+                                  );
+                                  const isUnusual =
+                                    analyticsHolding?.divergence_20d !== undefined &&
+                                    analyticsHolding.divergence_20d !== null &&
+                                    Math.abs(analyticsHolding.divergence_20d) >= 1.5;
+                                  if (!isUnusual) return null;
+                                  return (
+                                    <Tooltip
+                                      title={`Model estimate: Unusual sector divergence (${analyticsHolding.divergence_20d?.toFixed(1)}σ) detected. Click to inspect in AI Insights.`}
+                                    >
+                                      <Chip
+                                        size="small"
+                                        label="⚡ Model: Unusual"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setActiveTab("ai-insights");
+                                        }}
+                                        sx={{
+                                          cursor: "pointer",
+                                          height: 20,
+                                          borderRadius: 0,
+                                          fontSize: "0.68rem",
+                                          fontWeight: 700,
+                                          bgcolor: "#F6D9CC",
+                                          color: "#B8321A",
+                                          border: "none",
+                                          "&:hover": { bgcolor: "#ebc6b5" },
+                                        }}
+                                      />
+                                    </Tooltip>
+                                  );
+                                })()}
                               </Stack>
                               <Typography variant="caption" sx={{ display: "block" }} color="text.secondary">
                                 {h.companyName}
@@ -2006,38 +2342,158 @@ export default function PortfolioManager() {
            ═══════════════════════════════════════════════ */}
         {activeTab === "transactions" && (
           <Paper sx={{ p: 3 }}>
-            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: 2, flexWrap: "wrap", gap: 1.5 }}>
               <Box>
                 <Typography variant="h5" gutterBottom>
                   Transaction Ledger
                 </Typography>
                 <Typography color="text.secondary">
-                  Full chronological audit trail of stock purchases and sales with realized profit/loss calculations.
+                  Full chronological audit trail. Transactions are the authoritative single source of truth; holdings, cash, and P&L are derived under Weighted-Average Cost (WAC) basis.
                 </Typography>
               </Box>
-              <Button
-                size="small"
-                onClick={() => {
-                  setBackupStatus(null);
-                  setBackupDialogOpen(true);
-                }}
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setCsvInputText("");
+                    setCsvPreview([]);
+                    setCsvErrors([]);
+                    setCsvImportDialogOpen(true);
+                  }}
+                  sx={{
+                    borderRadius: 0,
+                    border: "none",
+                    bgcolor: "#E3D7C4",
+                    color: "#292D2A",
+                    boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                    textTransform: "none",
+                    fontSize: "0.82rem",
+                    py: 0.6,
+                    px: 1.5,
+                    fontWeight: 600,
+                    "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                  }}
+                >
+                  📥 Import CSV
+                </Button>
+                <Button
+                  size="small"
+                  onClick={handleExportCsv}
+                  disabled={!transactions.length}
+                  sx={{
+                    borderRadius: 0,
+                    border: "none",
+                    bgcolor: "#E3D7C4",
+                    color: "#292D2A",
+                    boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                    textTransform: "none",
+                    fontSize: "0.82rem",
+                    py: 0.6,
+                    px: 1.5,
+                    fontWeight: 600,
+                    "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                  }}
+                >
+                  📤 Export CSV
+                </Button>
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setBackupStatus(null);
+                    setBackupDialogOpen(true);
+                  }}
+                  sx={{
+                    borderRadius: 0,
+                    border: "none",
+                    bgcolor: "#E3D7C4",
+                    color: "#292D2A",
+                    boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                    textTransform: "none",
+                    fontSize: "0.82rem",
+                    py: 0.6,
+                    px: 1.5,
+                    fontWeight: 600,
+                    "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                  }}
+                >
+                  💾 Journal Backup / Restore
+                </Button>
+              </Stack>
+            </Stack>
+
+            {/* ─── Compact Reconciliation Status Card ─── */}
+            <Paper
+              sx={{
+                p: 2,
+                mb: 3,
+                bgcolor: reconciliation.isReconciled ? "#DCE9DE" : "#F6D9CC",
+                border: "none",
+                borderRadius: 0,
+                boxShadow: "0 3px 8px rgba(41,45,42,0.08)",
+              }}
+            >
+              <Stack
+                direction={{ xs: "column", md: "row" }}
                 sx={{
-                  borderRadius: 0,
-                  border: "none",
-                  bgcolor: "#E3D7C4",
-                  color: "#292D2A",
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                  textTransform: "none",
-                  fontSize: "0.82rem",
-                  py: 0.6,
-                  px: 1.5,
-                  fontWeight: 600,
-                  "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                  justifyContent: "space-between",
+                  alignItems: { md: "center" },
+                  gap: 1.5,
                 }}
               >
-                💾 Journal Backup / Restore
-              </Button>
-            </Stack>
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+                  <Chip
+                    label={reconciliation.isReconciled ? "✅ Ledger Reconciled" : "⚠️ Discrepancy Detected"}
+                    size="small"
+                    sx={{
+                      bgcolor: reconciliation.isReconciled ? "#046A38" : "#8A5A00",
+                      color: "#F9EBD7",
+                      fontWeight: 700,
+                      borderRadius: 0,
+                    }}
+                  />
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: "#292D2A" }}>
+                    Source of Truth: {transactions.length} Ledger Events · {derivedLedger.holdings.length} Positions Derived
+                  </Typography>
+                </Stack>
+                <Stack direction="row" spacing={2.5} sx={{ fontSize: "0.85rem", color: "#292D2A", flexWrap: "wrap", alignItems: "center" }}>
+                  <Box><strong>Derived Cash:</strong> {formatCurrency(derivedLedger.cash)}</Box>
+                  <Box><strong>Realized P&L:</strong> {formatCurrency(derivedLedger.totalRealizedPnl)}</Box>
+                  <Box><strong>Invested Cost:</strong> {formatCurrency(derivedLedger.totalInvestedCost)}</Box>
+                  {!reconciliation.isReconciled && (
+                    <Button
+                      size="small"
+                      onClick={() => {
+                        setHoldings(derivedLedger.holdings);
+                        saveHoldings(derivedLedger.holdings);
+                        setSnackbar("Holdings re-synchronized to ledger truth.");
+                      }}
+                      sx={{
+                        py: 0.2,
+                        px: 1,
+                        fontSize: "0.75rem",
+                        bgcolor: "#8A5A00",
+                        color: "#F9EBD7",
+                        borderRadius: 0,
+                        fontWeight: 700,
+                        textTransform: "none",
+                        "&:hover": { bgcolor: "#6f4800" },
+                      }}
+                    >
+                      Sync to Ledger
+                    </Button>
+                  )}
+                </Stack>
+              </Stack>
+              {!reconciliation.isReconciled && (
+                <Box sx={{ mt: 1.5, pt: 1, borderTop: "1px dashed rgba(41,45,42,0.2)" }}>
+                  {reconciliation.discrepancies.map((d, i) => (
+                    <Typography key={i} variant="caption" sx={{ display: "block", color: "#B8321A", fontWeight: 600 }}>
+                      • {d}
+                    </Typography>
+                  ))}
+                </Box>
+              )}
+            </Paper>
             {!transactions.length ? (
               <Box sx={{ py: 4, textAlign: "center" }}>
                 <Typography color="text.secondary">No transactions recorded yet.</Typography>
@@ -2136,6 +2592,16 @@ export default function PortfolioManager() {
               </Table>
             )}
           </Paper>
+        )}
+
+        {/* ═══════════════════════════════════════════════
+            TAB 9: AI INSIGHTS (Phase 4 ML Risk Models)
+           ═══════════════════════════════════════════════ */}
+        {activeTab === "ai-insights" && (
+          <AiInsightsTab
+            holdings={holdings}
+            totalInvestedValue={totalInvestedValue}
+          />
         )}
       </Stack>
 
@@ -2579,6 +3045,153 @@ export default function PortfolioManager() {
         <DialogActions sx={{ px: 2.5, py: 1.5 }}>
           <Button onClick={() => setBackupDialogOpen(false)} sx={{ color: "#686B64", borderRadius: 0 }}>
             Done
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ─── Modal: Transaction CSV Import ─── */}
+      <Dialog
+        open={csvImportDialogOpen}
+        onClose={() => setCsvImportDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 0,
+              bgcolor: "#F9EBD7",
+              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, color: "#292D2A", pb: 1 }}>
+          Import Transactions from CSV
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <Typography variant="body2" sx={{ color: "#686B64" }}>
+              Upload or paste CSV transactions (supported headers: <code>date,type,symbol,quantity,price,amount,fees,notes</code>). Spreadsheet formula cells starting with <code>=, +, -, @</code> are strictly rejected to prevent formula injection.
+            </Typography>
+
+            <Button
+              component="label"
+              size="small"
+              sx={{
+                bgcolor: "#E3D7C4",
+                color: "#292D2A",
+                fontWeight: 600,
+                borderRadius: 0,
+                alignSelf: "flex-start",
+                boxShadow: "0 2px 6px rgba(41,45,42,0.10)",
+                "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+              }}
+            >
+              Choose CSV File
+              <input
+                type="file"
+                hidden
+                accept=".csv,text/csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      const text = String(evt.target?.result || "");
+                      setCsvInputText(text);
+                      handlePreviewCsv(text);
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }
+                }}
+              />
+            </Button>
+
+            <TextField
+              multiline
+              rows={4}
+              fullWidth
+              placeholder="date,type,symbol,quantity,price,amount,fees,notes&#10;2026-01-05,BUY,TCS,10,3200,,15,Initial buy"
+              value={csvInputText}
+              onChange={(e) => {
+                setCsvInputText(e.target.value);
+                handlePreviewCsv(e.target.value);
+              }}
+              sx={{
+                "& .MuiInputBase-root": {
+                  borderRadius: 0,
+                  bgcolor: "#F9EBD7",
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: "0.85rem",
+                },
+              }}
+            />
+
+            {csvErrors.length > 0 && (
+              <Alert severity="error" sx={{ borderRadius: 0 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  Validation Errors (Atomic Rollback Active):
+                </Typography>
+                {csvErrors.map((err, i) => (
+                  <Typography key={i} variant="caption" sx={{ display: "block" }}>
+                    • {err}
+                  </Typography>
+                ))}
+              </Alert>
+            )}
+
+            {csvPreview.length > 0 && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: "#046A38" }}>
+                  Preview ({csvPreview.length} Valid Transactions):
+                </Typography>
+                <Table size="small" sx={{ bgcolor: "#F9EBD7" }}>
+                  <TableHead sx={{ bgcolor: "#E3D7C4" }}>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Symbol</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>Quantity</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>Price</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {csvPreview.slice(0, 5).map((row, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>{row.date}</TableCell>
+                        <TableCell>{row.type}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{row.symbol || "—"}</TableCell>
+                        <TableCell align="right">{row.quantity ?? "—"}</TableCell>
+                        <TableCell align="right">{row.price ? formatCurrency(row.price) : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, bgcolor: "#E3D7C4" }}>
+          <Button onClick={() => setCsvImportDialogOpen(false)} sx={{ color: "#686B64", borderRadius: 0 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={csvPreview.length === 0 || csvErrors.length > 0}
+            onClick={() => {
+              commitCsvImport();
+              setCsvImportDialogOpen(false);
+            }}
+            sx={{
+              borderRadius: 0,
+              bgcolor: "#046A38",
+              color: "#F9EBD7",
+              fontWeight: 700,
+              "&:hover": { bgcolor: "#03532c" },
+            }}
+          >
+            Commit {csvPreview.length} Transactions
           </Button>
         </DialogActions>
       </Dialog>
@@ -3296,7 +3909,7 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
           <Typography variant="h6">Portfolio clusters</Typography>
           <Stack spacing={1}>
             {analysis.mst.clusters.map((c) => (
-              <Box key={c.cluster_id} sx={{ borderBottom: "1px solid #e3e8eb", py: 1 }}>
+              <Box key={c.cluster_id} sx={{ py: 1.25, px: 1.5, bgcolor: "#E3D7C4", mb: 1, boxShadow: "0 2px 4px rgba(41,45,42,0.06)" }}>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                   <Typography sx={{ fontWeight: 700 }}>{c.cluster_id}</Typography>
                   <Chip size="small" label={formatPercent(c.weight * 100, 1)} />
@@ -3318,7 +3931,7 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
             <Stack
               direction="row"
               key={`${e.symbol_a}-${e.symbol_b}`}
-              sx={{ justifyContent: "space-between", py: 1, borderBottom: "1px solid #e3e8eb" }}
+              sx={{ justifyContent: "space-between", py: 1, px: 1.5, bgcolor: "#E3D7C4", mb: 0.75, boxShadow: "0 2px 4px rgba(41,45,42,0.06)" }}
             >
               <Typography>
                 {e.symbol_a} ↔ {e.symbol_b}

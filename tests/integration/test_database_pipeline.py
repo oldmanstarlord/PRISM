@@ -71,9 +71,7 @@ def _seed_synthetic_snapshot() -> None:
             for position, trade_date in enumerate(dates):
                 if position:
                     daily_return = (
-                        0.0004
-                        + 0.002 * sin(position / (5 + symbol_index))
-                        + symbol_index * 0.00003
+                        0.0004 + 0.002 * sin(position / (5 + symbol_index)) + symbol_index * 0.00003
                     )
                     price *= exp(daily_return)
                 session.add(
@@ -97,14 +95,18 @@ def test_migrations_and_quantitative_runs_are_idempotent() -> None:
     with SessionLocal() as session:
         revision = session.scalar(text("select version_num from alembic_version"))
         assert revision == "b7d4e2f91a08"
-        rls_tables = session.execute(
-            text(
-                "select relname from pg_class "
-                "where relname in "
-                "('portfolio', 'portfolio_snapshot', 'portfolio_snapshot_holding', 'audit_event') "
-                "and relrowsecurity"
+        rls_tables = (
+            session.execute(
+                text(
+                    "select relname from pg_class "
+                    "where relname in ('portfolio', 'portfolio_snapshot', "
+                    "'portfolio_snapshot_holding', 'audit_event') "
+                    "and relrowsecurity"
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert set(rls_tables) == {
             "portfolio",
             "portfolio_snapshot",

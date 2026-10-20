@@ -1,7 +1,7 @@
 from functools import lru_cache
 from urllib.parse import quote, unquote
 
-from pydantic import field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -22,6 +22,17 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
     supabase_url: str | None = None
     supabase_publishable_key: str | None = None
+    trusted_hosts: list[str] = ["localhost", "127.0.0.1", "testserver"]
+    max_request_bytes: int = Field(default=1_048_576, ge=1_024, le=10_485_760)
+    request_timeout_seconds: float = Field(default=60.0, ge=1.0, le=300.0)
+    expensive_rate_limit_requests: int = Field(default=20, ge=1, le=1_000)
+    expensive_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3_600)
+    expensive_path_prefixes: list[str] = [
+        "/api/v1/ml",
+        "/api/v1/news/portfolio",
+        "/api/v1/news/symbol",
+        "/api/v1/portfolio-analysis",
+    ]
 
     @field_validator("database_url", "migration_database_url", mode="before")
     @classmethod
@@ -55,6 +66,23 @@ class Settings(BaseSettings):
     @property
     def alembic_database_url(self) -> str:
         return self.migration_database_url or self.database_url
+
+    @model_validator(mode="after")
+    def validate_deployment_security(self) -> "Settings":
+        if not self.cors_origins or any(origin == "*" for origin in self.cors_origins):
+            raise ValueError(
+                "PRISM_CORS_ORIGINS must contain explicit origins; wildcard is forbidden"
+            )
+        if not self.trusted_hosts or any(host == "*" for host in self.trusted_hosts):
+            raise ValueError(
+                "PRISM_TRUSTED_HOSTS must contain explicit hosts; wildcard is forbidden"
+            )
+        if self.environment.lower() == "production":
+            if not self.supabase_url or not self.supabase_publishable_key:
+                raise ValueError("Production requires Supabase authentication configuration")
+            if any("localhost" in origin or "127.0.0.1" in origin for origin in self.cors_origins):
+                raise ValueError("Production CORS origins cannot target localhost")
+        return self
 
 
 @lru_cache

@@ -142,9 +142,7 @@ def preview_portfolio(
             errors.append(
                 f"Weights including cash must total 1.0; received {total_weight.normalize()}"
             )
-    valuation_date = _latest_common_date(
-        session, [holding.security_id for holding in holdings]
-    )
+    valuation_date = _latest_common_date(session, [holding.security_id for holding in holdings])
     if holdings and valuation_date is None:
         errors.append("No common closing-price date exists for all holdings")
     if duplicate_found:
@@ -152,9 +150,7 @@ def preview_portfolio(
 
     fingerprint = None
     if not errors and valuation_date is not None:
-        fingerprint = _fingerprint(
-            request.input_mode, valuation_date, holdings, cash_value
-        )
+        fingerprint = _fingerprint(request.input_mode, valuation_date, holdings, cash_value)
     return PortfolioPreviewResponse(
         valid=not errors,
         input_mode=request.input_mode,

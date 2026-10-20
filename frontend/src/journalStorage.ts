@@ -41,6 +41,7 @@ export interface InvestmentDecision {
   rationale: string;
   tags: string[];
   snapshot: DecisionContextSnapshot;
+  snapshotId?: string;
 }
 
 /* ─── Feature C: Portfolio Snapshots & Metrics ─── */
@@ -90,6 +91,12 @@ export interface PortfolioSnapshotMstContext {
 }
 
 export interface PortfolioSnapshotCalculationMeta {
+  portfolioId?: string;
+  dataCutoff?: string | null;
+  window?: number;
+  coverage?: number; // e.g. valid price series coverage percentage (0-100)
+  methodologyVersion?: string; // e.g. "1.0.0"
+  assumptions?: string[];
   horizon: number; // e.g. 250 or 20
   lookbackStart?: string | null;
   asOf?: string | null;
@@ -142,6 +149,32 @@ class MemoryStorage {
 }
 
 const memoryStore = new MemoryStorage();
+
+let memoryFallbackActive = false;
+const fallbackListeners = new Set<(active: boolean) => void>();
+
+export function isPersistenceFallbackActive(): boolean {
+  return memoryFallbackActive || !isIndexedDBSupported();
+}
+
+export function subscribePersistenceFallback(listener: (active: boolean) => void): () => void {
+  fallbackListeners.add(listener);
+  listener(isPersistenceFallbackActive());
+  return () => {
+    fallbackListeners.delete(listener);
+  };
+}
+
+export function notifyPersistenceFallback(): void {
+  memoryFallbackActive = true;
+  fallbackListeners.forEach((fn) => {
+    try {
+      fn(true);
+    } catch {
+      // Ignore listener error
+    }
+  });
+}
 
 function isIndexedDBSupported(): boolean {
   try {
@@ -264,6 +297,7 @@ export function validateDecision(raw: unknown): InvestmentDecision | null {
   const schemaVersion = typeof obj.schemaVersion === "number" ? obj.schemaVersion : CURRENT_SCHEMA_VERSION;
   const createdAt = typeof obj.createdAt === "string" ? obj.createdAt : new Date().toISOString();
   const updatedAt = typeof obj.updatedAt === "string" ? obj.updatedAt : createdAt;
+  const snapshotId = typeof obj.snapshotId === "string" && obj.snapshotId.trim() ? obj.snapshotId.trim() : undefined;
 
   return {
     id: obj.id.trim(),
@@ -276,6 +310,7 @@ export function validateDecision(raw: unknown): InvestmentDecision | null {
     rationale,
     tags,
     snapshot,
+    snapshotId,
   };
 }
 
@@ -293,6 +328,12 @@ export function validatePortfolioSnapshot(raw: unknown): PortfolioSnapshot | nul
   // Calculation Meta
   const rawMeta = typeof obj.calculationMeta === "object" && obj.calculationMeta !== null ? (obj.calculationMeta as Record<string, unknown>) : {};
   const calculationMeta: PortfolioSnapshotCalculationMeta = {
+    portfolioId: typeof rawMeta.portfolioId === "string" ? rawMeta.portfolioId : undefined,
+    dataCutoff: typeof rawMeta.dataCutoff === "string" ? rawMeta.dataCutoff : null,
+    window: typeof rawMeta.window === "number" ? rawMeta.window : (typeof rawMeta.horizon === "number" ? rawMeta.horizon : 250),
+    coverage: typeof rawMeta.coverage === "number" ? rawMeta.coverage : 100,
+    methodologyVersion: typeof rawMeta.methodologyVersion === "string" ? rawMeta.methodologyVersion : "1.0.0",
+    assumptions: Array.isArray(rawMeta.assumptions) ? rawMeta.assumptions.filter((a): a is string => typeof a === "string") : [],
     horizon: typeof rawMeta.horizon === "number" ? rawMeta.horizon : 250,
     lookbackStart: typeof rawMeta.lookbackStart === "string" ? rawMeta.lookbackStart : null,
     asOf: typeof rawMeta.asOf === "string" ? rawMeta.asOf : null,
@@ -599,6 +640,7 @@ export async function saveDecision(
     rationale: string;
     tags: string[];
     snapshot: DecisionContextSnapshot;
+    snapshotId?: string;
   }
 ): Promise<InvestmentDecision> {
   const now = new Date().toISOString();
@@ -606,12 +648,14 @@ export async function saveDecision(
   const symbol = input.symbol.trim().toUpperCase();
 
   let createdAt = now;
+  let existingSnapshotId: string | undefined;
   if (input.id) {
     const existing = isIndexedDBSupported()
       ? (await getAllDecisions()).find((d) => d.id === input.id)
       : memoryStore.decisions.get(input.id);
     if (existing) {
       createdAt = existing.createdAt;
+      existingSnapshotId = existing.snapshotId;
     }
   }
 
@@ -634,6 +678,7 @@ export async function saveDecision(
       mstCluster: input.snapshot.mstCluster,
       capturedAt: input.snapshot.capturedAt || now,
     },
+    snapshotId: input.snapshotId || existingSnapshotId || undefined,
   };
 
   if (!isIndexedDBSupported()) {
@@ -654,6 +699,11 @@ export async function saveDecision(
     memoryStore.decisions.set(decision.id, decision);
     return decision;
   }
+}
+
+export async function getDecisionsForSnapshot(snapshotId: string): Promise<InvestmentDecision[]> {
+  const all = await getAllDecisions();
+  return all.filter((d) => d.snapshotId === snapshotId);
 }
 
 export async function deleteDecision(id: string): Promise<void> {
@@ -734,21 +784,30 @@ export async function savePortfolioSnapshot(
     mstContext: input.mstContext,
   };
 
+  // Deep clone and freeze stored data
+  const frozenSnapshot: PortfolioSnapshot = Object.freeze(structuredClone(snapshot));
+
   if (!isIndexedDBSupported()) {
-    memoryStore.snapshots.set(snapshot.id, snapshot);
-    return snapshot;
+    if (memoryStore.snapshots.has(frozenSnapshot.id)) {
+      throw new Error(`Snapshot with id "${frozenSnapshot.id}" already exists. Snapshots are immutable and create-only.`);
+    }
+    notifyPersistenceFallback();
+    memoryStore.snapshots.set(frozenSnapshot.id, frozenSnapshot);
+    return frozenSnapshot;
   }
 
   try {
     const db = await openDatabase();
-    return new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_SNAPSHOTS, "readwrite");
       const store = tx.objectStore(STORE_SNAPSHOTS);
-      const req = store.put(snapshot);
-      req.onsuccess = () => resolve(snapshot);
-      req.onerror = (e) => {
-        // Handle storage quota exceeded gracefully
-        if (req.error?.name === "QuotaExceededError") {
+      // Use add() so an existing id is strictly rejected (create-only)
+      const req = store.add(frozenSnapshot);
+      req.onsuccess = () => resolve(frozenSnapshot);
+      req.onerror = () => {
+        if (req.error?.name === "ConstraintError") {
+          reject(new Error(`Snapshot with id "${frozenSnapshot.id}" already exists. Snapshots are immutable and create-only.`));
+        } else if (req.error?.name === "QuotaExceededError") {
           reject(new Error("Browser storage is full. Please export a backup and delete older snapshots to free up space."));
         } else {
           reject(req.error || new Error("Failed to save portfolio snapshot"));
@@ -756,11 +815,20 @@ export async function savePortfolioSnapshot(
       };
     });
   } catch (err) {
-    if (err instanceof Error && err.message.includes("full")) {
-      throw err;
+    if (err instanceof Error) {
+      if (err.message.includes("already exists") || err.message.includes("full")) {
+        throw err;
+      }
     }
-    memoryStore.snapshots.set(snapshot.id, snapshot);
-    return snapshot;
+    notifyPersistenceFallback();
+    if (memoryStore.snapshots.has(frozenSnapshot.id)) {
+      throw new Error(
+        `Snapshot with id "${frozenSnapshot.id}" already exists. Snapshots are immutable and create-only.`,
+        { cause: err }
+      );
+    }
+    memoryStore.snapshots.set(frozenSnapshot.id, frozenSnapshot);
+    return frozenSnapshot;
   }
 }
 

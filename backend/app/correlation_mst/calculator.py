@@ -117,7 +117,9 @@ def calculate_mst(inputs: MstInputs, *, computed_at: datetime | None = None) -> 
             active.remove(symbol)
             exclusions.append(
                 MstExclusion(
-                    inputs.security_ids[symbol], symbol, "insufficient_return_observations",
+                    inputs.security_ids[symbol],
+                    symbol,
+                    "insufficient_return_observations",
                     f"Required {MINIMUM_PAIRED_OBSERVATIONS}; found {count}",
                 )
             )
@@ -126,7 +128,7 @@ def calculate_mst(inputs: MstInputs, *, computed_at: datetime | None = None) -> 
         invalid: list[tuple[str, str, str]] = []
         for index, symbol_a in enumerate(active):
             left = returns[symbol_a].to_numpy(dtype=float)
-            for symbol_b in active[index + 1:]:
+            for symbol_b in active[index + 1 :]:
                 reason = _invalid_pair_reason(left, returns[symbol_b].to_numpy(dtype=float))
                 if reason:
                     invalid.append((symbol_a, symbol_b, reason))
@@ -143,7 +145,9 @@ def calculate_mst(inputs: MstInputs, *, computed_at: datetime | None = None) -> 
         active.remove(removed)
         exclusions.append(
             MstExclusion(
-                inputs.security_ids[removed], removed, sorted(reasons[removed])[0],
+                inputs.security_ids[removed],
+                removed,
+                sorted(reasons[removed])[0],
                 f"Excluded deterministically to resolve {counts[removed]} invalid pairs",
             )
         )
@@ -154,7 +158,7 @@ def calculate_mst(inputs: MstInputs, *, computed_at: datetime | None = None) -> 
     candidates: list[tuple[float, str, str, float, int]] = []
     for index, symbol_a in enumerate(active):
         left = returns[symbol_a].to_numpy(dtype=float)
-        for symbol_b in active[index + 1:]:
+        for symbol_b in active[index + 1 :]:
             right = returns[symbol_b].to_numpy(dtype=float)
             paired = np.isfinite(left) & np.isfinite(right)
             paired_count = int(paired.sum())
@@ -171,8 +175,14 @@ def calculate_mst(inputs: MstInputs, *, computed_at: datetime | None = None) -> 
             continue
         edges.append(
             MstEdgeResult(
-                inputs.security_ids[symbol_a], inputs.security_ids[symbol_b],
-                symbol_a, symbol_b, correlation, distance, paired_count, len(edges) + 1,
+                inputs.security_ids[symbol_a],
+                inputs.security_ids[symbol_b],
+                symbol_a,
+                symbol_b,
+                correlation,
+                distance,
+                paired_count,
+                len(edges) + 1,
             )
         )
         if len(edges) == len(active) - 1:
@@ -184,7 +194,9 @@ def calculate_mst(inputs: MstInputs, *, computed_at: datetime | None = None) -> 
         raise ValueError("MST validation failed: graph is not a connected acyclic N-1 tree")
     nodes = tuple(
         MstNode(
-            inputs.security_ids[symbol], symbol, inputs.industries[symbol],
+            inputs.security_ids[symbol],
+            symbol,
+            inputs.industries[symbol],
             int(np.isfinite(returns[symbol].to_numpy(dtype=float)).sum()),
             inputs.membership_sources[symbol],
         )

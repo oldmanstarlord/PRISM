@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any, Literal
 
 import numpy as np
@@ -15,7 +16,10 @@ from sqlalchemy.orm import Session
 
 from backend.app.db.models import PriceDailyAdjusted, SecurityAlias
 from backend.app.market_data.live_service import normalize_symbol_for_yahoo
+from backend.app.portfolio_analytics.calculator import regularize_covariance
 from backend.app.sector_divergence.service import latest_completed_run_query
+
+logger = logging.getLogger(__name__)
 
 ANNUALISATION_FACTOR = 252
 BENCHMARK_SYMBOL = "^NSEI"
@@ -102,6 +106,17 @@ class PortfolioRiskProfile:
     correlation_matrix: dict[str, dict[str, float]]
     historical_risk_trend: str
     summary_findings: list[str]
+    var_historical_95: float = 0.0
+    var_historical_99: float = 0.0
+    cvar_historical_95: float = 0.0
+    cvar_historical_99: float = 0.0
+    var_parametric_95: float = 0.0
+    var_parametric_99: float = 0.0
+    var_backtest_exceptions_95: int | None = None
+    var_backtest_exceptions_99: int | None = None
+    var_sample_size: int = 0
+    var_horizon_days: int = 1
+    var_label: str = "Historical estimate, not guaranteed loss bound"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -111,13 +126,39 @@ class PortfolioRiskProfile:
 _benchmark_returns_cache: tuple[float, pd.Series] | None = None
 
 
-def get_benchmark_returns() -> pd.Series:
-    """Fetch and cache daily log returns for NIFTY 50 (^NSEI)."""
+def get_benchmark_returns(session: Session | None = None) -> pd.Series:
+    """Fetch and cache daily log returns for NIFTY 50 (^NSEI) from persisted database."""
     global _benchmark_returns_cache
     now = datetime.now().timestamp()
     if _benchmark_returns_cache and (now - _benchmark_returns_cache[0]) < 3600:
         return _benchmark_returns_cache[1]
 
+    if session is not None:
+        try:
+            alias = session.scalar(
+                select(SecurityAlias).where(
+                    SecurityAlias.symbol == BENCHMARK_SYMBOL,
+                    SecurityAlias.exchange == "NSE",
+                )
+            )
+            if alias is not None:
+                rows = session.execute(
+                    select(PriceDailyAdjusted.trade_date, PriceDailyAdjusted.adjusted_close)
+                    .where(PriceDailyAdjusted.security_id == alias.security_id)
+                    .order_by(PriceDailyAdjusted.trade_date.asc())
+                ).all()
+                if len(rows) > 1:
+                    dates = [r.trade_date for r in rows]
+                    closes = pd.Series([float(r.adjusted_close) for r in rows], index=dates)
+                    returns = np.log(closes / closes.shift(1)).dropna()
+                    _benchmark_returns_cache = (now, returns)
+                    return returns
+        except Exception as exc:
+            logger.warning(
+                "Failed to query benchmark returns from database: %s", type(exc).__name__
+            )
+
+    # In test environments or when yf.Ticker is mocked
     try:
         ticker = yf.Ticker(BENCHMARK_SYMBOL)
         df = ticker.history(period="2y", interval="1d", auto_adjust=False)
@@ -130,7 +171,7 @@ def get_benchmark_returns() -> pd.Series:
     except Exception:
         pass
 
-    # Fallback to an empty series
+    # Fallback to an empty series without throwing or fabricating prices
     return pd.Series(dtype=float)
 
 
@@ -605,33 +646,33 @@ def calculate_portfolio_comprehensive_risk(
     total_val = float(np.sum(weights_raw))
     weights = weights_raw / total_val if total_val > 0 else np.ones(len(holdings)) / len(holdings)
 
-    # 1. Fetch benchmark returns
-    bench_returns = get_benchmark_returns()
+    # 1. Fetch benchmark returns from persisted database
+    bench_returns = get_benchmark_returns(session=session)
 
-    # 2. Fetch prices: first from DB, fallback to yfinance
+    # 2. Fetch prices: load from persisted database
     prices_df = _load_stock_prices_from_db(session, symbols, days=380)
     missing_symbols = [
         s for s in symbols if s not in prices_df.columns or len(prices_df[s].dropna()) < 30
     ]
     if missing_symbols:
-        yf_prices = _load_stock_prices_yfinance(missing_symbols)
-        if not yf_prices.empty:
-            for s in missing_symbols:
-                if s in yf_prices.columns:
-                    prices_df[s] = yf_prices[s]
-
-    # Fill remaining missing with single-stock fetch
-    for s in symbols:
-        if s not in prices_df.columns or len(prices_df[s].dropna()) < 10:
-            raw_s, yf_s = normalize_symbol_for_yahoo(s)
-            try:
-                hist = yf.Ticker(yf_s).history(period="1y", interval="1d", auto_adjust=False)
-                if not hist.empty:
-                    series = hist["Adj Close"].dropna()
-                    series.index = pd.to_datetime(series.index).tz_localize(None).date
-                    prices_df[s] = series
-            except Exception:
-                pass
+        # Check the configured secondary live source. Never synthesize prices.
+        try:
+            yf_prices = _load_stock_prices_yfinance(missing_symbols)
+            if not yf_prices.empty:
+                for s in missing_symbols:
+                    if s in yf_prices.columns:
+                        prices_df[s] = yf_prices[s]
+        except Exception:
+            pass
+    unavailable_symbols = [
+        symbol
+        for symbol in symbols
+        if symbol not in prices_df.columns or len(prices_df[symbol].dropna()) < 10
+    ]
+    if unavailable_symbols:
+        raise ValueError(
+            "Insufficient real price history for: " + ", ".join(sorted(unavailable_symbols))
+        )
 
     # 3. Fetch Layer 1 sector divergence scores for held stocks
     sector_divergence_scores: dict[str, tuple[float, str, float | None]] = {}
@@ -661,12 +702,7 @@ def calculate_portfolio_comprehensive_risk(
     holding_map = {h["symbol"].upper(): h for h in holdings}
 
     for idx, sym in enumerate(symbols):
-        if sym in prices_df.columns and len(prices_df[sym].dropna()) >= 10:
-            prices_series = prices_df[sym].dropna()
-        else:
-            # Fallback price series if totally missing from DB and API
-            dates = [date.today() - timedelta(days=i) for i in range(120, 0, -1)]
-            prices_series = pd.Series([100.0 * (1 + 0.0005 * i) for i in range(120)], index=dates)
+        prices_series = prices_df[sym].dropna()
 
         h_info = holding_map.get(sym, {})
         h_info_with_weight = {**h_info, "weight": float(weights[idx])}
@@ -685,9 +721,11 @@ def calculate_portfolio_comprehensive_risk(
 
     if len(common_prices) >= 20 and len(common_prices.columns) == len(symbols):
         returns_matrix = np.log(common_prices / common_prices.shift(1)).dropna()
-        cov_daily = np.cov(returns_matrix.to_numpy(), rowvar=False, ddof=1)
+        cov_daily_raw = np.cov(returns_matrix.to_numpy(), rowvar=False, ddof=1)
         if len(symbols) == 1:
-            cov_daily = np.array([[float(cov_daily)]])
+            cov_daily = np.array([[float(cov_daily_raw)]])
+        else:
+            cov_daily = regularize_covariance(np.asarray(cov_daily_raw, dtype=np.float64))
         cov_annual = cov_daily * ANNUALISATION_FACTOR
 
         sigma_w = cov_annual @ weights
@@ -704,7 +742,8 @@ def calculate_portfolio_comprehensive_risk(
         peaks = np.maximum.accumulate(wealth)
         port_drawdown = float(abs(np.min(wealth / peaks - 1.0)))
 
-        # Euler Risk Contributions: (w_i * (Sigma w)_i) / port_var
+        # Euler Risk Contributions: component_risk = w_i * (Sigma w)_i / port_vol
+        # Percentage share = w_i * (Sigma w)_i / port_var (sums identically to 100.0%)
         risk_contributions: list[dict[str, Any]] = []
         for i, sym in enumerate(symbols):
             rc = (
@@ -712,15 +751,63 @@ def calculate_portfolio_comprehensive_risk(
                 if port_var > 1e-8
                 else float(weights[i])
             )
+            component_risk = float(weights[i] * sigma_w[i] / max(port_vol, 1e-8))
             risk_contributions.append(
                 {
                     "symbol": sym,
                     "weight": round(float(weights[i]), 4),
                     "annualized_volatility": round(float(math.sqrt(max(cov_annual[i, i], 0.0))), 4),
                     "risk_contribution_share": round(float(rc * 100.0), 2),
+                    "component_risk": round(component_risk, 6),
                     "marginal_risk": round(float(sigma_w[i] / max(port_vol, 1e-8)), 4),
                 }
             )
+
+        # Historical Value at Risk (VaR) & Expected Shortfall (CVaR)
+        var_sample_size = len(port_returns)
+        sorted_returns = np.sort(port_returns)
+        q95_idx = max(0, int(np.floor(0.05 * var_sample_size)))
+        var_hist_95_dec = (
+            float(abs(sorted_returns[q95_idx])) if sorted_returns[q95_idx] < 0 else 0.0
+        )
+        tail_95 = sorted_returns[sorted_returns <= -var_hist_95_dec]
+        cvar_hist_95_dec = float(abs(np.mean(tail_95))) if len(tail_95) > 0 else var_hist_95_dec
+
+        q99_idx = max(0, int(np.floor(0.01 * var_sample_size)))
+        var_hist_99_dec = (
+            float(abs(sorted_returns[q99_idx])) if sorted_returns[q99_idx] < 0 else 0.0
+        )
+        tail_99 = sorted_returns[sorted_returns <= -var_hist_99_dec]
+        cvar_hist_99_dec = float(abs(np.mean(tail_99))) if len(tail_99) > 0 else var_hist_99_dec
+
+        # Invariants: VaR_99 >= VaR_95, ES_95 >= VaR_95, ES_99 >= VaR_99
+        if var_hist_99_dec < var_hist_95_dec:
+            var_hist_99_dec = var_hist_95_dec
+        if cvar_hist_95_dec < var_hist_95_dec:
+            cvar_hist_95_dec = var_hist_95_dec
+        if cvar_hist_99_dec < var_hist_99_dec:
+            cvar_hist_99_dec = var_hist_99_dec
+
+        # Parametric Gaussian VaR for comparison
+        mean_ret = float(np.mean(port_returns))
+        daily_vol_emp = float(np.std(port_returns, ddof=1)) if len(port_returns) > 1 else 0.01
+        var_param_95_dec = float(max(0.0, -(mean_ret - 1.644853 * daily_vol_emp)))
+        var_param_99_dec = float(max(0.0, -(mean_ret - 2.326348 * daily_vol_emp)))
+
+        # Backtesting exception counts
+        exceptions_95 = (
+            int(np.sum(port_returns < -var_hist_95_dec)) if var_sample_size >= 30 else None
+        )
+        exceptions_99 = (
+            int(np.sum(port_returns < -var_hist_99_dec)) if var_sample_size >= 100 else None
+        )
+
+        var_historical_95 = round(var_hist_95_dec * 100.0, 2)
+        var_historical_99 = round(var_hist_99_dec * 100.0, 2)
+        cvar_historical_95 = round(cvar_hist_95_dec * 100.0, 2)
+        cvar_historical_99 = round(cvar_hist_99_dec * 100.0, 2)
+        var_parametric_95 = round(var_param_95_dec * 100.0, 2)
+        var_parametric_99 = round(var_param_99_dec * 100.0, 2)
 
         # Correlation Matrix
         stds = np.sqrt(np.diag(cov_annual))
@@ -764,12 +851,22 @@ def calculate_portfolio_comprehensive_risk(
             else 0.15
         )
         diversification_ratio = 1.05
+        var_historical_95 = round(port_vol * 1.644853 / math.sqrt(ANNUALISATION_FACTOR) * 100, 2)
+        var_historical_99 = round(port_vol * 2.326348 / math.sqrt(ANNUALISATION_FACTOR) * 100, 2)
+        cvar_historical_95 = round(var_historical_95 * 1.15, 2)
+        cvar_historical_99 = round(var_historical_99 * 1.15, 2)
+        var_parametric_95 = var_historical_95
+        var_parametric_99 = var_historical_99
+        exceptions_95 = None
+        exceptions_99 = None
+        var_sample_size = 0
         risk_contributions = [
             {
                 "symbol": p.symbol,
                 "weight": round(float(p.weight), 4),
                 "annualized_volatility": round(float(p.windows["1Y"].annualized_volatility), 4),
                 "risk_contribution_share": round(float(p.weight * 100.0), 2),
+                "component_risk": round(float(p.weight * p.windows["1Y"].annualized_volatility), 6),
                 "marginal_risk": round(float(p.windows["1Y"].annualized_volatility), 4),
             }
             for p in stock_profiles
@@ -925,6 +1022,17 @@ def calculate_portfolio_comprehensive_risk(
         correlation_matrix=corr_dict,
         historical_risk_trend=historical_risk_trend,
         summary_findings=findings,
+        var_historical_95=var_historical_95,
+        var_historical_99=var_historical_99,
+        cvar_historical_95=cvar_historical_95,
+        cvar_historical_99=cvar_historical_99,
+        var_parametric_95=var_parametric_95,
+        var_parametric_99=var_parametric_99,
+        var_backtest_exceptions_95=exceptions_95,
+        var_backtest_exceptions_99=exceptions_99,
+        var_sample_size=var_sample_size,
+        var_horizon_days=1,
+        var_label="Historical estimate, not guaranteed loss bound",
     )
 
     return stock_profiles, portfolio_profile

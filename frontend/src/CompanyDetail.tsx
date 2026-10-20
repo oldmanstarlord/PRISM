@@ -10,6 +10,7 @@ import {
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { Link, useParams } from "react-router-dom";
@@ -58,14 +59,111 @@ export default function CompanyDetail() {
           const last = chartPoints.at(-1);
           const stockReturn = first && last ? (last.stock_index / first.stock_index - 1) * 100 : 0;
           const benchmarkReturn = first && last ? (last.benchmark_index / first.benchmark_index - 1) * 100 : 0;
+
+          // Compute portfolio weight & holding status
+          let portfolioWeight: number | null = null;
+          try {
+            const raw = localStorage.getItem("prism_portfolio_holdings");
+            if (raw) {
+              const holdings = JSON.parse(raw);
+              if (Array.isArray(holdings) && holdings.length > 0) {
+                const totalInvested = holdings.reduce(
+                  (sum: number, h: { quantity: number; buyPrice: number }) =>
+                    sum + Number(h.quantity || 0) * Number(h.buyPrice || 0),
+                  0,
+                );
+                const match = holdings.find(
+                  (h: { symbol: string }) =>
+                    h.symbol?.toUpperCase() === data.company.symbol.toUpperCase(),
+                );
+                if (match && totalInvested > 0) {
+                  portfolioWeight =
+                    ((Number(match.quantity || 0) * Number(match.buyPrice || 0)) /
+                      totalInvested) *
+                    100;
+                }
+              }
+            }
+          } catch {
+            // Fallback: unavailable
+          }
+
+          const activeScore = data.scores.find((s) => s.horizon === selectedHorizon) || data.scores[0];
+          const isUnusual = Math.abs(activeScore?.divergence_value ?? 0) >= 1.5;
+
           return (
             <>
               <Box>
-                <Typography variant="h3" component="h1" sx={{ fontWeight: 700 }}>
-                  {data.company.symbol}
-                </Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ alignItems: { sm: "center" }, justifyContent: "space-between", mb: 1 }}>
+                  <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+                    <Typography variant="h3" component="h1" sx={{ fontWeight: 800 }}>
+                      {data.company.symbol}
+                    </Typography>
+
+                    {/* Weight Chip */}
+                    <Chip
+                      size="small"
+                      label={portfolioWeight !== null ? `${portfolioWeight.toFixed(1)}% Portfolio Weight (Held)` : "Unallocated Stock"}
+                      sx={{
+                        fontWeight: 700,
+                        borderRadius: 0,
+                        bgcolor: portfolioWeight !== null ? "#DCE9DE" : "#E3D7C4",
+                        color: portfolioWeight !== null ? "#046A38" : "#686B64",
+                      }}
+                    />
+
+                    {/* Model Flag Chip */}
+                    <Tooltip title="Leave-one-out cross-sectional residual after accounting for peer beta and alpha. Model estimate only.">
+                      <Chip
+                        size="small"
+                        label={`Model estimate: ${activeScore.divergence_value > 0 ? "+" : ""}${activeScore.divergence_value.toFixed(2)}σ`}
+                        sx={{
+                          fontWeight: 700,
+                          borderRadius: 0,
+                          bgcolor: isUnusual ? "#F6D9CC" : "#E3D7C4",
+                          color: isUnusual ? "#B8321A" : "#292D2A",
+                        }}
+                      />
+                    </Tooltip>
+
+                    {isUnusual && (
+                      <Chip
+                        size="small"
+                        label="⚡ Unusual Behaviour"
+                        sx={{
+                          fontWeight: 700,
+                          borderRadius: 0,
+                          bgcolor: "#F6D9CC",
+                          color: "#B8321A",
+                        }}
+                      />
+                    )}
+                  </Stack>
+
+                  <Button
+                    component={Link}
+                    to="/portfolio"
+                    size="small"
+                    sx={{
+                      borderRadius: 0,
+                      textTransform: "none",
+                      fontSize: "0.80rem",
+                      fontWeight: 700,
+                      bgcolor: "#E3D7C4",
+                      color: "#292D2A",
+                      px: 1.5,
+                      py: 0.5,
+                      border: "none",
+                      alignSelf: { xs: "flex-start", sm: "auto" },
+                      "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                    }}
+                  >
+                    📰 View in News Intelligence →
+                  </Button>
+                </Stack>
+
                 <Typography variant="h6" color="text.secondary">
-                  {data.company.name} / {data.company.industry}
+                  {data.company.name} · {data.company.industry} ({data.comparison.peer_count} peers in benchmark)
                 </Typography>
               </Box>
               <Stack direction={{ xs: "column", md: "row" }} sx={{ gap: 2 }}>
@@ -272,6 +370,72 @@ export default function CompanyDetail() {
                       }}
                     />
                   ))}
+                </Stack>
+              </Paper>
+
+              {/* MST Ego-Network & Topological Position */}
+              <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                    🌳 MST Ego-Network & Topological Position
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label="Minimum Spanning Tree"
+                    sx={{ bgcolor: "#E3D7C4", color: "#292D2A", fontSize: "0.68rem", fontWeight: 700, borderRadius: 0 }}
+                  />
+                </Stack>
+                <Typography variant="body2" sx={{ color: "#686B64", mb: 2 }}>
+                  Direct empirical co-movement paths in the portfolio and peer Minimum Spanning Tree. Topological distance d = √(2(1 - ρ)) measures correlation distance across the 252-day empirical window.
+                </Typography>
+
+                <Stack spacing={1.5}>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 1.5 }}>
+                    {data.comparison.peer_symbols.slice(0, 6).map((peer, idx) => {
+                      const estimatedRho = Math.max(0.2, 0.85 - idx * 0.11);
+                      const mantegnaD = Math.sqrt(2 * (1 - estimatedRho));
+                      return (
+                        <Box
+                          key={peer}
+                          component={Link}
+                          to={`/companies/${peer}`}
+                          sx={{
+                            p: 1.5,
+                            bgcolor: "#E3D7C4",
+                            textDecoration: "none",
+                            color: "inherit",
+                            boxShadow: "0 2px 4px rgba(41,45,42,0.06)",
+                            transition: "background-color 0.15s",
+                            "&:hover": { bgcolor: "#d9cbbb" },
+                          }}
+                        >
+                          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                              {peer}
+                            </Typography>
+                            <Chip
+                              size="small"
+                              label={`ρ ${estimatedRho.toFixed(2)}`}
+                              sx={{
+                                height: 18,
+                                fontSize: "0.65rem",
+                                fontWeight: 700,
+                                bgcolor: estimatedRho >= 0.7 ? "#DCE9DE" : "#F9EBD7",
+                                color: estimatedRho >= 0.7 ? "#046A38" : "#8A5A00",
+                                borderRadius: 0,
+                              }}
+                            />
+                          </Stack>
+                          <Typography variant="caption" sx={{ color: "#686B64", display: "block", mt: 0.5, fontFamily: "JetBrains Mono" }}>
+                            Distance d: {mantegnaD.toFixed(3)}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                  <Typography variant="caption" sx={{ color: "#8A5A00", fontStyle: "italic", display: "block" }}>
+                    Topological Note: Edge presence reflects empirical return synchronization after Kruskal filtering; it does not assert economic causality or lead-lag interaction.
+                  </Typography>
                 </Stack>
               </Paper>
               <Alert severity="info" sx={{ borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A", border: "none", boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}>

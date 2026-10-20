@@ -145,7 +145,7 @@ def generate_modular_news_preview(
                 f"{symbol}: Market update on quarterly operating performance",
                 f"{symbol} features in institutional brokerage sector report",
             ],
-            data_freshness="Contract Ready (Phase 3 Interface Preview)",
+            data_freshness="DEMO - Test Fixture Only (Not for Production)",
         )
         stock_signals.append(sig)
 

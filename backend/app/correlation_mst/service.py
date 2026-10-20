@@ -60,7 +60,9 @@ def mst_input_fingerprint(inputs: MstInputs) -> str:
             if value == value:
                 observations.append(
                     [
-                        trade_date.isoformat(), symbol, format(float(value), ".15g"),
+                        trade_date.isoformat(),
+                        symbol,
+                        format(float(value), ".15g"),
                         str(inputs.adjustment_versions.at[trade_date, symbol]),
                         str(inputs.adjustment_times.at[trade_date, symbol]),
                     ]
@@ -102,8 +104,11 @@ def persist_mst(
     )
     if existing is not None:
         return PersistedMst(
-            existing.id, False, existing.included_symbol_count,
-            existing.edge_count, existing.requested_symbol_count - existing.included_symbol_count,
+            existing.id,
+            False,
+            existing.included_symbol_count,
+            existing.edge_count,
+            existing.requested_symbol_count - existing.included_symbol_count,
         )
 
     universe_id = session.scalar(select(Universe.id).where(Universe.name == "NIFTY 200"))

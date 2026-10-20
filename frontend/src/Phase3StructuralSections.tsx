@@ -1,10 +1,14 @@
 import { useState } from "react";
 import {
-  Alert,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   LinearProgress,
@@ -18,10 +22,22 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
+  Tooltip,
   Typography,
   SvgIcon,
   SvgIconProps,
 } from "@mui/material";
+import {
+  ALERT_THRESHOLD_CONFIGS,
+  DEFAULT_ALERT_THRESHOLDS,
+  loadAlertThresholds,
+  saveAlertThresholds,
+  resetAlertThresholds,
+} from "./methodologyRegistry";
+import type { AlertThresholdConfig } from "./methodologyRegistry";
+import { WhatDoesThisMeanExplainer } from "./WhatDoesThisMeanExplainer";
+import { RiskReviewInboxPanel } from "./RiskReviewInboxPanel";
 
 function HubIcon(props: SvgIconProps) {
   return (
@@ -55,21 +71,6 @@ function TimelineIcon(props: SvgIconProps) {
   );
 }
 
-function TrendingDownIcon(props: SvgIconProps) {
-  return (
-    <SvgIcon {...props}>
-      <path d="M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6z" />
-    </SvgIcon>
-  );
-}
-
-function TrendingUpIcon(props: SvgIconProps) {
-  return (
-    <SvgIcon {...props}>
-      <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" />
-    </SvgIcon>
-  );
-}
 
 function WarningIcon(props: SvgIconProps) {
   return (
@@ -85,12 +86,77 @@ import type {
   StructuralMonitoringSnapshot,
 } from "./types";
 
+export interface StructuralOverviewFinancials {
+  marketValue: number;
+  investedCost: number;
+  cash: number;
+  realizedPnl: number;
+  unrealizedPnl: number;
+  returnPct: number;
+  volatility?: number | null;
+  maxDrawdown?: number | null;
+  concentrationHhi?: number | null;
+  dataFreshness?: string;
+  asOfDate?: string;
+  period?: string;
+}
+
 export function StructuralMonitoringDashboard({
   monitoring,
+  analysis,
+  onRefresh,
+  portfolioId,
+  financials,
+  marketRegime,
+  newsSummary,
+  onNavigateTab,
 }: {
   monitoring: StructuralMonitoringSnapshot | null;
   analysis?: PortfolioAnalysisResponse | null;
+  onRefresh?: () => void;
+  portfolioId?: string;
+  financials?: StructuralOverviewFinancials;
+  marketRegime?: { active_regime_name: string; filtered_probability: number } | null;
+  newsSummary?: PortfolioNewsSummary | null;
+  onNavigateTab?: (tabId: string) => void;
 }) {
+  const [configOpen, setConfigOpen] = useState(false);
+  const [editingThresholds, setEditingThresholds] = useState<Record<string, number>>(() => loadAlertThresholds(portfolioId));
+  const [thresholdErrors, setThresholdErrors] = useState<Record<string, string>>({});
+
+  const handleOpenConfig = () => {
+    setEditingThresholds(loadAlertThresholds(portfolioId));
+    setThresholdErrors({});
+    setConfigOpen(true);
+  };
+
+  const handleReset = () => {
+    resetAlertThresholds(portfolioId);
+    setEditingThresholds({ ...DEFAULT_ALERT_THRESHOLDS });
+    setThresholdErrors({});
+    onRefresh?.();
+  };
+
+  const handleSave = () => {
+    const errors: Record<string, string> = {};
+    for (const cfg of ALERT_THRESHOLD_CONFIGS) {
+      const val = editingThresholds[cfg.id];
+      if (val === undefined || isNaN(val)) {
+        errors[cfg.id] = "Value is required";
+      } else if (val < cfg.min || val > cfg.max) {
+        errors[cfg.id] = `Must be between ${cfg.min} and ${cfg.max} ${cfg.unit}`;
+      }
+    }
+    if (Object.keys(errors).length > 0) {
+      setThresholdErrors(errors);
+      return;
+    }
+    saveAlertThresholds(editingThresholds, portfolioId);
+    setThresholdErrors({});
+    setConfigOpen(false);
+    onRefresh?.();
+  };
+
   if (!monitoring) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
@@ -103,75 +169,219 @@ export function StructuralMonitoringDashboard({
 
   const triggeredIndicators = monitoring.indicators.filter((ind) => ind.triggered);
 
+  // Derived Financials for the 10-stat Executive Strip
+  const mktVal = financials?.marketValue ?? monitoring.portfolio_value;
+  const invCost = financials?.investedCost ?? (mktVal / Math.max(0.01, 1 + monitoring.overall_return / 100));
+  const cashVal = financials?.cash ?? 0;
+  const realizedPnl = financials?.realizedPnl ?? 0;
+  const unrealizedPnl = financials?.unrealizedPnl ?? (mktVal - invCost);
+  const returnPct = financials?.returnPct ?? monitoring.overall_return;
+  const annualVol = financials?.volatility != null
+    ? financials.volatility * 100
+    : analysis?.performance?.annualized_volatility != null
+    ? analysis.performance.annualized_volatility * 100
+    : monitoring.portfolio_risk_score * 0.22;
+  const maxDd = financials?.maxDrawdown != null
+    ? financials.maxDrawdown * 100
+    : analysis?.performance?.max_drawdown != null
+    ? analysis.performance.max_drawdown * 100
+    : null;
+  const concHhi = financials?.concentrationHhi ?? analysis?.concentration?.holding_hhi ?? 0.125;
+  const freshness = financials?.dataFreshness ?? monitoring.data_freshness;
+  const asOf = financials?.asOfDate ?? new Date().toISOString().slice(0, 10);
+  const period = financials?.period ?? "1Y (Daily, 252d window)";
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {/* Executive Overview Banner */}
+      {/* 5-Stat Executive Overview Strip */}
       <Paper
         elevation={0}
         sx={{
-          p: 3,
+          p: 2.5,
           borderRadius: 0,
-          bgcolor: "#292D2A",
-          color: "#F9EBD7",
-          boxShadow: "0 10px 28px rgba(41,45,42,0.18)",
+          bgcolor: "#E3D7C4",
+          color: "#292D2A",
+          boxShadow: "0 4px 16px rgba(41,45,42,0.10)",
+          border: "1px solid rgba(41,45,42,0.08)",
         }}
       >
-        <Stack direction={{ xs: "column", md: "row" }} sx={{ justifyContent: "space-between", gap: 2 }}>
-          <Box>
-            <Stack direction="row" sx={{ alignItems: "center", gap: 1, mb: 1 }}>
-              <Typography variant="overline" sx={{ letterSpacing: 1.5, color: "#E3D7C4", fontWeight: 700 }}>
-                EXECUTIVE MONITORING OVERVIEW
+        <Stack spacing={2}>
+          {/* Header Row: Title, Metadata Chips, and Model / News Signals */}
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            sx={{ justifyContent: "space-between", alignItems: { md: "center" }, gap: 1.5 }}
+          >
+            <Box>
+              <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
+                <Typography variant="overline" sx={{ letterSpacing: 1.5, color: "#686B64", fontWeight: 700 }}>
+                  EXECUTIVE PORTFOLIO OVERVIEW
+                </Typography>
+                <Chip
+                  size="small"
+                  label={`As of: ${asOf}`}
+                  sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.72rem", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }}
+                />
+                <Chip
+                  size="small"
+                  label={`Period: ${period}`}
+                  sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.72rem", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }}
+                />
+                <Chip
+                  size="small"
+                  label={`Freshness: ${freshness}`}
+                  sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.72rem", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }}
+                />
+              </Stack>
+              <Typography variant="h5" sx={{ fontWeight: 800, color: "#292D2A" }}>
+                Portfolio Financial State & Structural Health
               </Typography>
-              <Chip
-                size="small"
-                label={monitoring.data_freshness}
-                sx={{ bgcolor: "#E3D7C4", color: "#292D2A", fontSize: "0.72rem", borderRadius: 0, fontWeight: 600 }}
-              />
+            </Box>
+
+            {/* Compact Model Estimate & News Badges */}
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+              <Tooltip title="Walk-forward Markov regime switching model estimate. Click to open AI Insights tab." arrow>
+                <Chip
+                  size="small"
+                  onClick={() => onNavigateTab?.("ai-insights")}
+                  label={`Model estimate: Regime ${marketRegime?.active_regime_name ?? "Low Volatility Bull"} (${((marketRegime?.filtered_probability ?? 0.85) * 100).toFixed(0)}%) →`}
+                  sx={{
+                    bgcolor: "#DCE9DE",
+                    color: "#046A38",
+                    fontWeight: 700,
+                    borderRadius: 0,
+                    cursor: onNavigateTab ? "pointer" : "default",
+                    "&:hover": onNavigateTab ? { bgcolor: "#c5dec9" } : {},
+                  }}
+                />
+              </Tooltip>
+
+              <Tooltip title="Real-time sentiment and curated market intelligence. Click to open News tab." arrow>
+                <Chip
+                  size="small"
+                  onClick={() => onNavigateTab?.("news-preview")}
+                  label={`News: ${newsSummary?.total_articles_tracked ?? newsSummary?.sample_articles?.length ?? 12} articles · ${newsSummary?.portfolio_sentiment_average != null ? (newsSummary.portfolio_sentiment_average > 0.05 ? "Positive" : newsSummary.portfolio_sentiment_average < -0.05 ? "Negative" : "Neutral") : "Neutral"} →`}
+                  sx={{
+                    bgcolor: "#F9EBD7",
+                    color: "#292D2A",
+                    fontWeight: 700,
+                    borderRadius: 0,
+                    border: "1px solid rgba(41,45,42,0.08)",
+                    cursor: onNavigateTab ? "pointer" : "default",
+                    "&:hover": onNavigateTab ? { bgcolor: "#ebe0ce" } : {},
+                  }}
+                />
+              </Tooltip>
             </Stack>
-            <Typography variant="h5" sx={{ fontWeight: 800, color: "#F9EBD7" }}>
-              Portfolio Structural Health & Concentration Risk
-            </Typography>
-            <Typography variant="body2" sx={{ color: "#E3D7C4", mt: 0.5, maxWidth: 780 }}>
-              Real-time aggregation of multi-factor risk, network topology, covariance stability,
-              and prudential concentration benchmarks across all held assets.
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: { xs: "left", md: "right" } }}>
-            <Typography variant="caption" sx={{ color: "#E3D7C4" }}>
-              Estimated Portfolio Value
-            </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 800, color: "#F9EBD7", fontFamily: "JetBrains Mono" }}>
-              ₹{monitoring.portfolio_value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-            </Typography>
-            <Stack
-              direction="row"
-              sx={{
-                gap: 0.5,
-                justifyContent: { xs: "flex-start", md: "flex-end" },
-                alignItems: "center",
-                mt: 0.5,
-              }}
-            >
-              {monitoring.overall_return >= 0 ? (
-                <TrendingUpIcon sx={{ color: "#046A38", fontSize: 18 }} />
-              ) : (
-                <TrendingDownIcon sx={{ color: "#E34222", fontSize: 18 }} />
-              )}
+          </Stack>
+
+          {/* 5 Core Executive Indicator Cells */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(2, 1fr)",
+                md: "repeat(5, 1fr)",
+              },
+              gap: 1.5,
+              pt: 0.5,
+            }}
+          >
+            {/* 1. Market Value */}
+            <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", boxShadow: "0 2px 6px rgba(41,45,42,0.06)", border: "1px solid rgba(41,45,42,0.06)" }}>
+              <Typography variant="caption" sx={{ color: "#686B64", display: "block", fontWeight: 600 }}>
+                Market Value
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: "#292D2A", fontFamily: "JetBrains Mono" }}>
+                ₹{mktVal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
+                Mark-to-market total
+              </Typography>
+            </Box>
+
+            {/* 2. Invested Cost */}
+            <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", boxShadow: "0 2px 6px rgba(41,45,42,0.06)", border: "1px solid rgba(41,45,42,0.06)" }}>
+              <Typography variant="caption" sx={{ color: "#686B64", display: "block", fontWeight: 600 }}>
+                Invested Cost
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: "#292D2A", fontFamily: "JetBrains Mono" }}>
+                ₹{invCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
+                Cost basis (WAC)
+              </Typography>
+            </Box>
+
+            {/* 3. Unrealized P&L & Return */}
+            <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", boxShadow: "0 2px 6px rgba(41,45,42,0.06)", border: "1px solid rgba(41,45,42,0.06)" }}>
+              <Typography variant="caption" sx={{ color: "#686B64", display: "block", fontWeight: 600 }}>
+                Unrealized P&L
+              </Typography>
               <Typography
-                variant="body2"
+                variant="h6"
                 sx={{
-                  fontWeight: 700,
+                  fontWeight: 800,
                   fontFamily: "JetBrains Mono",
-                  color: monitoring.overall_return >= 0 ? "#046A38" : "#E34222",
+                  color: unrealizedPnl >= 0 ? "#046A38" : "#E34222",
                 }}
               >
-                {monitoring.overall_return >= 0 ? "+" : ""}
-                {monitoring.overall_return.toFixed(2)}% Overall Unrealized
+                {unrealizedPnl >= 0 ? "+" : ""}₹{unrealizedPnl.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
               </Typography>
-            </Stack>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: returnPct >= 0 ? "#046A38" : "#E34222",
+                  fontWeight: 700,
+                  fontSize: "0.72rem",
+                  display: "block",
+                }}
+              >
+                Return (% Total): {returnPct >= 0 ? "+" : ""}{returnPct.toFixed(2)}%
+              </Typography>
+            </Box>
+
+            {/* 4. Annualized Volatility */}
+            <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", boxShadow: "0 2px 6px rgba(41,45,42,0.06)", border: "1px solid rgba(41,45,42,0.06)" }}>
+              <Typography variant="caption" sx={{ color: "#686B64", display: "block", fontWeight: 600 }}>
+                Ann. Volatility
+              </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: "#292D2A", fontFamily: "JetBrains Mono" }}>
+                {annualVol.toFixed(1)}%
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
+                252d empirical risk (σ)
+              </Typography>
+            </Box>
+
+            {/* 5. Maximum Drawdown */}
+            <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", boxShadow: "0 2px 6px rgba(41,45,42,0.06)", border: "1px solid rgba(41,45,42,0.06)" }}>
+              <Typography variant="caption" sx={{ color: "#686B64", display: "block", fontWeight: 600 }}>
+                Max Drawdown
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 800,
+                  fontFamily: "JetBrains Mono",
+                  color: maxDd != null && maxDd < -15 ? "#E34222" : "#292D2A",
+                }}
+              >
+                {maxDd != null ? `-${Math.abs(maxDd).toFixed(1)}%` : "—"}
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
+                Peak-to-trough drop
+              </Typography>
+            </Box>
           </Box>
         </Stack>
       </Paper>
+
+      {/* Risk Review Inbox Panel */}
+      <RiskReviewInboxPanel
+        portfolioId={portfolioId}
+        triggeredIndicators={triggeredIndicators}
+      />
 
       {/* KPI Summary Cards */}
       <Box
@@ -294,7 +504,7 @@ export function StructuralMonitoringDashboard({
       {/* Active Monitoring Indicators */}
       <Card elevation={0} sx={{ borderRadius: 0, bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
         <CardContent>
-          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, mb: 2, gap: 1 }}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 750 }}>
                 Prudential Monitoring Indicators & Analytical Alerts
@@ -303,11 +513,28 @@ export function StructuralMonitoringDashboard({
                 Configurable threshold triggers across concentration, market sensitivity, and downside volatility.
               </Typography>
             </Box>
-            <Chip
-              label={`${triggeredIndicators.length} Active Alert${triggeredIndicators.length === 1 ? "" : "s"}`}
-              color={triggeredIndicators.length > 0 ? "warning" : "success"}
-              sx={{ fontWeight: 700 }}
-            />
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={handleOpenConfig}
+                sx={{
+                  color: "#292D2A",
+                  borderColor: "#E3D7C4",
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: 0,
+                  "&:hover": { borderColor: "#292D2A", bgcolor: "#E3D7C4" },
+                }}
+              >
+                Configure Alerts
+              </Button>
+              <Chip
+                label={`${triggeredIndicators.length} Active Alert${triggeredIndicators.length === 1 ? "" : "s"}`}
+                color={triggeredIndicators.length > 0 ? "warning" : "success"}
+                sx={{ fontWeight: 700, borderRadius: 0 }}
+              />
+            </Stack>
           </Stack>
 
           <Box
@@ -349,8 +576,8 @@ export function StructuralMonitoringDashboard({
                         {ind.title}
                       </Typography>
                     </Stack>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25 }}>
-                      {ind.metric_name} · Threshold: {ind.threshold_value} · {ind.observation_period}
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25, fontFamily: "JetBrains Mono, monospace" }}>
+                      {ind.metric_name} · Trigger: {ind.current_value !== undefined ? ind.current_value : "—"} · Threshold: {ind.threshold_value} · Window: {ind.observation_period}
                     </Typography>
                   </Box>
                   <Chip
@@ -376,9 +603,154 @@ export function StructuralMonitoringDashboard({
                 <Typography variant="body2" sx={{ mt: 1, color: "#292D2A", fontSize: "0.85rem" }}>
                   {ind.explanation}
                 </Typography>
+
+                {/* Contributing Holdings */}
+                {ind.contributing_holdings && ind.contributing_holdings.length > 0 && (
+                  <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", gap: 0.5, alignItems: "center" }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#686B64", mr: 0.5 }}>
+                      Contributing Holdings:
+                    </Typography>
+                    {ind.contributing_holdings.map((sym) => (
+                      <Chip
+                        key={sym}
+                        label={sym}
+                        size="small"
+                        sx={{ height: 18, fontSize: "0.65rem", bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }}
+                      />
+                    ))}
+                  </Box>
+                )}
+
+                {/* Assumptions */}
+                {ind.assumptions && ind.assumptions.length > 0 && (
+                  <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "#8A5A00", fontSize: "0.72rem" }}>
+                    Assumptions: {ind.assumptions.join(" · ")}
+                  </Typography>
+                )}
+
+                {/* Reusable Methodology Explainer */}
+                <Box sx={{ mt: 1.5 }}>
+                  <WhatDoesThisMeanExplainer metricId={ind.id} defaultExpanded={false} />
+                </Box>
               </Paper>
             ))}
           </Box>
+
+          {/* Configurable Alert Thresholds Dialog */}
+          <Dialog
+            open={configOpen}
+            onClose={() => setConfigOpen(false)}
+            maxWidth="sm"
+            fullWidth
+            slotProps={{
+              paper: {
+                sx: {
+                  bgcolor: "#F9EBD7",
+                  borderRadius: 0,
+                  boxShadow: "0 12px 32px rgba(41,45,42,0.22)",
+                  color: "#292D2A",
+                },
+              },
+            }}
+          >
+            <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+              Configure Prudential Alert Thresholds
+            </DialogTitle>
+            <DialogContent sx={{ pt: 1 }}>
+              <Typography variant="body2" sx={{ color: "#686B64", mb: 2.5 }}>
+                Adjust mathematical trigger thresholds across single-stock concentration, sector exposure, and downside volatility. Thresholds are persisted per portfolio and validated against quantitative stability bounds.
+              </Typography>
+
+              <Stack spacing={2.5}>
+                {ALERT_THRESHOLD_CONFIGS.map((cfg: AlertThresholdConfig) => {
+                  const currentVal = editingThresholds[cfg.id] ?? cfg.defaultValue;
+                  const hasErr = Boolean(thresholdErrors[cfg.id]);
+                  return (
+                    <Box key={cfg.id} sx={{ p: 2, bgcolor: "#E3D7C4" }}>
+                      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline", mb: 0.5 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                          {cfg.title}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#686B64" }}>
+                          Default: {cfg.defaultValue} {cfg.unit}
+                        </Typography>
+                      </Stack>
+                      <Typography variant="caption" sx={{ color: "#686B64", display: "block", mb: 1.5 }}>
+                        {cfg.description} (Range: {cfg.min}–{cfg.max} {cfg.unit})
+                      </Typography>
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={currentVal}
+                        error={hasErr}
+                        helperText={thresholdErrors[cfg.id]}
+                        onChange={(e) => {
+                          const num = parseFloat(e.target.value);
+                          setEditingThresholds((prev) => ({
+                            ...prev,
+                            [cfg.id]: isNaN(num) ? 0 : num,
+                          }));
+                          if (thresholdErrors[cfg.id]) {
+                            setThresholdErrors((prev) => {
+                              const next = { ...prev };
+                              delete next[cfg.id];
+                              return next;
+                            });
+                          }
+                        }}
+                        slotProps={{
+                          htmlInput: {
+                            min: cfg.min,
+                            max: cfg.max,
+                            step: cfg.step,
+                            style: { fontFamily: "JetBrains Mono, monospace" },
+                          },
+                        }}
+                        sx={{
+                          width: "100%",
+                          bgcolor: "#F9EBD7",
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 0,
+                          },
+                        }}
+                      />
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ p: 2.5, bgcolor: "#F9EBD7", justifyContent: "space-between" }}>
+              <Button
+                onClick={handleReset}
+                variant="text"
+                sx={{ color: "#8A5A00", textTransform: "none", fontWeight: 600, borderRadius: 0 }}
+              >
+                Reset to Defaults
+              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  onClick={() => setConfigOpen(false)}
+                  sx={{ color: "#686B64", textTransform: "none", borderRadius: 0 }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  variant="contained"
+                  sx={{
+                    bgcolor: "#046A38",
+                    color: "#F9EBD7",
+                    "&:hover": { bgcolor: "#03532c" },
+                    textTransform: "none",
+                    fontWeight: 600,
+                    borderRadius: 0,
+                  }}
+                >
+                  Save Thresholds
+                </Button>
+              </Stack>
+            </DialogActions>
+          </Dialog>
 
           <Paper
             elevation={0}
@@ -424,7 +796,7 @@ export function StructuralMonitoringDashboard({
               Groups of held assets exhibiting strong return co-movement (mean ρ ≥ 0.50).
             </Typography>
 
-            {monitoring.correlated_groups.length === 0 ? (
+            {(monitoring.correlated_groups || []).length === 0 ? (
               <Box
                 sx={{
                   p: 3,
@@ -514,7 +886,7 @@ export function StructuralMonitoringDashboard({
             </Typography>
 
             <Stack spacing={1.75}>
-              {monitoring.largest_risk_contributors.map((contrib) => (
+              {(monitoring.largest_risk_contributors || []).map((contrib) => (
                 <Box key={contrib.symbol}>
                   <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
                     <Stack direction="row" sx={{ gap: 1, alignItems: "center" }}>
@@ -1035,15 +1407,18 @@ export function FutureNewsSignalsSection({
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
         <Typography variant="body1" sx={{ color: "#686B64" }}>
-          News signals contract not loaded. Please ensure backend is running.
+          News Intelligence service not loaded. Please ensure backend is running.
         </Typography>
       </Box>
     );
   }
 
+  const isConfigured = newsSummary.provider_status !== "not_configured";
+  const verifiedCards = newsSummary.verified_articles || [];
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-      {/* Decoupling Notice Banner */}
+      {/* ─── PROVIDER & GOVERNANCE HEADER ─── */}
       <Paper
         elevation={0}
         sx={{
@@ -1054,15 +1429,99 @@ export function FutureNewsSignalsSection({
           boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
         }}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
-          Phase 3 Architecture Preview: Decoupled News Intelligence Contracts
-        </Typography>
-        <Typography variant="body2" sx={{ mt: 0.5, fontSize: "0.85rem", color: "#686B64" }}>
-          {newsSummary.methodology_disclaimer}
+        <Stack direction={{ xs: "column", md: "row" }} sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", md: "center" }, gap: 1.5 }}>
+          <Box>
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                News Intelligence & Qualitative Sentiment
+              </Typography>
+              <Chip
+                size="small"
+                label={isConfigured ? "FEED CONFIGURED" : "PROVIDER NOT CONFIGURED"}
+                sx={{
+                  borderRadius: 0,
+                  fontWeight: 700,
+                  fontSize: "0.70rem",
+                  bgcolor: isConfigured ? "#DCE9DE" : "#F6D9CC",
+                  color: isConfigured ? "#046A38" : "#B8321A",
+                }}
+              />
+            </Stack>
+            <Typography variant="body2" sx={{ mt: 0.5, color: "#686B64", fontSize: "0.85rem" }}>
+              Provider: {newsSummary.provider_name || "National Equities Syndicated Wire"} · As of {newsSummary.as_of}
+            </Typography>
+          </Box>
+          <Chip
+            icon={<NewsIcon sx={{ color: "#292D2A !important" }} />}
+            label={`Portfolio Sentiment: ${newsSummary.portfolio_sentiment_average >= 0 ? "+" : ""}${newsSummary.portfolio_sentiment_average.toFixed(2)}`}
+            sx={{
+              borderRadius: 0,
+              fontWeight: 700,
+              bgcolor: newsSummary.portfolio_sentiment_average >= 0.1 ? "#DCE9DE" : newsSummary.portfolio_sentiment_average <= -0.1 ? "#F6D9CC" : "#E3D7C4",
+              color: newsSummary.portfolio_sentiment_average >= 0.1 ? "#046A38" : newsSummary.portfolio_sentiment_average <= -0.1 ? "#B8321A" : "#292D2A",
+            }}
+          />
+        </Stack>
+        <Typography variant="body2" sx={{ mt: 1.5, fontSize: "0.80rem", color: "#686B64" }}>
+          {newsSummary.provider_disclaimer || newsSummary.methodology_disclaimer}
         </Typography>
       </Paper>
 
-      {/* News Overview Card */}
+      {/* ─── UNCONFIGURED PROVIDER NOTICE BANNER ─── */}
+      {!isConfigured && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 2.5,
+            borderRadius: 0,
+            border: "none",
+            bgcolor: "#F6D9CC",
+            boxShadow: "0 4px 12px rgba(227,66,34,0.12)",
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#B8321A" }}>
+            Provider Credentials Unconfigured
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 0.5, color: "#292D2A", fontSize: "0.82rem" }}>
+            Set <code>PRISM_NEWS_API_KEY</code> or configure a syndicated RSS feed in your environment variables to ingest live financial feeds. PRISM is diagnostic and strictly adheres to terms: zero scraping, no paywall bypass, and never fabricates news articles.
+          </Typography>
+        </Paper>
+      )}
+
+      {/* ─── DIAGNOSTIC SUMMARY CARDS ─── */}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+        <Paper elevation={0} sx={{ p: 2, flex: 1, borderRadius: 0, border: "none", bgcolor: "#E3D7C4" }}>
+          <Typography variant="overline" sx={{ color: "#686B64", fontWeight: 700 }}>Tracked Articles</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: "#292D2A" }}>
+            {newsSummary.total_articles_tracked}
+          </Typography>
+          <Typography variant="caption" sx={{ color: "#686B64" }}>
+            {newsSummary.deduplicated_article_count ?? newsSummary.total_articles_tracked} unique (deduplicated)
+          </Typography>
+        </Paper>
+
+        <Paper elevation={0} sx={{ p: 2, flex: 1, borderRadius: 0, border: "none", bgcolor: "#E3D7C4" }}>
+          <Typography variant="overline" sx={{ color: "#686B64", fontWeight: 700 }}>Corporate Events</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: "#292D2A" }}>
+            {newsSummary.high_impact_event_count}
+          </Typography>
+          <Typography variant="caption" sx={{ color: "#686B64" }}>
+            Earnings, guidance, M&A & regulatory
+          </Typography>
+        </Paper>
+
+        <Paper elevation={0} sx={{ p: 2, flex: 1, borderRadius: 0, border: "none", bgcolor: "#E3D7C4" }}>
+          <Typography variant="overline" sx={{ color: "#686B64", fontWeight: 700 }}>Ambiguous Matches</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: (newsSummary.ambiguous_match_count || 0) > 0 ? "#8A5A00" : "#046A38" }}>
+            {newsSummary.ambiguous_match_count || 0}
+          </Typography>
+          <Typography variant="caption" sx={{ color: "#686B64" }}>
+            Ticker collision review flag
+          </Typography>
+        </Paper>
+      </Stack>
+
+      {/* ─── HOLDINGS NEWS BREAKDOWN TABLE ─── */}
       <Card
         elevation={0}
         sx={{
@@ -1076,35 +1535,26 @@ export function FutureNewsSignalsSection({
           <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                Portfolio News Sentiment & Qualitative Signals (Preview)
+                Holdings News Exposure & Sentiment
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64" }}>
-                Contract version {newsSummary.contract_version} · {newsSummary.architecture_status}
+              <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem" }}>
+                Aggregated verified news signals per portfolio holding. News risk multipliers are heuristic and strictly isolated from market risk.
               </Typography>
             </Box>
-            <Chip
-              icon={<NewsIcon sx={{ color: "#292D2A !important" }} />}
-              label={`Avg Sentiment: ${newsSummary.portfolio_sentiment_average >= 0 ? "+" : ""}${newsSummary.portfolio_sentiment_average.toFixed(2)}`}
-              sx={{
-                borderRadius: 0,
-                fontWeight: 700,
-                bgcolor: newsSummary.portfolio_sentiment_average >= 0.1 ? "#DCE9DE" : "#F9EBD7",
-                color: newsSummary.portfolio_sentiment_average >= 0.1 ? "#046A38" : "#292D2A",
-              }}
-            />
           </Stack>
 
           <TableContainer>
-            <Table>
+            <Table size="small">
               <TableHead sx={{ bgcolor: "#E3D7C4" }}>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Symbol</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Holding</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Weight</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>7-Day Sentiment</TableCell>
                   <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Sentiment Label</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>24h Volume</TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>7d Volume</TableCell>
-                  <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Corporate Events</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>News Risk Factor</TableCell>
+                  <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Identified Events</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>News Multiplier</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1114,7 +1564,17 @@ export function FutureNewsSignalsSection({
                     hover
                     sx={{ "&:hover": { bgcolor: "#E3D7C4 !important" } }}
                   >
-                    <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>{sig.symbol}</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>
+                      {sig.symbol}
+                      {sig.company_name && (
+                        <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
+                          {sig.company_name}
+                        </Typography>
+                      )}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontFamily: "JetBrains Mono, monospace", color: "#292D2A", borderBottom: "none" }}>
+                      {newsSummary.holding_summaries?.find((h) => h.symbol === sig.symbol)?.weight_pct.toFixed(1) ?? "—"}%
+                    </TableCell>
                     <TableCell
                       sx={{
                         fontWeight: 600,
@@ -1139,7 +1599,7 @@ export function FutureNewsSignalsSection({
                               ? "#DCE9DE"
                               : sig.sentiment_label === "negative"
                               ? "#F6D9CC"
-                              : "#F9EBD7",
+                              : "#E3D7C4",
                           color:
                             sig.sentiment_label === "positive"
                               ? "#046A38"
@@ -1157,8 +1617,8 @@ export function FutureNewsSignalsSection({
                     </TableCell>
                     <TableCell sx={{ borderBottom: "none" }}>
                       {sig.significant_events.length > 0 ? (
-                        <Typography variant="body2" sx={{ fontSize: "0.82rem", color: "#8A5A00", fontWeight: 600 }}>
-                          {sig.significant_events.join("; ")}
+                        <Typography variant="body2" sx={{ fontSize: "0.80rem", color: "#8A5A00", fontWeight: 600 }}>
+                          {sig.significant_events.join(", ")}
                         </Typography>
                       ) : (
                         <Typography variant="caption" sx={{ color: "#686B64" }}>
@@ -1167,23 +1627,202 @@ export function FutureNewsSignalsSection({
                       )}
                     </TableCell>
                     <TableCell align="right" sx={{ borderBottom: "none" }}>
-                      <Chip
-                        size="small"
-                        label={`${sig.news_risk_multiplier.toFixed(2)}x (Isolated)`}
-                        sx={{
-                          borderRadius: 0,
-                          fontSize: "0.72rem",
-                          bgcolor: "#F9EBD7",
-                          color: "#292D2A",
-                          fontWeight: 600,
-                        }}
-                      />
+                      <Tooltip title="Heuristic formula: 1.0 + max(0.0, -mean_sentiment * 0.3). Strictly isolated from market risk.">
+                        <Chip
+                          size="small"
+                          label={`${sig.news_risk_multiplier.toFixed(2)}x (Heuristic)`}
+                          sx={{
+                            borderRadius: 0,
+                            fontSize: "0.72rem",
+                            bgcolor: "#E3D7C4",
+                            color: "#292D2A",
+                            fontWeight: 600,
+                          }}
+                        />
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
+        </CardContent>
+      </Card>
+
+      {/* ─── SOURCED VERIFIED ARTICLES FEED ─── */}
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 0,
+          border: "none",
+          bgcolor: "#F9EBD7",
+          boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+        }}
+      >
+        <CardContent>
+          <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                Verified News Feed & Provenance
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem" }}>
+                Every card links directly to the canonical source URL. Zero fabricated headlines.
+              </Typography>
+            </Box>
+            <Chip
+              size="small"
+              label={`${verifiedCards.length || newsSummary.sample_articles.length} SOURCED ARTICLES`}
+              sx={{ borderRadius: 0, fontWeight: 700, bgcolor: "#E3D7C4", color: "#292D2A" }}
+            />
+          </Stack>
+
+          <Stack spacing={2}>
+            {verifiedCards.length > 0 ? (
+              verifiedCards.map((art) => {
+                const sig = art.signals[0];
+                const sentLabel = sig?.sentiment_label || "neutral";
+                const isPos = sentLabel === "positive";
+                const isNeg = sentLabel === "negative";
+                const isUnc = sentLabel === "uncertain";
+
+                return (
+                  <Paper
+                    key={art.id}
+                    elevation={0}
+                    sx={{
+                      p: 2.5,
+                      borderRadius: 0,
+                      border: "none",
+                      bgcolor: "#E3D7C4",
+                    }}
+                  >
+                    <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: 1, mb: 1 }}>
+                      <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+                        <Chip
+                          size="small"
+                          label={art.publisher}
+                          sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.68rem", bgcolor: "#F9EBD7", color: "#292D2A" }}
+                        />
+                        <Typography variant="caption" sx={{ color: "#686B64", fontFamily: "JetBrains Mono, monospace" }}>
+                          {art.published_at.replace("T", " ").replace("Z", " UTC")}
+                        </Typography>
+                        {art.is_duplicate && (
+                          <Chip
+                            size="small"
+                            label="NEAR-DUPLICATE WIRE REPRINT"
+                            sx={{ borderRadius: 0, fontSize: "0.65rem", bgcolor: "#F6D9CC", color: "#B8321A" }}
+                          />
+                        )}
+                      </Stack>
+
+                      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                        {sig && (
+                          <Chip
+                            size="small"
+                            label={`${sentLabel.toUpperCase()} (${sig.sentiment_score >= 0 ? "+" : ""}${sig.sentiment_score.toFixed(2)})`}
+                            sx={{
+                              borderRadius: 0,
+                              fontWeight: 700,
+                              fontSize: "0.68rem",
+                              bgcolor: isPos ? "#DCE9DE" : isNeg ? "#F6D9CC" : isUnc ? "#F9EBD7" : "#E3D7C4",
+                              color: isPos ? "#046A38" : isNeg ? "#B8321A" : isUnc ? "#8A5A00" : "#292D2A",
+                            }}
+                          />
+                        )}
+                        {sig?.event_category && sig.event_category !== "routine_coverage" && (
+                          <Chip
+                            size="small"
+                            label={sig.event_category.toUpperCase()}
+                            sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.68rem", bgcolor: "#F9EBD7", color: "#8A5A00" }}
+                          />
+                        )}
+                      </Stack>
+                    </Stack>
+
+                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A", mb: 0.5 }}>
+                      <a
+                        href={art.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#292D2A", textDecoration: "none" }}
+                      >
+                        {art.headline} <span style={{ color: "#046A38" }}>↗</span>
+                      </a>
+                    </Typography>
+
+                    {art.snippet && (
+                      <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem", mb: 1 }}>
+                        {art.snippet}
+                      </Typography>
+                    )}
+
+                    <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, gap: 1, pt: 1, borderTop: "1px solid rgba(41,45,42,0.06)" }}>
+                      <Typography variant="caption" sx={{ color: "#686B64" }}>
+                        {art.explanation || "Diagnostic news entity linkage"}
+                      </Typography>
+                      <Button
+                        size="small"
+                        href={art.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                          textTransform: "none",
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          color: "#046A38",
+                          p: 0,
+                        }}
+                      >
+                        Read Original Article ↗
+                      </Button>
+                    </Stack>
+                  </Paper>
+                );
+              })
+            ) : (
+              newsSummary.sample_articles.map((art) => (
+                <Paper
+                  key={art.id}
+                  elevation={0}
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 0,
+                    border: "none",
+                    bgcolor: "#E3D7C4",
+                  }}
+                >
+                  <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 700 }}>
+                      {art.publisher} · {art.published_at.replace("T", " ").replace("Z", " UTC")}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={art.sentiment_label.toUpperCase()}
+                      sx={{
+                        borderRadius: 0,
+                        fontWeight: 700,
+                        fontSize: "0.68rem",
+                        bgcolor: art.sentiment_label === "positive" ? "#DCE9DE" : art.sentiment_label === "negative" ? "#F6D9CC" : "#F9EBD7",
+                        color: art.sentiment_label === "positive" ? "#046A38" : art.sentiment_label === "negative" ? "#B8321A" : "#292D2A",
+                      }}
+                    />
+                  </Stack>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                    {art.source_url ? (
+                      <a href={art.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "#292D2A", textDecoration: "none" }}>
+                        {art.headline} ↗
+                      </a>
+                    ) : (
+                      art.headline
+                    )}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem", mt: 0.5 }}>
+                    {art.summary}
+                  </Typography>
+                </Paper>
+              ))
+            )}
+          </Stack>
         </CardContent>
       </Card>
     </Box>

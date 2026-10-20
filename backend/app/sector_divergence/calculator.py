@@ -114,8 +114,11 @@ def _calculate_daily_estimates(
     close_vals = prices.astype("float64")
     if opens is not None and not opens.empty:
         open_vals = opens.reindex(index=prices.index, columns=prices.columns).astype("float64")
-        valid_open = (open_vals > 0) & np.isfinite(open_vals) & (close_vals > 0) & np.isfinite(close_vals)
-        intraday_returns = np.where(valid_open, np.log(close_vals / np.where(valid_open, open_vals, 1.0)), np.nan)
+        valid_open = (
+            (open_vals > 0) & np.isfinite(open_vals) & (close_vals > 0) & np.isfinite(close_vals)
+        )
+        safe_denom = np.where(valid_open, open_vals, 1.0)
+        intraday_returns = np.where(valid_open, np.log(close_vals / safe_denom), np.nan)
         close_diff_returns = np.log(close_vals).diff().to_numpy()
         combined_returns = np.where(valid_open, intraday_returns, close_diff_returns)
         returns = pd.DataFrame(combined_returns, index=prices.index, columns=prices.columns)
@@ -243,10 +246,14 @@ def calculate_sector_divergence(
         adjustment_version = str(adjustment_value)
         for horizon in HORIZONS:
             first_position = signal_position - horizon + 1
-            residual_estimates = [
-                estimates.get((symbol, position))
-                for position in range(first_position, signal_position + 1)
-            ] if first_position >= 0 else []
+            residual_estimates = (
+                [
+                    estimates.get((symbol, position))
+                    for position in range(first_position, signal_position + 1)
+                ]
+                if first_position >= 0
+                else []
+            )
             if len(residual_estimates) != horizon or any(
                 residual_estimate is None for residual_estimate in residual_estimates
             ):

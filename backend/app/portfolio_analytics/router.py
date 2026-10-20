@@ -1,14 +1,16 @@
-"""Anonymous local-first API for session-only portfolio analytics and stock-level risk."""
+"""Bounded, non-persistent portfolio analytics and stock-level risk API."""
 
+import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import status as http_status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
+from backend.app.core.auth import AuthenticatedUser, require_user
 from backend.app.db.session import get_session
-from backend.app.portfolio_analytics.news_signals import generate_modular_news_preview
+from backend.app.portfolio_analytics.methodology_registry import get_methodology_manifest
 from backend.app.portfolio_analytics.schemas import (
     PortfolioAnalysisRequest,
     PortfolioAnalysisResponse,
@@ -22,26 +24,37 @@ from backend.app.portfolio_analytics.structural_monitoring import (
     StructuralMonitoringSnapshot,
     compute_historical_risk_series,
     evaluate_monitoring_indicators,
-    load_persisted_risk_history,
-    persist_risk_snapshot,
 )
 
 router = APIRouter(prefix="/portfolio-analysis", tags=["portfolio analysis"])
 DatabaseSession = Annotated[Session, Depends(get_session)]
+CurrentUser = Annotated[AuthenticatedUser, Depends(require_user)]
+logger = logging.getLogger(__name__)
 
 
-class HoldingRiskInput(BaseModel):
-    symbol: str = Field(min_length=1)
-    companyName: str | None = None
-    sector: str | None = None
+class AnalyticsRequestModel(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
+
+class HoldingRiskInput(AnalyticsRequestModel):
+    symbol: str = Field(min_length=1, max_length=40, pattern=r"^[A-Za-z0-9&.-]+$")
+    companyName: str | None = Field(default=None, max_length=255)
+    sector: str | None = Field(default=None, max_length=160)
     quantity: float = Field(default=1.0, gt=0)
     buyPrice: float = Field(default=1.0, gt=0)
     buyDate: str | None = None
-    exchange: str = "NSE"
+    exchange: str = Field(default="NSE", min_length=1, max_length=16)
 
 
-class ComprehensiveRiskRequest(BaseModel):
+class ComprehensiveRiskRequest(AnalyticsRequestModel):
     holdings: list[HoldingRiskInput] = Field(min_length=1, max_length=150)
+    thresholds: dict[str, float] | None = None
+
+
+@router.get("/methodology")
+def get_methodology() -> dict[str, Any]:
+    """Return the authoritative PRISM quantitative risk methodology registry."""
+    return get_methodology_manifest()
 
 
 @router.post("/preview", response_model=PortfolioAnalysisResponse)
@@ -76,10 +89,16 @@ def calculate_comprehensive_risk(
             "stock_profiles": [p.to_dict() for p in stock_profiles],
             "portfolio_profile": portfolio_profile.to_dict(),
         }
-    except Exception as exc:
+    except ValueError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.error("Comprehensive risk calculation failed: %s", type(exc).__name__)
+        raise HTTPException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Risk calculation is temporarily unavailable",
         ) from exc
 
 
@@ -98,7 +117,7 @@ def get_structural_monitoring(
         )
 
         indicators = evaluate_monitoring_indicators(
-            portfolio_profile, stock_profiles, holdings_dicts
+            portfolio_profile, stock_profiles, holdings_dicts, custom_thresholds=payload.thresholds
         )
         historical_series = compute_historical_risk_series(holdings_dicts, portfolio_profile)
 
@@ -229,32 +248,93 @@ def get_structural_monitoring(
             data_freshness="Point-in-time Verified (Daily Adjusted Closes)",
         )
 
-        # Auto-persist calculation to history store
-        history_count = persist_risk_snapshot(snapshot.to_dict())
-        snapshot.persisted_history_count = history_count
+        # Anonymous analytical requests are deliberately non-persistent. Durable risk
+        # history is available only through the owner-scoped portfolio endpoint.
+        snapshot.persisted_history_count = 0
 
         return snapshot.to_dict()
 
-    except Exception as exc:
+    except ValueError as exc:
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.error("Structural monitoring calculation failed: %s", type(exc).__name__)
+        raise HTTPException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Structural monitoring is temporarily unavailable",
         ) from exc
 
 
 @router.get("/risk-history")
 def get_risk_history() -> dict[str, Any]:
-    """Retrieve saved portfolio risk calculations from persistent storage."""
-    history = load_persisted_risk_history()
-    return {
-        "count": len(history),
-        "history": history,
-    }
+    """Reject the retired server-global history surface."""
+    raise HTTPException(
+        status_code=http_status.HTTP_410_GONE,
+        detail="Use the authenticated /portfolios/{portfolio_id}/risk-history endpoint",
+    )
 
 
 @router.post("/news-signals")
-def get_news_signals(payload: ComprehensiveRiskRequest) -> dict[str, Any]:
-    """Return decoupled modular news intelligence and sentiment signals preview."""
+def get_news_signals(payload: ComprehensiveRiskRequest, _user: CurrentUser) -> dict[str, Any]:
+    """Return decoupled modular news intelligence with verified sourced feeds."""
+    from backend.app.news.service import NewsIntelligenceService
+
+    service = NewsIntelligenceService(use_transformer=False)
     holdings_dicts = [h.model_dump() for h in payload.holdings]
-    summary = generate_modular_news_preview(holdings_dicts)
-    return summary.model_dump()
+    intel = service.get_portfolio_news_intelligence(holdings_dicts)
+    res = intel.model_dump()
+
+    # Backward compatibility with existing Phase 3 contract consumers
+    res["contract_version"] = "v1-modular-draft"
+    res["architecture_status"] = "Verified News Intelligence (Phase 5)"
+    res["portfolio_sentiment_average"] = intel.portfolio_sentiment_score
+    res["high_impact_event_count"] = sum(
+        1
+        for a in intel.verified_articles
+        for s in a.signals
+        if s.event_category not in ("routine_coverage", "uncertain")
+    )
+    res["stock_signals"] = [
+        {
+            "symbol": s.symbol,
+            "company_name": s.company_name,
+            "sentiment_average_7d": s.mean_sentiment_score,
+            "sentiment_label": (
+                s.dominant_sentiment
+                if s.dominant_sentiment in ("positive", "negative")
+                else "neutral"
+            ),
+            "news_volume_24h": s.article_count_24h,
+            "news_volume_7d": s.article_count_7d,
+            "sentiment_drift_7d": s.sentiment_drift_7d,
+            "significant_events": [ev.upper() for ev in s.primary_event_categories],
+            "news_risk_multiplier": s.heuristic_news_risk_multiplier,
+            "headline_sample": [
+                a.headline for a in intel.verified_articles if s.symbol in a.affected_holdings
+            ][:2],
+            "data_freshness": "Verified Live Feed",
+        }
+        for s in intel.holding_summaries
+    ]
+    res["sample_articles"] = [
+        {
+            "id": a.id,
+            "symbol": a.affected_holdings[0] if a.affected_holdings else "PORTFOLIO",
+            "headline": a.headline,
+            "summary": a.snippet or a.headline,
+            "publisher": a.publisher,
+            "published_at": a.published_at,
+            "sentiment_score": a.signals[0].sentiment_score if a.signals else 0.0,
+            "sentiment_label": (
+                a.signals[0].sentiment_label
+                if a.signals and a.signals[0].sentiment_label in ("positive", "negative")
+                else "neutral"
+            ),
+            "relevance_score": a.signals[0].sentiment_confidence if a.signals else 0.85,
+            "source_url": a.url,
+        }
+        for a in intel.verified_articles[:6]
+    ]
+    return res

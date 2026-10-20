@@ -333,16 +333,16 @@ function PerformanceChart({ points }: { points: PortfolioPerformancePoint[] }) {
           const y = top + ratio * (firstBottom - top);
           return <g key={ratio}><line x1={left} x2={width - right} y1={y} y2={y} stroke="#dce3e8" /><text x={left - 8} y={y + 4} textAnchor="end" fontSize="12" fill="#596a75">{value.toFixed(0)}</text></g>;
         })}
-        <polyline points={indexLine} fill="none" stroke="#00796b" strokeWidth="3" />
-        <line x1={left} x2={width - right} y1={secondTop} y2={secondTop} stroke="#dce3e8" />
-        <line x1={left} x2={width - right} y1={bottom} y2={bottom} stroke="#dce3e8" />
-        <text x={left - 8} y={secondTop + 4} textAnchor="end" fontSize="12" fill="#596a75">0%</text>
-        <text x={left - 8} y={bottom + 4} textAnchor="end" fontSize="12" fill="#596a75">{formatPercent(minDrawdown, 0)}</text>
-        <polyline points={drawdownLine} fill="none" stroke="#d32f2f" strokeWidth="2.5" />
-        <text x={left} y={height - 10} fontSize="12" fill="#596a75">{points[0]?.trade_date}</text>
-        <text x={width - right} y={height - 10} textAnchor="end" fontSize="12" fill="#596a75">{points.at(-1)?.trade_date}</text>
-        <text x={left} y={top - 9} fontSize="12" fill="#00796b">Portfolio index</text>
-        <text x={left} y={secondTop - 9} fontSize="12" fill="#d32f2f">Drawdown</text>
+        <polyline points={indexLine} fill="none" stroke="#046A38" strokeWidth="3" />
+        <line x1={left} x2={width - right} y1={secondTop} y2={secondTop} stroke="#E3D7C4" />
+        <line x1={left} x2={width - right} y1={bottom} y2={bottom} stroke="#E3D7C4" />
+        <text x={left - 8} y={secondTop + 4} textAnchor="end" fontSize="12" fill="#686B64">0%</text>
+        <text x={left - 8} y={bottom + 4} textAnchor="end" fontSize="12" fill="#686B64">{formatPercent(minDrawdown, 0)}</text>
+        <polyline points={drawdownLine} fill="none" stroke="#E34222" strokeWidth="2.5" />
+        <text x={left} y={height - 10} fontSize="12" fill="#686B64">{points[0]?.trade_date}</text>
+        <text x={width - right} y={height - 10} textAnchor="end" fontSize="12" fill="#686B64">{points.at(-1)?.trade_date}</text>
+        <text x={left} y={top - 9} fontSize="12" fill="#046A38">Portfolio index</text>
+        <text x={left} y={secondTop - 9} fontSize="12" fill="#B8321A">Drawdown</text>
       </Box>
     </Paper>
   );
@@ -428,7 +428,7 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
         <Box sx={{ flex: 1 }}>
           <Typography variant="h6">Portfolio clusters</Typography>
           <Stack spacing={1}>{analysis.mst.clusters.map((cluster) => (
-            <Box key={cluster.cluster_id} sx={{ borderBottom: "1px solid #e3e8eb", py: 1 }}>
+            <Box key={cluster.cluster_id} sx={{ py: 1.25, px: 1.5, bgcolor: "#E3D7C4", mb: 1, boxShadow: "0 2px 4px rgba(41,45,42,0.06)" }}>
               <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                 <Typography sx={{ fontWeight: 700 }}>{cluster.cluster_id}</Typography>
                 <Chip size="small" label={formatPercent(cluster.weight)} />
@@ -442,7 +442,7 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
           <Typography variant="h6">Direct holding links</Typography>
           {!analysis.mst.direct_edges.length && <Typography color="text.secondary">No holdings are directly adjacent.</Typography>}
           {analysis.mst.direct_edges.map((edge) => (
-            <Stack direction="row" key={`${edge.symbol_a}-${edge.symbol_b}`} sx={{ justifyContent: "space-between", py: 1, borderBottom: "1px solid #e3e8eb" }}>
+            <Stack direction="row" key={`${edge.symbol_a}-${edge.symbol_b}`} sx={{ justifyContent: "space-between", py: 1, px: 1.5, bgcolor: "#E3D7C4", mb: 0.75, boxShadow: "0 2px 4px rgba(41,45,42,0.06)" }}>
               <Typography>{edge.symbol_a} ↔ {edge.symbol_b}</Typography>
               <Chip size="small" label={`ρ ${edge.correlation.toFixed(2)}`} color={edge.correlation >= 0.7 ? "warning" : "default"} />
             </Stack>

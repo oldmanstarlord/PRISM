@@ -40,8 +40,14 @@ def sector_divergence_digest(calculation: SectorDivergenceCalculation) -> str:
                 for score in calculation.scores
             ],
             "issues": [
-                [issue.security_id, issue.symbol, issue.signal_date, issue.horizon,
-                 issue.reason, issue.details]
+                [
+                    issue.security_id,
+                    issue.symbol,
+                    issue.signal_date,
+                    issue.horizon,
+                    issue.reason,
+                    issue.details,
+                ]
                 for issue in calculation.issues
             ],
             "exclusions": [
@@ -59,13 +65,26 @@ def mst_digest(calculation: MstCalculation) -> str:
             "window_end": calculation.window_end,
             "implementation_version": calculation.implementation_version,
             "nodes": [
-                [node.security_id, node.symbol, node.industry, node.observations_used,
-                 node.membership_source]
+                [
+                    node.security_id,
+                    node.symbol,
+                    node.industry,
+                    node.observations_used,
+                    node.membership_source,
+                ]
                 for node in calculation.nodes
             ],
             "edges": [
-                [edge.security_a_id, edge.security_b_id, edge.symbol_a, edge.symbol_b,
-                 edge.correlation, edge.distance, edge.paired_observations, edge.edge_rank]
+                [
+                    edge.security_a_id,
+                    edge.security_b_id,
+                    edge.symbol_a,
+                    edge.symbol_b,
+                    edge.correlation,
+                    edge.distance,
+                    edge.paired_observations,
+                    edge.edge_rank,
+                ]
                 for edge in calculation.edges
             ],
             "exclusions": [

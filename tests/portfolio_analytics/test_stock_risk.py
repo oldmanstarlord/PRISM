@@ -1,12 +1,14 @@
 """Unit tests for explainable stock-level risk, portfolio risk, and diversification index."""
 
 from datetime import date, timedelta
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.db.session import get_session
 from backend.app.main import app
 from backend.app.portfolio_analytics.stock_risk import (
     _classify_risk,
@@ -16,6 +18,47 @@ from backend.app.portfolio_analytics.stock_risk import (
 )
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_api_market_and_database_dependencies():
+    """Give API unit tests deterministic prices without network or PostgreSQL access."""
+    dates = [date(2025, 1, 1) + timedelta(days=index) for index in range(260)]
+    benchmark = pd.Series(np.sin(np.arange(260) / 11) * 0.006, index=dates)
+
+    def prices_for(symbols: list[str]) -> pd.DataFrame:
+        return pd.DataFrame(
+            {
+                symbol: 100.0
+                * np.cumprod(1.0 + 0.0004 + np.sin(np.arange(260) / (9 + index)) * 0.008)
+                for index, symbol in enumerate(symbols)
+            },
+            index=dates,
+        )
+
+    session = MagicMock()
+    session.scalar.return_value = None
+
+    def override_session():
+        yield session
+
+    app.dependency_overrides[get_session] = override_session
+    with (
+        patch(
+            "backend.app.portfolio_analytics.stock_risk._load_stock_prices_from_db",
+            return_value=pd.DataFrame(),
+        ),
+        patch(
+            "backend.app.portfolio_analytics.stock_risk._load_stock_prices_yfinance",
+            side_effect=prices_for,
+        ),
+        patch(
+            "backend.app.portfolio_analytics.stock_risk.get_benchmark_returns",
+            return_value=benchmark,
+        ),
+    ):
+        yield
+    app.dependency_overrides.pop(get_session, None)
 
 
 def test_normalize_factor():
@@ -185,7 +228,9 @@ def test_extreme_market_movements_scoring():
     assert profile.risk_classification in {"High", "Very High"}
     assert profile.overall_score >= 65.0
     assert profile.overall_score <= 100.0
-    assert any("drawdown" in d.lower() or "volatility" in d.lower() for d in profile.primary_drivers)
+    assert any(
+        "drawdown" in d.lower() or "volatility" in d.lower() for d in profile.primary_drivers
+    )
     assert profile.unrealized_return is not None
     assert profile.unrealized_return < -50.0
     assert profile.unrealized_pnl is not None
@@ -193,29 +238,43 @@ def test_extreme_market_movements_scoring():
 
 
 def test_empty_and_zero_portfolio_handling():
-    from backend.app.db.session import get_session
     from backend.app.portfolio_analytics.stock_risk import calculate_portfolio_comprehensive_risk
 
-    session = next(get_session())
-    try:
-        # Empty holdings list
-        stock_profiles, port_profile = calculate_portfolio_comprehensive_risk([], session)
-        assert len(stock_profiles) == 0
-        assert port_profile.portfolio_risk_score == 0.0
-        assert port_profile.effective_holdings == 0.0
-        assert port_profile.diversification_score == 0.0
+    session = MagicMock()
+    session.scalar.return_value = None
+    # Empty holdings list
+    stock_profiles, port_profile = calculate_portfolio_comprehensive_risk([], session)
+    assert len(stock_profiles) == 0
+    assert port_profile.portfolio_risk_score == 0.0
+    assert port_profile.effective_holdings == 0.0
+    assert port_profile.diversification_score == 0.0
 
-        # Zero-value holdings (quantity = 0 or buyPrice = 0)
-        stock_profiles_zero, port_profile_zero = calculate_portfolio_comprehensive_risk(
-            [{"symbol": "TCS", "quantity": 0, "buyPrice": 0}], session
-        )
-        assert len(stock_profiles_zero) == 1
-        assert port_profile_zero.portfolio_risk_score >= 0.0
-    finally:
-        session.close()
+    # Zero-value holdings (quantity = 0 or buyPrice = 0)
+    stock_profiles_zero, port_profile_zero = calculate_portfolio_comprehensive_risk(
+        [{"symbol": "TCS", "quantity": 0, "buyPrice": 0}], session
+    )
+    assert len(stock_profiles_zero) == 1
+    assert port_profile_zero.portfolio_risk_score >= 0.0
 
 
-def test_sector_exposure_benchmarks_and_allocation():
+@patch("backend.app.portfolio_analytics.stock_risk.get_benchmark_returns")
+@patch("backend.app.portfolio_analytics.stock_risk._load_stock_prices_yfinance")
+def test_sector_exposure_benchmarks_and_allocation(mock_load_yf, mock_get_bench):
+    dates = [date(2026, 1, 1) + timedelta(days=i) for i in range(150)]
+    np.random.seed(42)
+    mock_bench = pd.Series(np.random.normal(0.0003, 0.010, 150), index=dates)
+    mock_get_bench.return_value = mock_bench
+
+    price_df = pd.DataFrame(
+        {
+            "TCS": np.linspace(3000, 3500, 150),
+            "INFY": np.linspace(1400, 1600, 150),
+            "RELIANCE": np.linspace(2200, 2400, 150),
+        },
+        index=dates,
+    )
+    mock_load_yf.return_value = price_df
+
     payload = {
         "holdings": [
             {
@@ -253,6 +312,6 @@ def test_sector_exposure_benchmarks_and_allocation():
     assert it_sector["allocation_status"] == "Excessive"
 
     # Euler risk contribution shares should sum to approximately 100%
-    risk_shares = [rc["risk_contribution_share"] for rc in data["portfolio_profile"]["risk_contributions"]]
+    risk_contributions = data["portfolio_profile"]["risk_contributions"]
+    risk_shares = [rc["risk_contribution_share"] for rc in risk_contributions]
     assert abs(sum(risk_shares) - 100.0) < 2.0
-
