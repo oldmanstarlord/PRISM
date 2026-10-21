@@ -101,9 +101,7 @@ def calculate_mst_stability(
     for newer, older in zip(edge_sets, edge_sets[1:], strict=False):
         denominator = max(len(newer), len(older), 1)
         overlaps.append(len(newer & older) / denominator)
-    current_persistence = (
-        float(np.mean(list(persistence.values()))) if persistence else 1.0
-    )
+    current_persistence = float(np.mean(list(persistence.values()))) if persistence else 1.0
     consecutive_overlap = float(np.mean(overlaps))
     confidence = _stability_confidence(current_persistence)
     return (
@@ -190,7 +188,7 @@ def calculate_risk(
     if len(symbols) == 1:
         covariance_daily = np.asarray([[float(covariance_daily_raw)]], dtype=np.float64)
     else:
-        covariance_daily = np.asarray(covariance_daily_raw, dtype=np.float64)
+        covariance_daily = regularize_covariance(np.asarray(covariance_daily_raw, dtype=np.float64))
     covariance_annual = covariance_daily * ANNUALISATION_FACTOR
     sigma_weights = covariance_annual @ weights
     portfolio_variance = float(weights @ sigma_weights)
@@ -254,9 +252,7 @@ def calculate_risk(
     eigenvalues = np.maximum(np.linalg.eigvalsh((correlation + correlation.T) / 2.0), 0.0)
     eigen_square_sum = float(np.sum(np.square(eigenvalues)))
     correlation_enb = (
-        float(np.sum(eigenvalues) ** 2 / eigen_square_sum)
-        if eigen_square_sum > 1e-12
-        else 1.0
+        float(np.sum(eigenvalues) ** 2 / eigen_square_sum) if eigen_square_sum > 1e-12 else 1.0
     )
     effective_limit = float(len(symbols))
     risk_enb = float(np.clip(risk_enb, 1.0, effective_limit))
@@ -488,13 +484,33 @@ def calculate_mst_diagnostics(
     )
 
 
+def regularize_covariance(cov: np.ndarray, min_eigenvalue_ratio: float = 1e-6) -> np.ndarray:
+    """Ensure covariance matrix is symmetric positive semi-definite
+    with bounded condition number.
+    """
+    cov_sym = 0.5 * (cov + cov.T)
+    if cov.shape[0] == 1:
+        return cov_sym if cov_sym[0, 0] > 1e-12 else np.zeros_like(cov_sym)
+    eigenvalues, eigenvectors = np.linalg.eigh(cov_sym)
+    max_eig = float(np.max(eigenvalues))
+    if max_eig <= 1e-12:
+        return np.zeros_like(cov)
+    floor = max_eig * min_eigenvalue_ratio
+    clipped_eigenvalues = np.maximum(eigenvalues, floor)
+    result = np.asarray(eigenvectors @ np.diag(clipped_eigenvalues) @ eigenvectors.T)
+    return result
+
+
 def calculate_stress(
     scenario: StressScenarioInput | None,
     returns: pd.DataFrame,
     holdings: dict[str, float],
     industries: dict[str, str],
+    benchmark_returns: pd.Series | None = None,
 ) -> StressScenarioResult | None:
-    """Calculate transparent stock-beta or parallel-industry stress estimates."""
+    """Calculate transparent stress estimates across stock, industry, market,
+    and correlation scenarios.
+    """
     if scenario is None:
         return None
     target = scenario.target.upper() if scenario.kind == "stock" else scenario.target
@@ -506,6 +522,10 @@ def calculate_stress(
 
     shock_decimal = scenario.shock_percent / 100.0
     sensitivities: dict[str, float] = {}
+    assumptions: list[str] = []
+    method: str = ""
+    portfolio_impact: float = 0.0
+
     if scenario.kind == "stock":
         target_returns = returns[target].to_numpy(dtype=np.float64)
         target_variance = float(np.var(target_returns, ddof=1))
@@ -523,43 +543,177 @@ def calculate_stress(
         assumptions = [
             "Historical linear sensitivities remain unchanged during the hypothetical shock.",
             "The selected holding receives the exact shock; other holdings move by estimated beta.",
-            "Liquidity, feedback effects, execution costs and independent simultaneous "
-            "shocks are excluded.",
+            (
+                "Liquidity, feedback effects, execution costs and independent "
+                "simultaneous shocks are excluded."
+            ),
         ]
-    else:
+        results: list[StressHoldingResult] = []
+        for symbol, weight in holdings.items():
+            estimated_return = sensitivities[symbol] * shock_decimal
+            contribution = weight * estimated_return
+            portfolio_impact += contribution
+            results.append(
+                StressHoldingResult(
+                    symbol=symbol,
+                    sensitivity=round(sensitivities[symbol], 6),
+                    estimated_return_percent=round(estimated_return * 100.0, 6),
+                    portfolio_contribution_percent=round(contribution * 100.0, 6),
+                )
+            )
+
+    elif scenario.kind == "industry":
         sensitivities = {
             symbol: 1.0 if industries[symbol] == target else 0.0 for symbol in holdings
         }
         method = "Parallel shock to portfolio holdings in the selected industry"
         assumptions = [
-            "Every represented holding in the selected industry receives the same "
-            "percentage shock.",
+            (
+                "Every represented holding in the selected industry receives the same "
+                "percentage shock."
+            ),
             "Holdings outside the selected industry are unchanged.",
             "Liquidity, feedback effects and cross-industry propagation are excluded.",
         ]
-
-    results: list[StressHoldingResult] = []
-    portfolio_impact = 0.0
-    for symbol, weight in holdings.items():
-        estimated_return = sensitivities[symbol] * shock_decimal
-        contribution = weight * estimated_return
-        portfolio_impact += contribution
-        results.append(
-            StressHoldingResult(
-                symbol=symbol,
-                sensitivity=round(sensitivities[symbol], 6),
-                estimated_return_percent=round(estimated_return * 100.0, 6),
-                portfolio_contribution_percent=round(contribution * 100.0, 6),
+        results = []
+        for symbol, weight in holdings.items():
+            estimated_return = sensitivities[symbol] * shock_decimal
+            contribution = weight * estimated_return
+            portfolio_impact += contribution
+            results.append(
+                StressHoldingResult(
+                    symbol=symbol,
+                    sensitivity=round(sensitivities[symbol], 6),
+                    estimated_return_percent=round(estimated_return * 100.0, 6),
+                    portfolio_contribution_percent=round(contribution * 100.0, 6),
+                )
             )
+
+    elif scenario.kind == "market":
+        # Broad market shock transmission via market beta
+        target = target or "NIFTY 50"
+        market_series = benchmark_returns
+        if market_series is None or len(market_series) < 10:
+            raise ValueError("Market stress requires at least 10 real benchmark observations")
+        else:
+            common_idx = returns.index.intersection(market_series.index)
+            if len(common_idx) >= 10:
+                market_returns = market_series.loc[common_idx].to_numpy(dtype=np.float64)
+                returns = returns.loc[common_idx]
+            else:
+                raise ValueError(
+                    "Market stress requires at least 10 benchmark observations aligned to holdings"
+                )
+
+        mkt_var = float(np.var(market_returns, ddof=1))
+        for symbol in holdings:
+            s_ret = returns[symbol].to_numpy(dtype=np.float64)
+            if mkt_var > 1e-12 and len(s_ret) == len(market_returns):
+                cov = float(np.cov(s_ret, market_returns, ddof=1)[0, 1])
+                sensitivities[symbol] = cov / mkt_var
+            else:
+                sensitivities[symbol] = 1.0
+
+        method = f"Systematic market shock transmission via {target} beta"
+        assumptions = [
+            (
+                f"Hypothetical {scenario.shock_percent:+.1f}% shock applied to the broad market "
+                f"benchmark ({target})."
+            ),
+            "Holdings respond linearly according to their historical market beta.",
+            (
+                "Nonlinear tail co-dependence, circuit breakers, and liquidity "
+                "evaporation are excluded."
+            ),
+        ]
+        results = []
+        for symbol, weight in holdings.items():
+            estimated_return = sensitivities[symbol] * shock_decimal
+            contribution = weight * estimated_return
+            portfolio_impact += contribution
+            results.append(
+                StressHoldingResult(
+                    symbol=symbol,
+                    sensitivity=round(sensitivities[symbol], 6),
+                    estimated_return_percent=round(estimated_return * 100.0, 6),
+                    portfolio_contribution_percent=round(contribution * 100.0, 6),
+                )
+            )
+
+    elif scenario.kind == "correlation":
+        # Systemic correlation breakdown: shift pairwise correlations towards 1.0
+        alpha = max(0.05, min(1.0, abs(scenario.shock_percent) / 100.0))
+        target = target or "All Pairs"
+        ret_vals = returns[[s for s in holdings if s in returns.columns]].to_numpy(dtype=np.float64)
+        weights_arr = np.array(
+            [holdings[s] for s in holdings if s in returns.columns], dtype=np.float64
         )
+        if weights_arr.sum() > 0:
+            weights_arr = weights_arr / weights_arr.sum()
+
+        cov_raw = np.cov(ret_vals, rowvar=False, ddof=1)
+        if len(weights_arr) == 1:
+            cov_raw = np.array([[float(cov_raw)]])
+        stds = np.sqrt(np.maximum(np.diag(cov_raw), 1e-12))
+        outer_stds = np.outer(stds, stds)
+        corr_orig = np.divide(
+            cov_raw, outer_stds, out=np.zeros_like(cov_raw), where=outer_stds != 0
+        )
+        np.fill_diagonal(corr_orig, 1.0)
+
+        # Stressed correlation: (1 - alpha) * corr + alpha * 1.0
+        corr_stressed = (1.0 - alpha) * corr_orig + alpha * np.ones_like(corr_orig)
+        np.fill_diagonal(corr_stressed, 1.0)
+        cov_stressed = outer_stds * corr_stressed
+
+        orig_vol = math.sqrt(float(weights_arr @ cov_raw @ weights_arr)) * math.sqrt(
+            ANNUALISATION_FACTOR
+        )
+        stressed_vol = math.sqrt(float(weights_arr @ cov_stressed @ weights_arr)) * math.sqrt(
+            ANNUALISATION_FACTOR
+        )
+        vol_impact_pct = (stressed_vol - orig_vol) * 100.0
+        portfolio_impact = vol_impact_pct
+
+        method = (
+            f"Systematic correlation stress scenario "
+            f"(correlations shifted {alpha * 100:.0f}% toward 1.0)"
+        )
+        assumptions = [
+            (
+                f"Pairwise asset correlations shift {alpha * 100:.0f}% toward unity, "
+                "simulating liquidity contagion."
+            ),
+            "Standalone asset volatilities remain unchanged.",
+            (
+                f"Portfolio annualized volatility expands from {orig_vol * 100:.1f}% to "
+                f"{stressed_vol * 100:.1f}%."
+            ),
+            "Illustrates the severe erosion of diversification benefits during systemic crisis.",
+        ]
+        results = []
+        for idx, symbol in enumerate(holdings):
+            holding_stress_contrib = float(
+                weights_arr[idx] * (stds[idx] * math.sqrt(ANNUALISATION_FACTOR) - orig_vol)
+            )
+            results.append(
+                StressHoldingResult(
+                    symbol=symbol,
+                    sensitivity=round(float(alpha), 4),
+                    estimated_return_percent=round(float(vol_impact_pct), 4),
+                    portfolio_contribution_percent=round(holding_stress_contrib * 100.0, 4),
+                )
+            )
+
     results.sort(key=lambda result: (-abs(result.portfolio_contribution_percent), result.symbol))
+    impact_pct = portfolio_impact if scenario.kind == "correlation" else portfolio_impact * 100.0
     return StressScenarioResult(
         kind=scenario.kind,
         target=target,
         shock_percent=scenario.shock_percent,
         method=method,
-        portfolio_impact_percent=round(portfolio_impact * 100.0, 6),
+        portfolio_impact_percent=round(impact_pct, 6),
         results=results,
         assumptions=assumptions,
-        disclaimer="Scenario estimate, not a prediction or investment recommendation.",
+        disclaimer="Diagnostic scenario estimate, not a forecast or investment recommendation.",
     )

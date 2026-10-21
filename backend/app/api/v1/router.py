@@ -1,4 +1,7 @@
+from collections import OrderedDict
+from datetime import date
 from typing import Annotated, Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi import status as http_status
@@ -20,6 +23,10 @@ from backend.app.db.models import (
 )
 from backend.app.db.session import engine, get_session
 from backend.app.fundamentals.api import router as fundamentals_router
+from backend.app.journal.router import router as journal_router
+from backend.app.market_data.router import router as market_data_router
+from backend.app.ml.router import router as ml_router
+from backend.app.news.router import router as news_router
 from backend.app.portfolio.router import router as portfolio_router
 from backend.app.portfolio_analytics.router import router as portfolio_analytics_router
 from backend.app.sector_divergence.inputs import load_inputs
@@ -33,6 +40,26 @@ router = APIRouter()
 router.include_router(fundamentals_router)
 router.include_router(portfolio_router)
 router.include_router(portfolio_analytics_router)
+router.include_router(journal_router)
+router.include_router(market_data_router)
+router.include_router(ml_router)
+router.include_router(news_router)
+_INPUTS_CACHE_MAX_SIZE = 16
+_inputs_lru_cache: OrderedDict[tuple[UUID, date], Any] = OrderedDict()
+
+
+def _get_cached_inputs(session: Session, run: SectorDivergenceRun) -> Any:
+    cache_key = (run.id, run.signal_date)
+    if cache_key in _inputs_lru_cache:
+        _inputs_lru_cache.move_to_end(cache_key)
+        return _inputs_lru_cache[cache_key]
+    inputs = load_inputs(session, run.signal_date, run.lookback_start, run.data_cutoff)
+    if len(_inputs_lru_cache) >= _INPUTS_CACHE_MAX_SIZE:
+        _inputs_lru_cache.popitem(last=False)
+    _inputs_lru_cache[cache_key] = inputs
+    return inputs
+
+
 DatabaseSession = Annotated[Session, Depends(get_session)]
 
 
@@ -52,6 +79,74 @@ def readiness() -> dict[str, str]:
             detail="Database unavailable",
         ) from exc
     return {"status": "ready", "database": "connected"}
+
+
+_securities_cache: list[dict[str, Any]] | None = None
+_securities_cache_time: float = 0.0
+
+
+@router.get("/securities", tags=["universe"])
+def list_active_securities(session: DatabaseSession) -> list[dict[str, Any]]:
+    """Return active NIFTY 200 constituents with their latest available closing prices."""
+    global _securities_cache, _securities_cache_time
+    import time
+    from datetime import date
+
+    from backend.app.market_data.service import active_nifty200_instruments
+
+    now = time.time()
+    if _securities_cache is not None and (now - _securities_cache_time) < 300:
+        return _securities_cache
+
+    as_of = session.scalar(select(func.max(PriceDailyAdjusted.trade_date))) or date.today()
+    instruments = active_nifty200_instruments(session, as_of)
+    sec_ids = [inst.security_id for inst in instruments]
+
+    securities_map = {
+        s.id: s for s in session.scalars(select(Security).where(Security.id.in_(sec_ids))).all()
+    }
+
+    subq = (
+        select(
+            PriceDailyAdjusted.security_id,
+            func.max(PriceDailyAdjusted.trade_date).label("max_date"),
+        )
+        .where(PriceDailyAdjusted.security_id.in_(sec_ids))
+        .group_by(PriceDailyAdjusted.security_id)
+        .subquery()
+    )
+    prices_q = select(
+        PriceDailyAdjusted.security_id,
+        PriceDailyAdjusted.adjusted_close,
+        PriceDailyAdjusted.trade_date,
+    ).join(
+        subq,
+        (PriceDailyAdjusted.security_id == subq.c.security_id)
+        & (PriceDailyAdjusted.trade_date == subq.c.max_date),
+    )
+    prices_map = {
+        row.security_id: (float(row.adjusted_close), row.trade_date)
+        for row in session.execute(prices_q).all()
+    }
+
+    results = []
+    for inst in instruments:
+        sec = securities_map.get(inst.security_id)
+        price_info = prices_map.get(inst.security_id)
+        results.append(
+            {
+                "id": str(inst.security_id),
+                "isin": sec.isin if sec else "",
+                "company_name": sec.company_name if sec else inst.symbol,
+                "industry": sec.industry if sec else "Unknown",
+                "symbol": inst.symbol,
+                "latest_price": price_info[0] if price_info else None,
+                "latest_trade_date": price_info[1].isoformat() if price_info else None,
+            }
+        )
+    _securities_cache = results
+    _securities_cache_time = now
+    return results
 
 
 @router.get("/pipeline/status", tags=["operations"])
@@ -77,11 +172,7 @@ def pipeline_status(session: DatabaseSession) -> dict[str, Any]:
     layer_2 = session.scalar(latest_completed_mst_query())
     layer_1_date = layer_1.signal_date if layer_1 else None
     layer_2_date = layer_2.window_end if layer_2 else None
-    is_stale = (
-        market_date is None
-        or layer_1_date != market_date
-        or layer_2_date != market_date
-    )
+    is_stale = market_date is None or layer_1_date != market_date or layer_2_date != market_date
     summary = latest_pipeline.quality_summary if latest_pipeline else {}
     return {
         "status": latest_pipeline.status if latest_pipeline else "not_run",
@@ -143,8 +234,9 @@ def latest_sector_divergence_rankings(
             SectorDivergenceScore.run_id == run.id,
             SectorDivergenceScore.horizon == horizon,
         )
-        .order_by(desc(func.abs(SectorDivergenceScore.divergence_value)),
-                  SectorDivergenceScore.symbol)
+        .order_by(
+            desc(func.abs(SectorDivergenceScore.divergence_value)), SectorDivergenceScore.symbol
+        )
         .limit(limit)
     ).all()
     return {
@@ -175,8 +267,9 @@ def latest_sector_divergence_issues(session: DatabaseSession) -> dict[str, Any]:
     issues = session.scalars(
         select(SectorDivergenceIssue)
         .where(SectorDivergenceIssue.run_id == run.id)
-        .order_by(SectorDivergenceIssue.stage, SectorDivergenceIssue.symbol,
-                  SectorDivergenceIssue.horizon)
+        .order_by(
+            SectorDivergenceIssue.stage, SectorDivergenceIssue.symbol, SectorDivergenceIssue.horizon
+        )
     ).all()
     return {
         "run_id": str(run.id),
@@ -212,7 +305,7 @@ def latest_sector_divergence_company(symbol: str, session: DatabaseSession) -> d
             detail=f"{normalized_symbol} has no score in the latest completed run",
         )
     security = session.get(Security, scores[0].security_id)
-    inputs = load_inputs(session, run.signal_date, run.lookback_start, run.data_cutoff)
+    inputs = _get_cached_inputs(session, run)
     try:
         comparison = build_company_comparison(inputs, normalized_symbol)
     except ValueError as exc:

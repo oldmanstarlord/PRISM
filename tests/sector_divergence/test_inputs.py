@@ -59,9 +59,7 @@ def test_prepare_inputs_aligns_without_imputation_and_preserves_provenance() -> 
         "STOCK5",
     ]
     assert list(result.adjusted_closes.index) == [date(2026, 9, 29), date(2026, 9, 30)]
-    assert result.adjustment_versions.at[date(2026, 9, 30), "STOCK1"] == (
-        "yfinance-adjclose-v1-r1"
-    )
+    assert result.adjustment_versions.at[date(2026, 9, 30), "STOCK1"] == ("yfinance-adjclose-v1-r1")
     assert result.membership_sources["STOCK1"] == MEMBERSHIP_SOURCE
     assert result.exclusions == ()
 
@@ -106,11 +104,7 @@ def test_prepare_inputs_excludes_an_undersized_industry() -> None:
 
 def test_prepare_inputs_reports_invalid_prices_and_missing_industry() -> None:
     members = [member(1, None), *[member(number) for number in range(2, 7)]]
-    observations = [
-        observation(number, day)
-        for number in range(1, 7)
-        for day in (29, 30)
-    ]
+    observations = [observation(number, day) for number in range(1, 7) for day in (29, 30)]
     observations[-1] = observation(6, 30, "NaN")
 
     result = prepare_inputs(
@@ -123,8 +117,7 @@ def test_prepare_inputs_reports_invalid_prices_and_missing_industry() -> None:
     )
 
     assert any(
-        item.symbol == "STOCK1" and item.reason == "missing_industry"
-        for item in result.exclusions
+        item.symbol == "STOCK1" and item.reason == "missing_industry" for item in result.exclusions
     )
     assert any(
         item.symbol == "STOCK6" and item.reason == "invalid_adjusted_close"

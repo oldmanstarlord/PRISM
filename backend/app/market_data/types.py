@@ -10,10 +10,11 @@ from uuid import UUID
 class MarketInstrument:
     security_id: UUID
     symbol: str
+    provider_symbol: str | None = None
 
     @property
     def yahoo_symbol(self) -> str:
-        return f"{self.symbol}.NS"
+        return self.provider_symbol or f"{self.symbol}.NS"
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +53,7 @@ class QualityResult:
 @dataclass(slots=True)
 class IngestionSummary:
     requested_symbols: int
+    run_id: UUID | None = None
     completed_symbols: int = 0
     failed_symbols: dict[str, str] = field(default_factory=dict)
     downloaded_rows: int = 0
@@ -62,10 +64,12 @@ class IngestionSummary:
     corporate_actions_inserted: int = 0
     corporate_actions_updated: int = 0
     warnings: int = 0
+    full_refetches: int = 0
 
     def as_dict(self) -> dict[str, object]:
         return {
             "requested_symbols": self.requested_symbols,
+            "run_id": str(self.run_id) if self.run_id else None,
             "completed_symbols": self.completed_symbols,
             "failed_symbols": self.failed_symbols,
             "downloaded_rows": self.downloaded_rows,
@@ -76,4 +80,5 @@ class IngestionSummary:
             "corporate_actions_inserted": self.corporate_actions_inserted,
             "corporate_actions_updated": self.corporate_actions_updated,
             "warnings": self.warnings,
+            "full_refetches": self.full_refetches,
         }

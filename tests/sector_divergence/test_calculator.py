@@ -25,9 +25,7 @@ def make_inputs(
         common = 0.0004 + 0.002 * np.sin(position / 5)
         for offset in range(len(symbols)):
             returns[position, offset] = (
-                common
-                + 0.0003 * np.cos(position * (offset + 1) / 4)
-                + offset * 0.00005
+                common + 0.0003 * np.cos(position * (offset + 1) / 4) + offset * 0.00005
             )
     prices = np.empty_like(returns)
     prices[0, :] = 100.0
@@ -69,19 +67,13 @@ def test_calculation_matches_manual_rolling_ols() -> None:
     target_window = returns["STOCK1"].iloc[-61:-1].to_numpy(dtype=float)
     benchmark_window = benchmark.iloc[-61:-1].to_numpy(dtype=float)
     expected_beta = float(
-        np.cov(target_window, benchmark_window, ddof=1)[0, 1]
-        / np.var(benchmark_window, ddof=1)
+        np.cov(target_window, benchmark_window, ddof=1)[0, 1] / np.var(benchmark_window, ddof=1)
     )
-    expected_alpha = float(
-        np.mean(target_window) - expected_beta * np.mean(benchmark_window)
-    )
-    fitted_residuals = target_window - (
-        expected_alpha + expected_beta * benchmark_window
-    )
+    expected_alpha = float(np.mean(target_window) - expected_beta * np.mean(benchmark_window))
+    fitted_residuals = target_window - (expected_alpha + expected_beta * benchmark_window)
     expected_sigma = float(np.std(fitted_residuals, ddof=1))
     expected_residual = float(
-        returns["STOCK1"].iloc[-1]
-        - (expected_alpha + expected_beta * benchmark.iloc[-1])
+        returns["STOCK1"].iloc[-1] - (expected_alpha + expected_beta * benchmark.iloc[-1])
     )
 
     assert isclose(score.beta, expected_beta, rel_tol=1e-12)
@@ -96,9 +88,7 @@ def test_calculation_matches_manual_rolling_ols() -> None:
 def test_five_day_score_uses_five_point_in_time_residuals() -> None:
     final_inputs = make_inputs()
     final = calculate_sector_divergence(final_inputs, computed_at=COMPUTED_AT)
-    five_day = next(
-        item for item in final.scores if item.symbol == "STOCK1" and item.horizon == 5
-    )
+    five_day = next(item for item in final.scores if item.symbol == "STOCK1" and item.horizon == 5)
     final_position = len(final_inputs.adjusted_closes) - 1
     residuals: list[float] = []
     for position in range(final_position - 4, final_position + 1):

@@ -58,9 +58,11 @@ def test_mst_diagnostics_include_indirect_paths_bridges_and_clusters() -> None:
     )
 
     assert [(edge.symbol_a, edge.symbol_b) for edge in result.direct_edges] == [("B", "C")]
-    assert {
-        frozenset((edge.symbol_a, edge.symbol_b)) for edge in result.subtree_edges
-    } == {frozenset(("A", "X")), frozenset(("X", "B")), frozenset(("B", "C"))}
+    assert {frozenset((edge.symbol_a, edge.symbol_b)) for edge in result.subtree_edges} == {
+        frozenset(("A", "X")),
+        frozenset(("X", "B")),
+        frozenset(("B", "C")),
+    }
     path = next(
         item for item in result.holding_paths if item.symbol_a == "A" and item.symbol_b == "B"
     )

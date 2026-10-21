@@ -11,9 +11,7 @@ def test_verify_access_token_returns_supabase_user(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(auth.settings, "supabase_url", "https://example.supabase.co")
     monkeypatch.setattr(auth.settings, "supabase_publishable_key", "public-key")
 
-    def fake_get(
-        url: str, *, headers: dict[str, str], timeout: float
-    ) -> httpx.Response:
+    def fake_get(url: str, *, headers: dict[str, str], timeout: float) -> httpx.Response:
         assert url == "https://example.supabase.co/auth/v1/user"
         assert headers["Authorization"] == "Bearer valid-token"
         assert headers["apikey"] == "public-key"

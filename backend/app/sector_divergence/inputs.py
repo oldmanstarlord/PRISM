@@ -40,6 +40,7 @@ class AdjustedCloseObservation:
     adjusted_close: Decimal
     adjustment_version: str
     computed_at: datetime
+    adjusted_open: Decimal | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +72,7 @@ class SectorDivergenceInputs:
     exclusions: tuple[InputExclusion, ...]
     issues: tuple[InputIssue, ...]
     formula_version: str = FORMULA_VERSION
+    adjusted_opens: pd.DataFrame | None = None
 
 
 def load_universe_members(session: Session, signal_date: date) -> list[UniverseMember]:
@@ -129,6 +131,7 @@ def load_latest_adjusted_closes(
         select(
             PriceDailyAdjusted.security_id.label("security_id"),
             PriceDailyAdjusted.trade_date.label("trade_date"),
+            PriceDailyAdjusted.adjusted_open.label("adjusted_open"),
             PriceDailyAdjusted.adjusted_close.label("adjusted_close"),
             PriceDailyAdjusted.method_version.label("adjustment_version"),
             PriceDailyAdjusted.computed_at.label("computed_at"),
@@ -159,6 +162,7 @@ def load_latest_adjusted_closes(
         select(
             ranked.c.security_id,
             ranked.c.trade_date,
+            ranked.c.adjusted_open,
             ranked.c.adjusted_close,
             ranked.c.adjustment_version,
             ranked.c.computed_at,
@@ -170,6 +174,7 @@ def load_latest_adjusted_closes(
         AdjustedCloseObservation(
             security_id=row.security_id,
             trade_date=row.trade_date,
+            adjusted_open=row.adjusted_open,
             adjusted_close=row.adjusted_close,
             adjustment_version=row.adjustment_version,
             computed_at=row.computed_at,
@@ -220,10 +225,7 @@ def prepare_inputs(
                 f"{observed_member.symbol} on {observation.trade_date}"
             )
         seen_keys.add(key)
-        if (
-            not observation.adjusted_close.is_finite()
-            or observation.adjusted_close <= 0
-        ):
+        if not observation.adjusted_close.is_finite() or observation.adjusted_close <= 0:
             issues.append(
                 InputIssue(
                     security_id=observed_member.security_id,
@@ -297,6 +299,11 @@ def prepare_inputs(
     ordered_symbols = [member.symbol for member in eligible]
     panel_index = pd.Index(ordered_dates, name="trade_date")
 
+    adjusted_opens = pd.DataFrame(
+        index=panel_index,
+        columns=ordered_symbols,
+        dtype="float64",
+    )
     adjusted_closes = pd.DataFrame(
         index=panel_index,
         columns=ordered_symbols,
@@ -307,6 +314,8 @@ def prepare_inputs(
     symbol_by_id = {member.security_id: member.symbol for member in eligible}
     for observation in eligible_observations:
         symbol = symbol_by_id[observation.security_id]
+        if observation.adjusted_open is not None and observation.adjusted_open > 0:
+            adjusted_opens.at[observation.trade_date, symbol] = float(observation.adjusted_open)
         adjusted_closes.at[observation.trade_date, symbol] = float(observation.adjusted_close)
         adjustment_versions.at[observation.trade_date, symbol] = observation.adjustment_version
         adjustment_times.at[observation.trade_date, symbol] = observation.computed_at
@@ -317,9 +326,8 @@ def prepare_inputs(
         adjusted_closes=adjusted_closes,
         adjustment_versions=adjustment_versions,
         adjustment_times=adjustment_times,
-        security_ids=MappingProxyType(
-            {member.symbol: member.security_id for member in eligible}
-        ),
+        adjusted_opens=adjusted_opens,
+        security_ids=MappingProxyType({member.symbol: member.security_id for member in eligible}),
         industries=MappingProxyType(
             {member.symbol: member.industry.strip() for member in eligible if member.industry}
         ),

@@ -4,35 +4,38 @@ import hashlib
 import json
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from tenacity import Retrying, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from backend.app.db.models import (
     CorporateAction,
+    MarketDataFetchResult,
     PipelineRun,
     PriceDailyAdjusted,
     PriceDailyRaw,
+    Security,
     SecurityAlias,
     Universe,
     UniverseMembership,
 )
 from backend.app.market_data.quality import validate_prices
 from backend.app.market_data.types import DailyPrice, IngestionSummary, MarketInstrument
-from backend.app.market_data.yahoo import YahooFinanceClient, exclusive_end
+from backend.app.market_data.yahoo import PROVIDER_VERSION, YahooFinanceClient, exclusive_end
 
 SOURCE = "yfinance"
 WORKFLOW = "daily_market_data"
-CODE_VERSION = "market-data-v1"
+CODE_VERSION = "market-data-v2"
 ADJUSTMENT_METHOD = "yfinance-adjclose-v1"
-INCREMENTAL_OVERLAP_DAYS = 7
+INCREMENTAL_OVERLAP_SESSIONS = 10
+BENCHMARK_SYMBOL = "^NSEI"
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +49,11 @@ class PersistCounts:
 
 def active_nifty200_instruments(session: Session, as_of: date) -> list[MarketInstrument]:
     rows = session.execute(
-        select(UniverseMembership.security_id, SecurityAlias.symbol)
+        select(
+            UniverseMembership.security_id,
+            SecurityAlias.symbol,
+            SecurityAlias.provider_symbol,
+        )
         .join(Universe, Universe.id == UniverseMembership.universe_id)
         .join(SecurityAlias, SecurityAlias.security_id == UniverseMembership.security_id)
         .where(
@@ -59,19 +66,88 @@ def active_nifty200_instruments(session: Session, as_of: date) -> list[MarketIns
         )
         .order_by(SecurityAlias.symbol)
     ).all()
-    return [MarketInstrument(security_id=row.security_id, symbol=row.symbol) for row in rows]
+    return [
+        MarketInstrument(
+            security_id=row.security_id,
+            symbol=row.symbol,
+            provider_symbol=row.provider_symbol,
+        )
+        for row in rows
+    ]
+
+
+def ensure_nifty50_benchmark(session: Session, as_of: date) -> MarketInstrument:
+    """Persist the non-equity benchmark without fabricating an ISIN."""
+    alias = session.scalar(
+        select(SecurityAlias).where(
+            SecurityAlias.symbol == BENCHMARK_SYMBOL,
+            SecurityAlias.exchange == "INDEX",
+            SecurityAlias.valid_to.is_(None),
+        )
+    )
+    if alias is None:
+        security = Security(
+            isin=None,
+            company_name="NIFTY 50 Index",
+            sector=None,
+            industry="Broad Market Index",
+            currency="INR",
+            is_active=True,
+        )
+        session.add(security)
+        session.flush()
+        alias = SecurityAlias(
+            security_id=security.id,
+            symbol=BENCHMARK_SYMBOL,
+            exchange="INDEX",
+            valid_from=as_of,
+            source="yfinance",
+            ingested_at=datetime.now(UTC),
+            provider_symbol=BENCHMARK_SYMBOL,
+        )
+        session.add(alias)
+        session.flush()
+    return MarketInstrument(alias.security_id, BENCHMARK_SYMBOL, BENCHMARK_SYMBOL)
 
 
 def incremental_start(session: Session, security_id: UUID, requested_start: date) -> date:
-    latest = session.scalar(
-        select(func.max(PriceDailyRaw.trade_date)).where(
+    recent_dates = session.scalars(
+        select(PriceDailyRaw.trade_date)
+        .where(
             PriceDailyRaw.security_id == security_id,
             PriceDailyRaw.source == SOURCE,
         )
-    )
-    if latest is None:
+        .distinct()
+        .order_by(PriceDailyRaw.trade_date.desc())
+        .limit(INCREMENTAL_OVERLAP_SESSIONS)
+    ).all()
+    if not recent_dates:
         return requested_start
-    return max(requested_start, latest - timedelta(days=INCREMENTAL_OVERLAP_DAYS))
+    return max(requested_start, min(recent_dates))
+
+
+def adjusted_history_changed(session: Session, security_id: UUID, prices: list[DailyPrice]) -> bool:
+    """Compare the re-fetched overlap with the latest stored adjusted revision."""
+    if not prices:
+        return False
+    dates = [item.trade_date for item in prices]
+    rows = session.scalars(
+        select(PriceDailyAdjusted)
+        .where(
+            PriceDailyAdjusted.security_id == security_id,
+            PriceDailyAdjusted.trade_date.in_(dates),
+            PriceDailyAdjusted.method_version.like(f"{ADJUSTMENT_METHOD}-r%"),
+        )
+        .order_by(PriceDailyAdjusted.trade_date, PriceDailyAdjusted.computed_at.desc())
+    ).all()
+    latest: dict[date, Decimal] = {}
+    for row in rows:
+        latest.setdefault(row.trade_date, row.adjusted_close)
+    return any(
+        item.trade_date in latest
+        and _six_places(item.adjusted_close) != _six_places(latest[item.trade_date])
+        for item in prices
+    )
 
 
 def _six_places(value: Decimal) -> Decimal:
@@ -97,6 +173,9 @@ def persist_prices(
     instrument: MarketInstrument,
     prices: tuple[DailyPrice, ...],
     ingested_at: datetime,
+    *,
+    run_id: UUID | None = None,
+    provider_version: str = PROVIDER_VERSION,
 ) -> PersistCounts:
     if not prices:
         return PersistCounts()
@@ -166,6 +245,8 @@ def persist_prices(
                     source=SOURCE,
                     source_revision=revision,
                     ingested_at=ingested_at,
+                    provider_version=provider_version,
+                    pipeline_run_id=run_id,
                     quality_flags={"flags": list(price.quality_flags)},
                 )
             )
@@ -268,6 +349,9 @@ def _persist_with_retry(
     session: Session,
     instrument: MarketInstrument,
     prices: tuple[DailyPrice, ...],
+    *,
+    run_id: UUID | None = None,
+    provider_version: str = PROVIDER_VERSION,
 ) -> PersistCounts:
     retrying = Retrying(
         stop=stop_after_attempt(5),
@@ -278,7 +362,14 @@ def _persist_with_retry(
     for attempt in retrying:
         with attempt:
             try:
-                counts = persist_prices(session, instrument, prices, datetime.now(UTC))
+                counts = persist_prices(
+                    session,
+                    instrument,
+                    prices,
+                    datetime.now(UTC),
+                    run_id=run_id,
+                    provider_version=provider_version,
+                )
                 session.commit()
                 return counts
             except OperationalError:
@@ -304,6 +395,9 @@ def ingest_nifty200_prices(
 
     provider = client or YahooFinanceClient()
     instruments = active_nifty200_instruments(session, end)
+    if not symbols:
+        instruments.append(ensure_nifty50_benchmark(session, end))
+        session.commit()
     if symbols:
         requested = {symbol.upper() for symbol in symbols}
         instruments = [instrument for instrument in instruments if instrument.symbol in requested]
@@ -326,7 +420,8 @@ def ingest_nifty200_prices(
     run_id = run.id
     run_directory = snapshot_root / str(run_id)
     run_directory.mkdir(parents=True, exist_ok=False)
-    summary = IngestionSummary(requested_symbols=len(instruments))
+    provider_version = getattr(provider, "library_version", PROVIDER_VERSION)
+    summary = IngestionSummary(requested_symbols=len(instruments), run_id=run_id)
 
     requests = [
         (instrument, incremental_start(session, instrument.security_id, start))
@@ -348,8 +443,42 @@ def ingest_nifty200_prices(
             try:
                 frame, downloaded = future.result()
                 frame.to_csv(run_directory / f"{instrument.yahoo_symbol}.csv")
+                full_refetch = adjusted_history_changed(session, instrument.security_id, downloaded)
+                requested_from = incremental_start(session, instrument.security_id, start)
+                if full_refetch and requested_from > start:
+                    frame, downloaded = provider.history(
+                        instrument.yahoo_symbol, start, exclusive_end(end)
+                    )
+                    frame.to_csv(run_directory / f"{instrument.yahoo_symbol}.csv")
+                    summary.full_refetches += 1
+                if not downloaded:
+                    raise ValueError("provider_returned_no_daily_prices")
                 quality = validate_prices(downloaded)
-                counts = _persist_with_retry(session, instrument, quality.accepted)
+                counts = _persist_with_retry(
+                    session,
+                    instrument,
+                    quality.accepted,
+                    run_id=run_id,
+                    provider_version=provider_version,
+                )
+
+                session.add(
+                    MarketDataFetchResult(
+                        run_id=run_id,
+                        security_id=instrument.security_id,
+                        symbol=instrument.symbol,
+                        provider_symbol=instrument.yahoo_symbol,
+                        status="completed",
+                        requested_start=requested_from,
+                        requested_end=end,
+                        rows_received=len(downloaded),
+                        full_refetch=full_refetch,
+                        provider=SOURCE,
+                        provider_version=provider_version,
+                        fetched_at=datetime.now(UTC),
+                    )
+                )
+                session.commit()
 
                 summary.completed_symbols += 1
                 summary.downloaded_rows += len(downloaded)
@@ -362,7 +491,25 @@ def ingest_nifty200_prices(
                 summary.corporate_actions_updated += counts.corporate_actions_updated
             except Exception as exc:  # one provider/security failure must not discard other symbols
                 session.rollback()
-                summary.failed_symbols[instrument.symbol] = f"{type(exc).__name__}: {exc}"
+                reason = f"{type(exc).__name__}: {exc}"
+                summary.failed_symbols[instrument.symbol] = reason
+                session.add(
+                    MarketDataFetchResult(
+                        run_id=run_id,
+                        security_id=instrument.security_id,
+                        symbol=instrument.symbol,
+                        provider_symbol=instrument.yahoo_symbol,
+                        status="failed",
+                        reason=reason,
+                        requested_start=incremental_start(session, instrument.security_id, start),
+                        requested_end=end,
+                        rows_received=0,
+                        provider=SOURCE,
+                        provider_version=provider_version,
+                        fetched_at=datetime.now(UTC),
+                    )
+                )
+                session.commit()
 
     finished_run = session.get(PipelineRun, run_id)
     if finished_run is None:

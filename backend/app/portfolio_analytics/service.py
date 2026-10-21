@@ -81,9 +81,7 @@ def analyze_portfolio(
     unsupported = sorted(set(holdings) - set(node_by_symbol))
     if unsupported:
         raise ValueError(f"Not in the latest MST universe: {', '.join(unsupported)}")
-    industries = {
-        symbol: node_by_symbol[symbol].industry or "Unclassified" for symbol in holdings
-    }
+    industries = {symbol: node_by_symbol[symbol].industry or "Unclassified" for symbol in holdings}
 
     start_date = mst_run.window_end - timedelta(days=payload.window * 2 + 30)
     observations = load_latest_adjusted_closes(
@@ -93,9 +91,7 @@ def analyze_portfolio(
         end_date=mst_run.window_end,
         data_cutoff=mst_run.data_cutoff,
     )
-    symbol_by_security = {
-        node_by_symbol[symbol].security_id: symbol for symbol in holdings
-    }
+    symbol_by_security = {node_by_symbol[symbol].security_id: symbol for symbol in holdings}
     dates = sorted({observation.trade_date for observation in observations})
     prices = pd.DataFrame(
         index=pd.Index(dates, name="trade_date"),
@@ -125,8 +121,7 @@ def analyze_portfolio(
             )
         ).all()
         divergence = {
-            score.symbol: (float(score.divergence_value), score.interpretation)
-            for score in scores
+            score.symbol: (float(score.divergence_value), score.interpretation) for score in scores
         }
 
     risk = calculate_risk(common_prices, holdings, industries, divergence)
@@ -198,9 +193,7 @@ def analyze_portfolio(
         if holding.divergence_20d is not None and abs(holding.divergence_20d) >= 2.0
     ]
     if unusual:
-        findings.append(
-            f"Strong absolute 20-day divergence is present in {', '.join(unusual)}."
-        )
+        findings.append(f"Strong absolute 20-day divergence is present in {', '.join(unusual)}.")
 
     envelope = AnalysisEnvelope(
         as_of=mst_run.window_end,

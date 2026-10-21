@@ -89,6 +89,22 @@ export interface PipelineStatus {
   latest_error: string | null;
 }
 
+export interface DataCoverageResponse {
+  status: "completed" | "partial" | "failed" | "unavailable";
+  run_id?: string;
+  universe_count?: number;
+  verified_ticker_count?: number;
+  enough_history_count?: number;
+  quality_pass_count?: number;
+  metrics_ready_count?: number;
+  fundamentals_ready_count?: number;
+  data_date?: string | null;
+  last_update_time?: string;
+  reason?: string;
+  excluded_symbols: Array<{ symbol: string; reasons: string[] }>;
+  spot_checks?: { status: string; reason?: string; selected_symbols?: string[] };
+}
+
 export interface PortfolioPerformancePoint {
   trade_date: string;
   portfolio_index: number;
@@ -252,3 +268,349 @@ export interface PortfolioDetail extends PortfolioSummary {
   cash_value: string;
   holdings: PreviewHolding[];
 }
+
+export interface LiveQuote {
+  symbol: string;
+  ticker: string;
+  company_name: string | null;
+  sector: string | null;
+  industry: string | null;
+  latest_price: number | null;
+  previous_close: number | null;
+  change: number | null;
+  change_percent: number | null;
+  day_open: number | null;
+  day_high: number | null;
+  day_low: number | null;
+  volume: number | null;
+  currency: string;
+  as_of: string;
+  quote_type: string;
+  is_market_open: boolean | null;
+  source: string;
+  data_quality: string;
+  error: string | null;
+}
+
+export interface BenchmarkQuote {
+  symbol: string;
+  name: string;
+  latest_price: number | null;
+  previous_close: number | null;
+  change: number | null;
+  change_percent: number | null;
+  as_of: string;
+}
+
+export interface BatchQuotesResponse {
+  quotes: Record<string, LiveQuote>;
+  benchmark: BenchmarkQuote;
+  timestamp: string;
+  count: number;
+}
+
+export interface HistoricalBar {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  adjusted_close: number;
+  volume: number;
+}
+
+export type RiskLevel = "Low" | "Moderate" | "High" | "Very High";
+export type DiversificationGrade = "A" | "B" | "C" | "D";
+
+export interface WindowRiskMetrics {
+  window: string;
+  observations: number;
+  annualized_volatility: number;
+  downside_volatility: number;
+  max_drawdown: number;
+  beta: number;
+  alpha: number;
+  price_instability: number;
+  stock_return: number;
+  benchmark_return: number;
+  excess_return: number;
+}
+
+export interface RiskFactorBreakdown {
+  factor_name: string;
+  raw_value: number;
+  normalized_score: number;
+  weight: number;
+  contribution: number;
+  interpretation: string;
+}
+
+export interface StockRiskProfile {
+  symbol: string;
+  company_name: string;
+  sector: string;
+  weight: number;
+  overall_score: number;
+  risk_classification: RiskLevel;
+  color: string;
+  primary_drivers: string[];
+  narrative_explanation: string;
+  factors: RiskFactorBreakdown[];
+  windows: Record<"1M" | "3M" | "6M" | "1Y", WindowRiskMetrics>;
+  purchase_price: number | null;
+  current_price: number | null;
+  unrealized_pnl: number | null;
+  unrealized_return: number | null;
+  drawdown_since_purchase: number | null;
+  volatility_since_purchase: number | null;
+  recent_risk_change: "increasing" | "stable" | "decreasing";
+  sector_divergence_20d: number | null;
+  sector_divergence_band: string | null;
+  sector_relative_performance: number | null;
+  benchmark_relative_performance: number | null;
+  data_coverage: string;
+}
+
+export interface EulerRiskContribution {
+  symbol: string;
+  weight: number;
+  annualized_volatility: number;
+  risk_contribution_share: number;
+  component_risk?: number;
+  marginal_risk: number;
+}
+
+export interface SectorExposureItem {
+  sector: string;
+  weight: number;
+  benchmark_target: number;
+  allocation_status: "Balanced" | "Elevated" | "Excessive";
+  risk_contribution_share: number;
+  stock_count: number;
+  stocks: string[];
+  average_sector_divergence: number | null;
+}
+
+export interface PortfolioRiskProfile {
+  portfolio_risk_score: number;
+  portfolio_classification: RiskLevel;
+  portfolio_color: string;
+  annualized_volatility: number;
+  downside_volatility: number;
+  max_drawdown: number;
+  portfolio_beta: number;
+  holding_hhi: number;
+  effective_holdings: number;
+  sector_hhi: number;
+  effective_sectors: number;
+  diversification_ratio: number;
+  diversification_score: number;
+  diversification_grade: DiversificationGrade;
+  diversification_interpretation: string;
+  risk_contributions: EulerRiskContribution[];
+  sector_exposure: SectorExposureItem[];
+  correlation_matrix: Record<string, Record<string, number>>;
+  historical_risk_trend: "increasing" | "stable" | "decreasing" | string;
+  summary_findings: string[];
+  var_historical_95?: number;
+  var_historical_99?: number;
+  cvar_historical_95?: number;
+  cvar_historical_99?: number;
+  var_parametric_95?: number;
+  var_parametric_99?: number;
+  var_backtest_exceptions_95?: number | null;
+  var_backtest_exceptions_99?: number | null;
+  var_sample_size?: number;
+  var_horizon_days?: number;
+  var_label?: string;
+}
+
+export interface ComprehensiveRiskResponse {
+  stock_profiles: StockRiskProfile[];
+  portfolio_profile: PortfolioRiskProfile;
+}
+
+export type IndicatorSeverity = "info" | "warning" | "critical";
+export type IndicatorCategory = "risk" | "concentration" | "diversification" | "structural";
+
+export interface MonitoringIndicator {
+  id: string;
+  title: string;
+  severity: IndicatorSeverity;
+  category: IndicatorCategory;
+  metric_name: string;
+  current_value: number;
+  threshold_value: number;
+  observation_period: string;
+  triggered: boolean;
+  explanation: string;
+  recommendation_disclaimer: string;
+  contributing_holdings?: string[];
+  assumptions?: string[];
+}
+
+export interface HistoricalRiskPoint {
+  observation_date: string;
+  lookback_window: string;
+  portfolio_risk_score: number;
+  portfolio_classification: string;
+  annualized_volatility: number;
+  downside_volatility: number;
+  max_drawdown: number;
+  diversification_score: number;
+  effective_holdings: number;
+  top_sector: string;
+  top_sector_weight: number;
+  observations_used: number;
+  coverage_status: string;
+}
+
+export interface CorrelatedHoldingGroup {
+  cluster_id: string;
+  holding_symbols: string[];
+  aggregate_weight: number;
+  average_correlation: number;
+  interpretation: string;
+}
+
+export interface StructuralMonitoringSnapshot {
+  portfolio_value: number;
+  overall_return: number;
+  portfolio_risk_score: number;
+  portfolio_classification: string;
+  diversification_score: number;
+  diversification_grade: string;
+  top_sector: string;
+  top_sector_weight: number;
+  top_sector_status: string;
+  largest_holding: string;
+  largest_holding_weight: number;
+  correlated_groups: CorrelatedHoldingGroup[];
+  largest_risk_contributors: Array<{
+    symbol: string;
+    risk_contribution_percent: number;
+    weight_percent: number;
+    sector: string;
+    is_amplified: boolean;
+  }>;
+  structural_changes: string[];
+  indicators: MonitoringIndicator[];
+  historical_risk_series: HistoricalRiskPoint[];
+  persisted_history_count: number;
+  data_freshness: string;
+  disclaimer: string;
+}
+
+export interface NewsArticleItem {
+  id: string;
+  symbol: string;
+  headline: string;
+  summary: string;
+  publisher: string;
+  published_at: string;
+  sentiment_score: number;
+  sentiment_label: "positive" | "neutral" | "negative";
+  relevance_score: number;
+  source_url?: string | null;
+  explanation?: string;
+  what_the_news_is?: string;
+  market_and_sector_impact?: string;
+  actionable_advice?: string;
+}
+
+export interface StockNewsSignal {
+  symbol: string;
+  company_name?: string | null;
+  sentiment_average_7d: number;
+  sentiment_label: "positive" | "neutral" | "negative";
+  news_volume_24h: number;
+  news_volume_7d: number;
+  sentiment_drift_7d: number;
+  significant_events: string[];
+  news_risk_multiplier: number;
+  headline_sample: string[];
+  data_freshness: string;
+}
+
+export interface NewsEntityMatch {
+  symbol: string;
+  company_name: string;
+  isin?: string | null;
+  match_type: string;
+  confidence: number;
+  is_ambiguous: boolean;
+  status: string;
+  ambiguity_reason?: string | null;
+}
+
+export interface NewsSignalItem {
+  symbol?: string | null;
+  is_market_wide: boolean;
+  sentiment_score: number;
+  sentiment_label: "positive" | "neutral" | "negative" | "uncertain";
+  sentiment_confidence: number;
+  model_name: string;
+  model_version: string;
+  processing_time_ms: number;
+  event_category: string;
+  event_confidence: number;
+}
+
+export interface NewsArticleCard {
+  id: string;
+  source_id: string;
+  url: string;
+  headline: string;
+  publisher: string;
+  published_at: string;
+  retrieved_at: string;
+  language: string;
+  snippet?: string | null;
+  is_duplicate: boolean;
+  primary_article_id?: string | null;
+  processing_status: string;
+  entities: NewsEntityMatch[];
+  signals: NewsSignalItem[];
+  affected_holdings: string[];
+  holding_exposure_weight_pct: number;
+  explanation: string;
+  what_the_news_is?: string;
+  market_and_sector_impact?: string;
+  actionable_advice?: string;
+}
+
+export interface HoldingNewsSummary {
+  symbol: string;
+  company_name?: string | null;
+  weight_pct: number;
+  article_count_24h: number;
+  article_count_7d: number;
+  dominant_sentiment: "positive" | "neutral" | "negative" | "uncertain";
+  mean_sentiment_score: number;
+  sentiment_drift_7d: number;
+  primary_event_categories: string[];
+  has_ambiguous_matches: boolean;
+  heuristic_news_risk_multiplier: number;
+  multiplier_formula: string;
+}
+
+export interface PortfolioNewsSummary {
+  as_of: string;
+  contract_version: string;
+  architecture_status: string;
+  portfolio_sentiment_average: number;
+  total_articles_tracked: number;
+  high_impact_event_count: number;
+  stock_signals: StockNewsSignal[];
+  sample_articles: NewsArticleItem[];
+  methodology_disclaimer: string;
+  provider_name?: string;
+  provider_status?: "configured" | "not_configured" | "rate_limited" | "feed_unavailable";
+  provider_disclaimer?: string;
+  deduplicated_article_count?: number;
+  ambiguous_match_count?: number;
+  verified_articles?: NewsArticleCard[];
+  holding_summaries?: HoldingNewsSummary[];
+}
+
+

@@ -12,6 +12,7 @@ from typing import Any
 from uuid import UUID
 
 import numpy as np
+import pandas as pd  # type: ignore[import-untyped]
 from sqlalchemy import Select, desc, func, select
 from sqlalchemy.orm import Session
 
@@ -99,8 +100,12 @@ def input_fingerprint(inputs: SectorDivergenceInputs) -> str:
         "signal_date": inputs.signal_date.isoformat(),
         "data_cutoff": inputs.data_cutoff.isoformat(),
         "members": [
-            [symbol, str(inputs.security_ids[symbol]), inputs.industries[symbol],
-             inputs.membership_sources[symbol]]
+            [
+                symbol,
+                str(inputs.security_ids[symbol]),
+                inputs.industries[symbol],
+                inputs.membership_sources[symbol],
+            ]
             for symbol in sorted(inputs.security_ids)
         ],
         "observations": observations,
@@ -109,6 +114,14 @@ def input_fingerprint(inputs: SectorDivergenceInputs) -> str:
             for item in inputs.exclusions
         ],
     }
+    if inputs.adjusted_opens is not None and not inputs.adjusted_opens.empty:
+        open_obs: list[list[object]] = []
+        for trade_date, row in inputs.adjusted_opens.sort_index().iterrows():
+            for symbol in sorted(inputs.security_ids):
+                val = row[symbol]
+                if val == val and val is not None:
+                    open_obs.append([trade_date.isoformat(), symbol, format(float(val), ".15g")])
+        envelope["open_observations"] = open_obs
     return _canonical_hash(envelope)
 
 
@@ -134,7 +147,27 @@ def build_company_comparison(
         raise ValueError(f"{symbol} has insufficient eligible industry peers")
 
     prices = inputs.adjusted_closes.sort_index().loc[: inputs.signal_date]
-    log_returns = np.log(prices.astype("float64")).diff()
+    if inputs.adjusted_opens is not None and not inputs.adjusted_opens.empty:
+        open_vals = (
+            inputs.adjusted_opens.sort_index()
+            .loc[: inputs.signal_date]
+            .reindex(columns=prices.columns)
+            .astype("float64")
+        )
+        close_vals = prices.astype("float64")
+        valid_open = (
+            (open_vals > 0) & np.isfinite(open_vals) & (close_vals > 0) & np.isfinite(close_vals)
+        )
+        safe_open = np.where(valid_open, open_vals, 1.0)
+        intraday = np.where(valid_open, np.log(close_vals / safe_open), np.nan)
+        close_diff = np.log(close_vals).diff().to_numpy()
+        log_returns = pd.DataFrame(
+            np.where(valid_open, intraday, close_diff),
+            index=prices.index,
+            columns=prices.columns,
+        )
+    else:
+        log_returns = np.log(prices.astype("float64")).diff()
     peer_returns = log_returns[list(peer_symbols)]
     benchmark = peer_returns.median(axis=1, skipna=True).where(
         peer_returns.notna().sum(axis=1) >= MINIMUM_CONTEMPORANEOUS_PEERS

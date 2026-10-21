@@ -26,7 +26,8 @@ def test_daily_pipeline_publishes_layers_in_one_final_commit(monkeypatch: object
     run = running_record()
     monkeypatch.setattr(service, "_new_run", lambda *_: run)  # type: ignore[attr-defined]
     monkeypatch.setattr(  # type: ignore[attr-defined]
-        service, "latest_market_snapshot",
+        service,
+        "latest_market_snapshot",
         lambda *_: (date(2026, 10, 1), datetime(2026, 10, 2, tzinfo=UTC)),
     )
     layer_1_calls: list[bool] = []
@@ -43,8 +44,7 @@ def test_daily_pipeline_publishes_layers_in_one_final_commit(monkeypatch: object
         service,
         "persist_mst",
         lambda *_, **kwargs: (
-            layer_2_calls.append(kwargs["commit"])
-            or PersistedMst(UUID(int=2), False, 199, 198, 1)
+            layer_2_calls.append(kwargs["commit"]) or PersistedMst(UUID(int=2), False, 199, 198, 1)
         ),
     )
     session.get.return_value = run
@@ -71,7 +71,8 @@ def test_daily_pipeline_rolls_back_derived_results_when_layer_2_fails(
     run = running_record()
     monkeypatch.setattr(service, "_new_run", lambda *_: run)  # type: ignore[attr-defined]
     monkeypatch.setattr(  # type: ignore[attr-defined]
-        service, "latest_market_snapshot",
+        service,
+        "latest_market_snapshot",
         lambda *_: (date(2026, 10, 1), datetime(2026, 10, 2, tzinfo=UTC)),
     )
     monkeypatch.setattr(  # type: ignore[attr-defined]
@@ -104,9 +105,7 @@ def test_recovery_marks_only_returned_stale_runs_failed() -> None:
     session.scalars.return_value.all.return_value = [stale]
     now = datetime(2026, 10, 4, 12, tzinfo=UTC)
 
-    count = service.recover_stale_pipeline_runs(
-        session, now=now, stale_after=timedelta(hours=2)
-    )
+    count = service.recover_stale_pipeline_runs(session, now=now, stale_after=timedelta(hours=2))
 
     assert count == 1
     assert stale.status == "failed"

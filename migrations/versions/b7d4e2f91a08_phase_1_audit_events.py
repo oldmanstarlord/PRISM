@@ -37,9 +37,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_audit_event_owner_id", "audit_event", ["owner_id"])
-    op.create_index(
-        "ix_audit_event_owner_created", "audit_event", ["owner_id", "created_at"]
-    )
+    op.create_index("ix_audit_event_owner_created", "audit_event", ["owner_id", "created_at"])
     op.create_index("ix_audit_event_entity", "audit_event", ["entity_type", "entity_id"])
     op.execute("ALTER TABLE audit_event ENABLE ROW LEVEL SECURITY")
     op.execute(

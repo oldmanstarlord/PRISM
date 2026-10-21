@@ -124,9 +124,7 @@ def upgrade() -> None:
             "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),
         sa.CheckConstraint("cash_amount >= 0", name="ck_snapshot_cash_amount"),
-        sa.CheckConstraint(
-            "cash_weight >= 0 AND cash_weight <= 1", name="ck_snapshot_cash_weight"
-        ),
+        sa.CheckConstraint("cash_weight >= 0 AND cash_weight <= 1", name="ck_snapshot_cash_weight"),
         sa.ForeignKeyConstraint(["portfolio_id"], ["portfolio.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
