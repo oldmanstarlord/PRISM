@@ -35,7 +35,7 @@ import {
 import { Link } from "react-router-dom";
 
 import AppShell from "./AppShell";
-import { fetchJson, postJson } from "./api";
+import { fetchJson, fetchPortfolioDecisionAnalysis, postJson } from "./api";
 import { useAuth } from "./authState";
 import {
   DiversificationSection,
@@ -54,6 +54,7 @@ import PortfolioMstGraph from "./PortfolioMstGraph";
 import PortfolioSnapshotSection from "./PortfolioSnapshotSection";
 import StockResearchNotes from "./StockResearchNotes";
 import { AiInsightsTab } from "./AiInsightsTab";
+import StockDecisionEngineTab from "./StockDecisionEngineTab";
 import {
   exportJournalBackup,
   getNotesCountMap,
@@ -78,10 +79,12 @@ import type {
   ComprehensiveRiskResponse,
   LiveQuote,
   PortfolioAnalysisResponse,
+  PortfolioDecisionResponse,
   PortfolioHoldingAnalytics,
   PortfolioNewsSummary,
   PortfolioPerformancePoint,
   PortfolioStressInput,
+  StockDecision,
   StructuralMonitoringSnapshot,
 } from "./types";
 
@@ -548,6 +551,7 @@ type SortField =
 type PortfolioTab =
   | "monitoring"
   | "dashboard"
+  | "stock-decisions"
   | "stock-risk"
   | "portfolio-risk"
   | "sector-exposure"
@@ -572,6 +576,9 @@ export default function PortfolioManager() {
   const [comprehensiveRisk, setComprehensiveRisk] = useState<ComprehensiveRiskResponse | null>(null);
   const [structuralMonitoring, setStructuralMonitoring] = useState<StructuralMonitoringSnapshot | null>(null);
   const [newsSummary, setNewsSummary] = useState<PortfolioNewsSummary | null>(null);
+  const [decisionResponse, setDecisionResponse] = useState<PortfolioDecisionResponse | null>(null);
+  const [decisionLoading, setDecisionLoading] = useState(false);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -591,6 +598,7 @@ export default function PortfolioManager() {
         [
           "monitoring",
           "dashboard",
+          "stock-decisions",
           "stock-risk",
           "portfolio-risk",
           "sector-exposure",
@@ -1221,6 +1229,48 @@ export default function PortfolioManager() {
     }
   }, [holdings.length, structuralMonitoring, runAnalysis]);
 
+  /* ─── Decision Engine analysis ─── */
+  const runDecisionAnalysis = useCallback(async () => {
+    if (!holdings.length) return;
+    setDecisionLoading(true);
+    setDecisionError(null);
+    try {
+      const totalVal = holdings.reduce(
+        (sum, h) => sum + h.quantity * h.buyPrice,
+        0
+      );
+      const reqHoldings = holdings.map((h) => ({
+        symbol: h.symbol,
+        company_name: h.companyName,
+        sector: h.sector || "General",
+        quantity: h.quantity,
+        buy_price: h.buyPrice,
+        weight: totalVal > 0 ? (h.quantity * h.buyPrice) / totalVal : 0,
+      }));
+      const res = await fetchPortfolioDecisionAnalysis(reqHoldings);
+      setDecisionResponse(res);
+    } catch (err) {
+      setDecisionError(err instanceof Error ? err.message : "Failed to analyze stock decisions");
+    } finally {
+      setDecisionLoading(false);
+    }
+  }, [holdings]);
+
+  // Auto-fetch decisions whenever holdings exist (runs in background for all tabs)
+  useEffect(() => {
+    if (holdings.length > 0 && !decisionResponse && !decisionLoading) {
+      void runDecisionAnalysis();
+    }
+  }, [holdings.length, decisionResponse, decisionLoading, runDecisionAnalysis]);
+
+  const decisionMap = useMemo(() => {
+    const map = new Map<string, StockDecision>();
+    for (const d of decisionResponse?.decisions || []) {
+      map.set(d.symbol.toUpperCase(), d);
+    }
+    return map;
+  }, [decisionResponse]);
+
   /* ─── Add Holding (Multiple purchases weighted-average cost basis) ─── */
   async function addHolding(holding: Omit<PortfolioHolding, "id">) {
     const symbolNorm = holding.symbol.toUpperCase();
@@ -1567,6 +1617,12 @@ export default function PortfolioManager() {
           {[
             { id: "monitoring" as const, label: "Structural Overview" },
             { id: "dashboard" as const, label: "Holdings Dashboard" },
+            {
+              id: "stock-decisions" as const,
+              label: decisionResponse
+                ? `Decision Engine (${decisionResponse.summary.hold_count} HOLD · ${decisionResponse.summary.wait_and_watch_count} WATCH${decisionResponse.summary.sell_count > 0 ? ` · ${decisionResponse.summary.sell_count} SELL` : ""})`
+                : "Decision Engine (HOLD / SELL)",
+            },
             { id: "stock-risk" as const, label: "Stock Risk Analysis" },
             { id: "portfolio-risk" as const, label: "Portfolio Risk & History" },
             { id: "sector-exposure" as const, label: "Sector Exposure" },
@@ -2070,6 +2126,17 @@ export default function PortfolioManager() {
                           </TableSortLabel>
                         </TableCell>
 
+                        {/* Decision Signal (HOLD / WAIT / SELL) */}
+                        <TableCell align="center">
+                          <TableSortLabel
+                            active={false}
+                            direction="asc"
+                            onClick={() => handleSelectTab("stock-decisions")}
+                          >
+                            Decision Signal
+                          </TableSortLabel>
+                        </TableCell>
+
                         {/* Quantity */}
                         <TableCell align="right">
                           <TableSortLabel
@@ -2289,6 +2356,77 @@ export default function PortfolioManager() {
                               <Chip size="small" label={h.sector} sx={{ fontSize: "0.75rem", borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A", border: "none" }} />
                             </TableCell>
 
+                            {/* Decision Flag (HOLD / WAIT & WATCH / SELL) */}
+                            <TableCell align="center">
+                              {decisionMap.get(h.symbol.toUpperCase()) ? (
+                                (() => {
+                                  const dec = decisionMap.get(h.symbol.toUpperCase())!;
+                                  const isHold = dec.decision === "HOLD";
+                                  const isSell = dec.decision === "SELL";
+                                  const bg = isHold ? "#046A38" : isSell ? "#E34222" : "#8A5A00";
+                                  const icon = isHold ? "✓" : isSell ? "⚠" : "⏳";
+                                  return (
+                                    <Tooltip
+                                      title={
+                                        <Box sx={{ p: 0.5 }}>
+                                          <Typography variant="caption" sx={{ fontWeight: 800, display: "block" }}>
+                                            {dec.decision} — Health: {dec.final_score.toFixed(1)}/100
+                                          </Typography>
+                                          <Typography variant="caption" sx={{ display: "block" }}>
+                                            Fundamental: {dec.fundamental.fundamental_strength_score.toFixed(0)} | Sector: {dec.sector_strength.sector_strength_score.toFixed(0)} | News: {dec.news.news_score.toFixed(0)}
+                                          </Typography>
+                                          <Typography variant="caption" sx={{ color: "#E3D7C4", display: "block", mt: 0.5 }}>
+                                            Click to view full 3-factor breakdown & analysis
+                                          </Typography>
+                                        </Box>
+                                      }
+                                      arrow
+                                    >
+                                      <Chip
+                                        size="small"
+                                        label={`${icon} ${dec.decision}`}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleSelectTab("stock-decisions");
+                                        }}
+                                        sx={{
+                                          cursor: "pointer",
+                                          height: 24,
+                                          borderRadius: 0,
+                                          fontWeight: 800,
+                                          fontSize: "0.75rem",
+                                          bgcolor: bg,
+                                          color: "#F9EBD7",
+                                          boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
+                                          "&:hover": { opacity: 0.85 },
+                                        }}
+                                      />
+                                    </Tooltip>
+                                  );
+                                })()
+                              ) : decisionLoading ? (
+                                <CircularProgress size={16} sx={{ color: "#046A38" }} />
+                              ) : (
+                                <Chip
+                                  size="small"
+                                  label="Analyze"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleSelectTab("stock-decisions");
+                                  }}
+                                  sx={{
+                                    cursor: "pointer",
+                                    height: 20,
+                                    borderRadius: 0,
+                                    fontSize: "0.68rem",
+                                    bgcolor: "#E3D7C4",
+                                  }}
+                                />
+                              )}
+                            </TableCell>
+
                             {/* Qty */}
                             <TableCell align="right" sx={{ fontWeight: 600 }}>
                               {h.quantity}
@@ -2495,6 +2633,8 @@ export default function PortfolioManager() {
             comprehensiveRisk={comprehensiveRisk}
             loading={analysisLoading}
             onRefresh={() => void runAnalysis()}
+            decisionMap={decisionMap}
+            onSelectTab={handleSelectTab}
           />
         )}
 
@@ -3030,6 +3170,19 @@ export default function PortfolioManager() {
           <AiInsightsTab
             holdings={holdings}
             totalInvestedValue={totalInvestedValue}
+          />
+        )}
+
+        {/* ═══════════════════════════════════════════════
+            TAB: STOCK DECISION ENGINE (SELL / HOLD / WAIT & WATCH)
+           ═══════════════════════════════════════════════ */}
+        {activeTab === "stock-decisions" && (
+          <StockDecisionEngineTab
+            response={decisionResponse}
+            loading={decisionLoading}
+            error={decisionError}
+            holdings={holdings}
+            onRefresh={() => void runDecisionAnalysis()}
           />
         )}
       </Stack>

@@ -67,3 +67,21 @@ export async function fetchAuthenticatedJson<T>(
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
+
+export async function fetchPortfolioDecisionAnalysis(
+  holdings: Array<{
+    symbol: string;
+    company_name?: string | null;
+    sector?: string | null;
+    quantity: number;
+    buy_price?: number;
+    weight?: number;
+  }>,
+  signal?: AbortSignal,
+) {
+  return postJson<import("./types").PortfolioDecisionResponse>(
+    "/portfolio/analyze",
+    { holdings },
+    signal,
+  );
+}

@@ -28,6 +28,7 @@ import type {
   PortfolioAnalysisResponse,
   RiskLevel,
   SectorExposureItem,
+  StockDecision,
   StockRiskProfile,
 } from "./types";
 import { METRIC_REGISTRY } from "./methodologyRegistry";
@@ -66,9 +67,17 @@ interface StockRiskSectionProps {
   comprehensiveRisk: ComprehensiveRiskResponse | null;
   loading: boolean;
   onRefresh: () => void;
+  decisionMap?: Map<string, StockDecision>;
+  onSelectTab?: (tab: any) => void;
 }
 
-export function StockRiskSection({ comprehensiveRisk, loading, onRefresh }: StockRiskSectionProps) {
+export function StockRiskSection({
+  comprehensiveRisk,
+  loading,
+  onRefresh,
+  decisionMap,
+  onSelectTab,
+}: StockRiskSectionProps) {
   const [selectedStock, setSelectedStock] = useState<StockRiskProfile | null>(null);
   const [selectedHorizon, setSelectedHorizon] = useState<"1M" | "3M" | "6M" | "1Y">("1Y");
 
@@ -127,6 +136,7 @@ export function StockRiskSection({ comprehensiveRisk, loading, onRefresh }: Stoc
             <TableRow>
               <TableCell>Holding</TableCell>
               <TableCell align="right">Weight</TableCell>
+              <TableCell align="center">Decision Signal</TableCell>
               <TableCell align="center">Risk Score (0–100)</TableCell>
               <TableCell align="center">Classification</TableCell>
               <TableCell align="right">Volatility ({selectedHorizon})</TableCell>
@@ -177,6 +187,73 @@ export function StockRiskSection({ comprehensiveRisk, loading, onRefresh }: Stoc
                     </Typography>
                   </TableCell>
                   <TableCell align="right">{(s.weight * 100).toFixed(1)}%</TableCell>
+                  <TableCell align="center">
+                    {decisionMap?.get(s.symbol.toUpperCase()) ? (
+                      (() => {
+                        const dec = decisionMap.get(s.symbol.toUpperCase())!;
+                        const isHold = dec.decision === "HOLD";
+                        const isSell = dec.decision === "SELL";
+                        const bg = isHold ? "#046A38" : isSell ? "#E34222" : "#8A5A00";
+                        const icon = isHold ? "✓" : isSell ? "⚠" : "⏳";
+                        return (
+                          <Tooltip
+                            title={
+                              <Box sx={{ p: 0.5 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, display: "block" }}>
+                                  {dec.decision} — Health: {dec.final_score.toFixed(1)}/100
+                                </Typography>
+                                <Typography variant="caption" sx={{ display: "block" }}>
+                                  Fundamental: {dec.fundamental.fundamental_strength_score.toFixed(0)} | Sector: {dec.sector_strength.sector_strength_score.toFixed(0)} | News: {dec.news.news_score.toFixed(0)}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: "#E3D7C4", display: "block", mt: 0.5 }}>
+                                  Click to view full 3-factor breakdown & analysis
+                                </Typography>
+                              </Box>
+                            }
+                            arrow
+                          >
+                            <Chip
+                              size="small"
+                              label={`${icon} ${dec.decision}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onSelectTab?.("stock-decisions");
+                              }}
+                              sx={{
+                                cursor: onSelectTab ? "pointer" : "default",
+                                height: 24,
+                                borderRadius: 0,
+                                fontWeight: 800,
+                                fontSize: "0.75rem",
+                                bgcolor: bg,
+                                color: "#F9EBD7",
+                                boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
+                                "&:hover": { opacity: 0.85 },
+                              }}
+                            />
+                          </Tooltip>
+                        );
+                      })()
+                    ) : (
+                      <Chip
+                        size="small"
+                        label="Decision Engine"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onSelectTab?.("stock-decisions");
+                        }}
+                        sx={{
+                          cursor: onSelectTab ? "pointer" : "default",
+                          height: 20,
+                          borderRadius: 0,
+                          fontSize: "0.68rem",
+                          bgcolor: "#E3D7C4",
+                        }}
+                      />
+                    )}
+                  </TableCell>
                   <TableCell align="center">
                     <Chip
                       size="small"

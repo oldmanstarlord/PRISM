@@ -29,6 +29,7 @@ from backend.app.ml.router import router as ml_router
 from backend.app.news.collection_router import router as collection_router
 from backend.app.news.router import router as news_router
 from backend.app.portfolio.router import router as portfolio_router
+from backend.app.decision.router import router as decision_router
 from backend.app.portfolio_analytics.router import router as portfolio_analytics_router
 from backend.app.sector_divergence.inputs import load_inputs
 from backend.app.sector_divergence.service import (
@@ -41,6 +42,7 @@ router = APIRouter()
 router.include_router(fundamentals_router)
 router.include_router(portfolio_router)
 router.include_router(portfolio_analytics_router)
+router.include_router(decision_router)
 router.include_router(journal_router)
 router.include_router(market_data_router)
 router.include_router(ml_router)

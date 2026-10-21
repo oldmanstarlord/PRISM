@@ -613,4 +613,97 @@ export interface PortfolioNewsSummary {
   holding_summaries?: HoldingNewsSummary[];
 }
 
+/* ─── Stock Decision Engine Types ─── */
+
+export type DecisionFlag = "SELL" | "HOLD" | "WAIT & WATCH";
+export type DecisionConfidenceLevel = "high" | "medium" | "low" | "insufficient_data";
+export type WeightRegime = "normal" | "significant_news" | "critical_event";
+
+export interface FundamentalScorePayload {
+  symbol: string;
+  fundamental_strength_score: number;
+  fundamental_classification: string;
+  raw_risk_score?: number | null;
+  anomaly_flag: boolean;
+  anomaly_score?: number | null;
+  model_source: string;
+  model_version?: string | null;
+  data_cutoff?: string | null;
+  quality_status?: string | null;
+  availability: "available" | "unavailable";
+  failure_reason?: string | null;
+}
+
+export interface SectorStrengthPayload {
+  symbol: string;
+  sector?: string | null;
+  divergence_value?: number | null;
+  sector_strength_score: number;
+  interpretation?: string | null;
+  horizon_days: number;
+  source: string;
+  availability: "available" | "unavailable" | "no_run";
+  failure_reason?: string | null;
+}
+
+export interface NewsScorePayload {
+  symbol: string;
+  news_score: number;
+  sentiment: string;
+  news_confidence: number;
+  articles_analyzed: number;
+  major_events: string[];
+  sources: string[];
+  provider_status: string;
+  is_fallback_neutral: boolean;
+  failure_reason?: string | null;
+}
+
+export interface AppliedWeights {
+  fundamental: number;
+  sector: number;
+  news: number;
+  regime: WeightRegime;
+  regime_reason: string;
+}
+
+export interface StockDecision {
+  symbol: string;
+  company_name?: string | null;
+  sector?: string | null;
+  fundamental: FundamentalScorePayload;
+  sector_strength: SectorStrengthPayload;
+  news: NewsScorePayload;
+  applied_weights: AppliedWeights;
+  final_score: number;
+  decision: DecisionFlag;
+  confidence: DecisionConfidenceLevel;
+  explanation: string;
+  reasons: string[];
+  risk_alerts: string[];
+  analysis_timestamp: string;
+  data_freshness?: string | null;
+  status: "analyzed" | "unavailable";
+  status_reason?: string | null;
+}
+
+export interface PortfolioDecisionSummary {
+  total_stocks: number;
+  hold_count: number;
+  wait_and_watch_count: number;
+  sell_count: number;
+  unavailable_count: number;
+  portfolio_weighted_risk_exposure: number;
+  average_final_score?: number | null;
+  analysis_timestamp: string;
+}
+
+export interface PortfolioDecisionResponse {
+  governance_disclaimer: string;
+  methodology_version: string;
+  summary: PortfolioDecisionSummary;
+  decisions: StockDecision[];
+}
+
+
 
