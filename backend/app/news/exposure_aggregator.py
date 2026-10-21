@@ -63,7 +63,10 @@ class ExposureAggregator:
                     if pub_dt.tzinfo is None:
                         pub_dt = pub_dt.replace(tzinfo=UTC)
                 except Exception:
-                    pub_dt = now
+                    continue  # Unknown publication dates are not fresh news.
+
+                if pub_dt < cutoff_7d or pub_dt > now:
+                    continue
 
                 if pub_dt >= cutoff_24h:
                     cnt_24h += 1

@@ -522,7 +522,9 @@ def persist_coverage_report(
         if quality is None:
             reasons.append("quality_not_evaluated")
         elif quality.status == "fail":
-            reasons.extend(str(code) for code in quality.reasons.get("codes", []))
+            codes = quality.reasons.get("codes", [])
+            if isinstance(codes, list):
+                reasons.extend(str(code) for code in codes)
         if security_id not in enough_history:
             reasons.append("insufficient_history")
         if security_id not in metrics_ready:

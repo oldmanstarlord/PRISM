@@ -231,6 +231,10 @@ class NewsIntelligenceService:
         max_articles_per_holding: int = 5,
     ) -> PortfolioNewsIntelligence:
         """Fetch and aggregate news intelligence for active portfolio holdings."""
+        if os.getenv("PRISM_NEWS_ENABLED", "1").lower() not in {"0", "false", "no"}:
+            from backend.app.news.cached_intelligence import cached_portfolio_intelligence
+
+            return cached_portfolio_intelligence(holdings)
         now_iso = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         today_date = datetime.now(UTC).strftime("%Y-%m-%d")
 

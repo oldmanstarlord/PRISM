@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote, unquote
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -25,12 +25,25 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
     supabase_url: str | None = None
     supabase_publishable_key: str | None = None
+    firecrawl_api_key: SecretStr | None = None
+    news_cache_path: Path = _PROJECT_ROOT / "data/processed/news.sqlite3"
+    news_sources: list[str] = [
+        "economictimes.indiatimes.com", "moneycontrol.com", "livemint.com",
+        "business-standard.com", "reuters.com",
+    ]
+    news_query: str = "India NSE stock market company earnings financial news"
+    news_rss_urls: list[str] = []
+    news_max_articles: int = Field(default=8, ge=1, le=10)
+    news_daily_credit_budget: int = Field(default=50, ge=0, le=10000)
+    news_refresh_minutes: int = Field(default=60, ge=5, le=1440)
+    news_auto_refresh: bool = False
     trusted_hosts: list[str] = ["localhost", "127.0.0.1", "testserver"]
     max_request_bytes: int = Field(default=1_048_576, ge=1_024, le=10_485_760)
     request_timeout_seconds: float = Field(default=60.0, ge=1.0, le=300.0)
     expensive_rate_limit_requests: int = Field(default=20, ge=1, le=1_000)
     expensive_rate_limit_window_seconds: int = Field(default=60, ge=1, le=3_600)
     expensive_path_prefixes: list[str] = [
+        "/api/v1/news/refresh",
         "/api/v1/ml",
         "/api/v1/news/portfolio",
         "/api/v1/news/symbol",

@@ -285,7 +285,7 @@ def get_risk_history() -> dict[str, Any]:
 
 
 @router.post("/news-signals")
-def get_news_signals(payload: ComprehensiveRiskRequest) -> dict[str, Any]:
+def get_news_signals(payload: ComprehensiveRiskRequest, _user: CurrentUser) -> dict[str, Any]:
     """Return decoupled modular news intelligence with verified sourced feeds."""
     from backend.app.news.service import NewsIntelligenceService
 

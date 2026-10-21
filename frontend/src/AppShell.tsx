@@ -24,6 +24,7 @@ const navItems = [
   { label: "Sector Divergence", path: "/" },
   { label: "Correlation MST", path: "/mst" },
   { label: "My Portfolio", path: "/portfolio" },
+  { label: "News Intelligence", path: "/news" },
 ];
 
 export default function AppShell({ children, subtitle, actions }: AppShellProps) {

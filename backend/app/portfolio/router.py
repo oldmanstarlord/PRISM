@@ -608,8 +608,8 @@ def record_transactions(
         ) from exc
 
     # 5. Save new transactions
-    for rec in new_db_records:
-        session.add(rec)
+    for new_record in new_db_records:
+        session.add(new_record)
 
     if new_db_records:
         _record_audit_event(

@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { NewsIntelligencePanel } from "./NewsIntelligence";
 import {
   Alert,
   Autocomplete,
@@ -43,7 +44,6 @@ import {
   StockRiskSection,
 } from "./Phase2RiskSections";
 import {
-  FutureNewsSignalsSection,
   HistoricalRiskTrackingSection,
   MstHoldingsInspector,
   StructuralMonitoringDashboard,
@@ -2763,7 +2763,7 @@ export default function PortfolioManager() {
             TAB: NEWS SIGNALS (PREVIEW)
            ═══════════════════════════════════════════════ */}
         {activeTab === "news-preview" && (
-          <FutureNewsSignalsSection newsSummary={newsSummary} />
+          <NewsIntelligencePanel />
         )}
 
         {/* ═══════════════════════════════════════════════

@@ -745,7 +745,7 @@ def calculate_portfolio_comprehensive_risk(
             sector_divergence_info=sector_divergence_scores.get(sym),
         )
         stored = stored_metrics.get(sym)
-        if stored is not None:
+        if stored is not None and stored.score is not None:
             factor_rows = [
                 (
                     "Annualized Volatility",

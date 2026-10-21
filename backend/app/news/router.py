@@ -30,11 +30,12 @@ _news_service = NewsIntelligenceService(use_transformer=False)
 @router.get("/provider-status")
 def get_provider_status() -> dict[str, str]:
     """Return verified news feed provider status, limits, and attribution notices."""
-    return {
-        "provider_name": _news_service.feed_provider.provider_name,
-        "provider_status": _news_service.feed_provider.provider_status,
-        "disclaimer": _news_service.feed_provider.terms_and_attribution_notice,
-    }
+    from backend.app.news.collection_router import get_news_service
+
+    state = get_news_service().status()
+    return {"provider_name": "Firecrawl + local FinBERT",
+            "provider_status": "configured" if state["configured"] else "not_configured",
+            "disclaimer": "Cached publisher articles analyzed locally; no paywall bypass."}
 
 
 @router.post("/portfolio", response_model=PortfolioNewsIntelligence)
@@ -59,10 +60,9 @@ def get_symbol_news(
     limit: Annotated[int, Query(ge=1, le=25)] = 10,
 ) -> list[NewsArticleCard]:
     """Retrieve verified articles and entity sentiment for a single NSE security."""
-    raw = _news_service.feed_provider.fetch_articles_for_symbol(symbol, max_results=limit)
-    if not raw:
-        return []
-    return _news_service.process_raw_articles(raw, db=db)
+    from backend.app.news.cached_intelligence import cached_cards
+
+    return cached_cards([{"symbol": symbol.upper(), "weight": 1.0}])[:limit]
 
 
 @router.post("/evaluate-labels", response_model=NewsEvaluationResult)
