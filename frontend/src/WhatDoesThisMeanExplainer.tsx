@@ -65,14 +65,14 @@ export function WhatDoesThisMeanExplainer({
     (metricId === "ANNUALIZED_VOLATILITY"
       ? "Volatility measures the annualized swing in portfolio value. Higher volatility indicates wider dispersion of daily returns and increased uncertainty over intermediate horizons."
       : metricId === "MAX_DRAWDOWN"
-      ? "Maximum drawdown measures the steepest cumulative peak-to-trough drop in portfolio wealth. It reveals historical worst-case capital decline under real market stress."
-      : metricId === "DIVERSIFICATION_RATIO" || metricId === "EFFECTIVE_HOLDINGS"
-      ? "Measures whether your portfolio is genuinely spread out or heavily concentrated in a few correlated bets. Higher effective holdings reduce vulnerability to individual company shocks."
-      : metricId === "PORTFOLIO_RISK_SCORE"
-      ? "A multi-factor diagnostic composite combining volatility, downside risk, concentration, and beta into a single standardized 0-100 scale."
-      : metricId === "HISTORICAL_VAR"
-      ? "Value at Risk estimates the minimum loss expected on extreme trading days at a 95% or 99% confidence level based on empirical historical returns."
-      : "Provides an objective statistical diagnosis of portfolio structure to help identify vulnerabilities before stress events occur.");
+        ? "Maximum drawdown measures the steepest cumulative peak-to-trough drop in portfolio wealth. It reveals historical worst-case capital decline under real market stress."
+        : metricId === "DIVERSIFICATION_RATIO" || metricId === "EFFECTIVE_HOLDINGS"
+          ? "Measures whether your portfolio is genuinely spread out or heavily concentrated in a few correlated bets. Higher effective holdings reduce vulnerability to individual company shocks."
+          : metricId === "PORTFOLIO_RISK_SCORE"
+            ? "A multi-factor diagnostic composite combining volatility, downside risk, concentration, and beta into a single standardized 0-100 scale."
+            : metricId === "HISTORICAL_VAR"
+              ? "Value at Risk estimates the minimum loss expected on extreme trading days at a 95% or 99% confidence level based on empirical historical returns."
+              : "Provides an objective statistical diagnosis of portfolio structure to help identify vulnerabilities before stress events occur.");
 
   const assumptions = doc?.assumptions || [
     "Evaluated on daily simple returns of portfolio holdings.",
@@ -122,7 +122,7 @@ export function WhatDoesThisMeanExplainer({
         >
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
-              💡 What does this mean?
+              What does this mean?
             </Typography>
             <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 600 }}>
               — {displayTitle}

@@ -38,8 +38,8 @@ export default function MstPage() {
   const [decisionsCountMap, setDecisionsCountMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    void getNotesCountMap().then(setNotesCountMap).catch(() => {});
-    void getDecisionsCountMap().then(setDecisionsCountMap).catch(() => {});
+    void getNotesCountMap().then(setNotesCountMap).catch(() => { });
+    void getDecisionsCountMap().then(setDecisionsCountMap).catch(() => { });
   }, []);
 
   function resetGraph() {
@@ -301,18 +301,6 @@ export default function MstPage() {
               />
             </Paper>
             <CorrelationMstExplainer />
-            <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>Method</Typography>
-              <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap", my: 2 }}>
-                <Chip label="120 daily log returns" sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A" }} />
-                <Chip label="Pearson correlation" sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A" }} />
-                <Chip label="Mantegna distance" sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A" }} />
-                <Chip label="Kruskal + Union-Find" sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A" }} />
-              </Stack>
-              <Typography color="text.secondary">
-                Node size reflects MST degree, not company size or importance. Select a node or edge for details. The tree shows statistical co-movement, not causal influence.
-              </Typography>
-            </Paper>
             <Alert severity="warning" sx={{ borderRadius: 0, border: "none", boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}>
               An MST deliberately keeps only {data.run.edge_count} of the possible pair relationships. A missing edge does not mean two stocks are uncorrelated, and an edge does not imply that one stock affects another.
             </Alert>

@@ -124,7 +124,7 @@ export function RiskReviewInboxPanel({
         >
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
             <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A", fontSize: "1.05rem" }}>
-              📥 Risk Review Inbox
+              Risk Review Inbox
             </Typography>
             <Chip
               size="small"
@@ -228,8 +228,8 @@ export function RiskReviewInboxPanel({
                             alert.status === "active"
                               ? "#B8321A"
                               : alert.status === "reviewed"
-                              ? "#046A38"
-                              : "#686B64",
+                                ? "#046A38"
+                                : "#686B64",
                           color: "#F9EBD7",
                         }}
                       />
@@ -268,7 +268,7 @@ export function RiskReviewInboxPanel({
                             "&:hover": { bgcolor: "#03532c" },
                           }}
                         >
-                          ✓ Mark Reviewed
+                          Mark Reviewed
                         </Button>
                         <Button
                           size="small"

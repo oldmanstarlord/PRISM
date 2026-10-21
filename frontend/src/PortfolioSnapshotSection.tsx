@@ -339,7 +339,7 @@ export default function PortfolioSnapshotSection({
           <Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: "0.95rem", color: "#292D2A" }}>
-                📸 Portfolio Snapshots & Audit Comparison
+                Portfolio Snapshots & Audit Comparison
               </Typography>
               <Chip
                 size="small"
@@ -595,7 +595,7 @@ export default function PortfolioSnapshotSection({
                 <Box sx={{ p: 2.5, bgcolor: "#E3D7C4", mt: 2 }}>
                   <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 750, color: "#292D2A" }}>
-                      🔍 Evidence-Based Attribution of Changes
+                      Evidence-Based Attribution of Changes
                     </Typography>
                     <Chip
                       size="small"
@@ -696,7 +696,7 @@ export default function PortfolioSnapshotSection({
                     {decisionsSnapshotB.length > 0 && (
                       <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0 }}>
                         <Typography variant="caption" sx={{ fontWeight: 750, color: "#046A38", display: "block", mb: 0.5 }}>
-                          📓 Linked Investment Decisions ({decisionsSnapshotB.length}):
+                          Linked Investment Decisions ({decisionsSnapshotB.length}):
                         </Typography>
                         <Stack spacing={1}>
                           {decisionsSnapshotB.map((dec) => (
