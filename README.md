@@ -1,5 +1,4 @@
 # PRISM
-hi
 PRISM is an explainable portfolio-risk and market-intelligence platform for the NIFTY 200 universe.
 
 The authoritative requirements are in [PRISM_SRS.md](PRISM_SRS.md). Current implementation state and every material project update are recorded in [PROJECT_STATUS.md](PROJECT_STATUS.md).
@@ -35,9 +34,9 @@ data/              Ignored local raw, processed and model artifacts
    Optional reproducibility controls are `--signal-date`, `--lookback-start` and
    timezone-aware `--data-cutoff`.
 10. Calculate and persist the latest Layer 2 correlation MST with
-   `uv run python -m jobs.calculate_mst`.
-   Optional reproducibility controls are `--window-end`, `--lookback-start` and
-   timezone-aware `--data-cutoff`.
+    `uv run python -m jobs.calculate_mst`.
+    Optional reproducibility controls are `--window-end`, `--lookback-start` and
+    timezone-aware `--data-cutoff`.
 11. Start the API with `uv run uvicorn backend.app.main:app --reload`.
 12. In `frontend`, run `pnpm install --frozen-lockfile` and `pnpm dev`. The dashboard reads the API from
     `VITE_API_URL`, defaulting to `http://localhost:8000/api/v1`.
