@@ -456,25 +456,6 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
           ))}
         </Box>
       </Stack>
-      <Box sx={{ overflowX: "auto", mt: 3 }}>
-        <Typography variant="h6">Holding-to-holding paths</Typography>
-        <Table size="small">
-          <TableHead><TableRow><TableCell>Pair</TableCell><TableCell align="right">Hops</TableCell><TableCell align="right">Average edge ρ</TableCell><TableCell>Stability</TableCell><TableCell>Unique MST path</TableCell></TableRow></TableHead>
-          <TableBody>{analysis.mst.holding_paths.map((path) => (
-            <TableRow key={`${path.symbol_a}-${path.symbol_b}`}>
-              <TableCell>{path.symbol_a} / {path.symbol_b}</TableCell>
-              <TableCell align="right">{path.hops}</TableCell>
-              <TableCell align="right">{path.average_correlation.toFixed(2)}</TableCell>
-              <TableCell>
-                {path.minimum_edge_persistence === null
-                  ? "Unavailable"
-                  : `${(path.minimum_edge_persistence * 100).toFixed(0)}% · ${path.confidence}`}
-              </TableCell>
-              <TableCell>{path.path.join(" → ")}</TableCell>
-            </TableRow>
-          ))}</TableBody>
-        </Table>
-      </Box>
     </Paper>
   );
 }

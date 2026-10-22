@@ -213,7 +213,7 @@ export default function StockResearchNotes({
       >
         <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
           <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1.05rem", color: "#292D2A" }}>
-            📝 Research Notes & Thesis
+            Research Notes & Thesis
           </Typography>
           <Chip
             size="small"
@@ -271,15 +271,6 @@ export default function StockResearchNotes({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start" sx={{ color: "#686B64", fontSize: "0.85rem" }}>
-                        🔍
-                      </InputAdornment>
-                    ),
-                  },
-                }}
               />
             )}
 
@@ -401,17 +392,17 @@ export default function StockResearchNotes({
                     {/* Actions: Edit & Delete */}
                     <Stack direction="row" spacing={0.5}>
                       <Tooltip title="Edit note">
-                        <IconButton size="small" onClick={() => handleOpenEdit(note)} sx={{ borderRadius: 0 }}>
-                          <span style={{ fontSize: "0.85rem" }}>✏️</span>
+                        <IconButton size="small" onClick={() => handleOpenEdit(note)} sx={{ borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}>
+                          Edit
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete note">
                         <IconButton
                           size="small"
                           onClick={() => setDeleteConfirmId(note.id)}
-                          sx={{ color: "#B8321A", borderRadius: 0 }}
+                          sx={{ color: "#B8321A", borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}
                         >
-                          <span style={{ fontSize: "0.85rem" }}>🗑️</span>
+                          Delete
                         </IconButton>
                       </Tooltip>
                     </Stack>

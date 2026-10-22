@@ -230,7 +230,7 @@ export default function StockDecisionJournal({
       >
         <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
           <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1.05rem", color: "#292D2A" }}>
-            📓 Investment Decision Journal
+             Investment Decision Journal
           </Typography>
           <Chip
             size="small"
@@ -313,15 +313,6 @@ export default function StockDecisionJournal({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   sx={{ "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start" sx={{ color: "#686B64", fontSize: "0.85rem" }}>
-                          🔍
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
                 />
               )}
 
@@ -384,9 +375,9 @@ export default function StockDecisionJournal({
                           <IconButton
                             size="small"
                             onClick={() => setDeleteConfirmId(decision.id)}
-                            sx={{ color: "#686B64", borderRadius: 0, "&:hover": { color: "#B8321A" } }}
+                            sx={{ color: "#686B64", borderRadius: 0, "&:hover": { color: "#B8321A" }, fontSize: "0.75rem", fontWeight: 600 }}
                           >
-                            <span style={{ fontSize: "0.85rem" }}>🗑️</span>
+                            Delete
                           </IconButton>
                         </Tooltip>
                       </Stack>
@@ -416,7 +407,7 @@ export default function StockDecisionJournal({
                       >
                         <Box sx={{ px: 1.5, py: 0.8, bgcolor: "#E3D7C4" }}>
                           <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                            📊 Metrics Comparison: Snapshot at Decision vs. Current
+                            Metrics Comparison: Snapshot at Decision vs. Current
                           </Typography>
                         </Box>
                         <Table size="small" sx={{ "& .MuiTableCell-root": { py: 0.8, px: 1.5, fontSize: "0.8rem", color: "#292D2A" } }}>
@@ -557,10 +548,10 @@ export default function StockDecisionJournal({
                   onChange={(e) => setDecisionType(e.target.value as DecisionType)}
                   sx={{ borderRadius: 0 }}
                 >
-                  <MenuItem value="Buy">🟢 Buy</MenuItem>
-                  <MenuItem value="Hold">🔵 Hold</MenuItem>
-                  <MenuItem value="Sell">🔴 Sell</MenuItem>
-                  <MenuItem value="Review">🟡 Review</MenuItem>
+                  <MenuItem value="Buy"> Buy</MenuItem>
+                  <MenuItem value="Hold"> Hold</MenuItem>
+                  <MenuItem value="Sell"> Sell</MenuItem>
+                  <MenuItem value="Review"> Review</MenuItem>
                 </Select>
               </FormControl>
 
@@ -627,7 +618,7 @@ export default function StockDecisionJournal({
             {/* Live Snapshot Preview */}
             <Paper sx={{ p: 2, bgcolor: "#F9EBD7", borderRadius: 0, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
               <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 1 }}>
-                📸 Snapshot Being Captured Right Now:
+                Snapshot Being Captured Right Now:
               </Typography>
               <Stack spacing={0.5} sx={{ fontSize: "0.8rem", color: "#292D2A" }}>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>

@@ -27,7 +27,7 @@ import ComparisonChart from "./ComparisonChart";
 import { SectorDivergenceExplainer } from "./PrismExplainer";
 import StockDecisionJournal from "./StockDecisionJournal";
 import StockResearchNotes from "./StockResearchNotes";
-import type { CompanyResponse, Horizon, LiveQuote, MstResponse, RankingsResponse } from "./types";
+import type { CompanyResponse, Horizon, LiveQuote, RankingsResponse } from "./types";
 
 function residualDirection(value: number) { return value >= 0 ? "positive" : "negative"; }
 
@@ -43,10 +43,8 @@ export default function CompanyDetail() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [lastQuoteSync, setLastQuoteSync] = useState<string | null>(null);
 
-  // Real MST network and peer rankings state
-  const [mstData, setMstData] = useState<MstResponse | null>(null);
+  // Peer rankings state
   const [peerRankings, setPeerRankings] = useState<RankingsResponse | null>(null);
-  const [stockMetrics, setStockMetrics] = useState<any | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -82,15 +80,6 @@ export default function CompanyDetail() {
     return () => clearInterval(interval);
   }, [fetchLiveQuote]);
 
-  // Real MST topology data
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchJson<MstResponse>("/mst/latest", controller.signal)
-      .then(setMstData)
-      .catch(() => undefined);
-    return () => controller.abort();
-  }, []);
-
   // Peer rankings for the selected horizon
   useEffect(() => {
     const controller = new AbortController();
@@ -99,18 +88,6 @@ export default function CompanyDetail() {
       .catch(() => undefined);
     return () => controller.abort();
   }, [selectedHorizon]);
-
-  // Stock quantitative risk metrics
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchJson<{ results: any[] }>("/market-data/stock-metrics/latest", controller.signal)
-      .then((res) => {
-        const match = res.results?.find((r) => r.symbol?.toUpperCase() === symbol.toUpperCase());
-        if (match) setStockMetrics(match);
-      })
-      .catch(() => undefined);
-    return () => controller.abort();
-  }, [symbol]);
 
   return (
     <AppShell subtitle="Company Peer Comparison">
@@ -216,37 +193,15 @@ export default function CompanyDetail() {
           const activeScore = data.scores.find((s) => s.horizon === selectedHorizon) || data.scores[0];
           const isUnusual = Math.abs(activeScore?.divergence_value ?? 0) >= 1.5;
 
-          // Direct empirical MST edges for this stock
-          const directMstEdges = mstData?.edges
-            ? mstData.edges
-                .filter(
-                  (e) =>
-                    e.symbol_a.toUpperCase() === data.company.symbol.toUpperCase() ||
-                    e.symbol_b.toUpperCase() === data.company.symbol.toUpperCase(),
-                )
-                .map((e) => {
-                  const isA = e.symbol_a.toUpperCase() === data.company.symbol.toUpperCase();
-                  const neighbor = isA ? e.symbol_b : e.symbol_a;
-                  return {
-                    neighbor,
-                    correlation: e.correlation,
-                    distance: e.distance,
-                    edgeRank: e.edge_rank,
-                    pairedObs: e.paired_observations,
-                  };
-                })
-                .sort((a, b) => a.distance - b.distance)
-            : [];
-
           // Sector peer companies for the selected horizon
           const peerItems = peerRankings?.results
             ? peerRankings.results
-                .filter(
-                  (r) =>
-                    r.industry === data.company.industry &&
-                    r.symbol.toUpperCase() !== data.company.symbol.toUpperCase(),
-                )
-                .sort((a, b) => b.divergence_value - a.divergence_value)
+              .filter(
+                (r) =>
+                  r.industry === data.company.industry &&
+                  r.symbol.toUpperCase() !== data.company.symbol.toUpperCase(),
+              )
+              .sort((a, b) => b.divergence_value - a.divergence_value)
             : [];
 
           const quotePrice = liveQuote?.latest_price;
@@ -303,7 +258,7 @@ export default function CompanyDetail() {
                       {isUnusual && (
                         <Chip
                           size="small"
-                          label="⚡ Statistical Dislocation"
+                          label="Statistical Dislocation"
                           sx={{
                             fontWeight: 700,
                             borderRadius: 0,
@@ -332,7 +287,7 @@ export default function CompanyDetail() {
                         "&:hover": { bgcolor: "#034d28" },
                       }}
                     >
-                      📰 View in Portfolio Intelligence →
+                      View in Portfolio Intelligence →
                     </Button>
                   </Stack>
 
@@ -453,8 +408,8 @@ export default function CompanyDetail() {
                           score.interpretation === "normal"
                             ? "default"
                             : score.interpretation === "moderate"
-                            ? "warning"
-                            : "error"
+                              ? "warning"
+                              : "error"
                         }
                       />
                       <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
@@ -496,77 +451,11 @@ export default function CompanyDetail() {
                 );
               })()}
 
-              {/* ─── Quantitative Risk & Factor Profile ─── */}
-              <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A", mb: 0.5 }}>
-                  📊 Empirical Risk & Factor Attribution
-                </Typography>
-                <Typography variant="body2" sx={{ color: "#686B64", mb: 2 }}>
-                  Institutional factor exposure computed over the historical return series. Explains systematic market sensitivity versus stock-specific variance.
-                </Typography>
-
-                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 2 }}>
-                  <Paper sx={{ p: 2, bgcolor: "#E3D7C4", borderRadius: 0, border: "none" }}>
-                    <Typography variant="overline" sx={{ color: "#686B64", fontWeight: 700 }}>
-                      Beta to NIFTY 50
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 800, color: "#292D2A", fontFamily: "monospace" }}>
-                      {stockMetrics?.beta_nifty50 != null ? stockMetrics.beta_nifty50.toFixed(2) : (activeScore.beta?.toFixed(2) ?? "1.00")}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#292D2A", display: "block", mt: 0.5 }}>
-                      Systematic sensitivity. {Number(stockMetrics?.beta_nifty50 ?? activeScore.beta ?? 1) > 1.0 ? "Amplified cyclicality relative to index" : "Defensive characteristics relative to index"}.
-                    </Typography>
-                  </Paper>
-
-                  <Paper sx={{ p: 2, bgcolor: "#E3D7C4", borderRadius: 0, border: "none" }}>
-                    <Typography variant="overline" sx={{ color: "#686B64", fontWeight: 700 }}>
-                      Annualized Volatility
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 800, color: "#292D2A", fontFamily: "monospace" }}>
-                      {stockMetrics?.volatility_1y != null
-                        ? `${(stockMetrics.volatility_1y * 100).toFixed(1)}%`
-                        : `${(activeScore.residual_volatility * Math.sqrt(252) * 100).toFixed(1)}%`}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#292D2A", display: "block", mt: 0.5 }}>
-                      1-year sample volatility scaled by √252 trading days.
-                    </Typography>
-                  </Paper>
-
-                  <Paper sx={{ p: 2, bgcolor: "#E3D7C4", borderRadius: 0, border: "none" }}>
-                    <Typography variant="overline" sx={{ color: "#686B64", fontWeight: 700 }}>
-                      Downside Semi-Variance
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 800, color: "#B8321A", fontFamily: "monospace" }}>
-                      {stockMetrics?.downside_volatility != null
-                        ? `${(stockMetrics.downside_volatility * 100).toFixed(1)}%`
-                        : "—"}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#292D2A", display: "block", mt: 0.5 }}>
-                      Volatility of negative return sessions only. Isolates true drawdown tail risk.
-                    </Typography>
-                  </Paper>
-
-                  <Paper sx={{ p: 2, bgcolor: "#E3D7C4", borderRadius: 0, border: "none" }}>
-                    <Typography variant="overline" sx={{ color: "#686B64", fontWeight: 700 }}>
-                      Max Drawdown
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 800, color: "#B8321A", fontFamily: "monospace" }}>
-                      {stockMetrics?.max_drawdown != null
-                        ? `${(stockMetrics.max_drawdown * 100).toFixed(1)}%`
-                        : "—"}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#292D2A", display: "block", mt: 0.5 }}>
-                      Worst cumulative peak-to-trough price decline across historical lookback.
-                    </Typography>
-                  </Paper>
-                </Box>
-              </Paper>
-
               {/* ─── Real Peer Roster with Divergence Scores ─── */}
               {peerItems.length > 0 && (
                 <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A", mb: 0.5 }}>
-                    👥 Full {data.company.industry} Peer Universe ({peerItems.length} peers)
+                    Full {data.company.industry} Peer Universe ({peerItems.length} peers)
                   </Typography>
                   <Typography variant="body2" sx={{ color: "#686B64", mb: 2 }}>
                     Real divergence scores for all active peers in this sector at the {selectedHorizon}-day horizon. Click any peer to navigate to its full comparison.
@@ -662,77 +551,7 @@ export default function CompanyDetail() {
                 </Stack>
               </Paper>
 
-              {/* ─── REAL Empirical MST Topology Network (Zero fake data) ─── */}
-              <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                    🌳 Real Empirical MST Network Topology
-                  </Typography>
-                  <Chip
-                    size="small"
-                    label="Kruskal Econophysics Spanning Tree"
-                    sx={{ bgcolor: "#046A38", color: "#F9EBD7", fontSize: "0.68rem", fontWeight: 700, borderRadius: 0 }}
-                  />
-                </Stack>
-                <Typography variant="body2" sx={{ color: "#686B64", mb: 2 }}>
-                  Direct empirical co-movement connections calculated via Kruskal's algorithm on 252 trading days of log-returns. Mantegna distance d = √(2(1 - ρ)) measures true topological co-movement.
-                </Typography>
 
-                {directMstEdges.length > 0 ? (
-                  <Stack spacing={1.5}>
-                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 1.5 }}>
-                      {directMstEdges.map((edge) => {
-                        const rho = edge.correlation ?? 0;
-                        const isHighRho = rho >= 0.60;
-                        return (
-                          <Box
-                            key={edge.neighbor}
-                            component={Link}
-                            to={`/companies/${edge.neighbor}`}
-                            sx={{
-                              p: 1.5,
-                              bgcolor: "#E3D7C4",
-                              textDecoration: "none",
-                              color: "inherit",
-                              boxShadow: "0 2px 4px rgba(41,45,42,0.06)",
-                              transition: "background-color 0.15s",
-                              "&:hover": { bgcolor: "#d9cbbb" },
-                            }}
-                          >
-                            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline" }}>
-                              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                                {edge.neighbor}
-                              </Typography>
-                              <Chip
-                                size="small"
-                                label={`ρ ${rho.toFixed(2)}`}
-                                sx={{
-                                  height: 18,
-                                  fontSize: "0.65rem",
-                                  fontWeight: 700,
-                                  bgcolor: isHighRho ? "#DCE9DE" : "#F9EBD7",
-                                  color: isHighRho ? "#046A38" : "#8A5A00",
-                                  borderRadius: 0,
-                                }}
-                              />
-                            </Stack>
-                            <Typography variant="caption" sx={{ color: "#686B64", display: "block", mt: 0.5, fontFamily: "monospace" }}>
-                              Mantegna distance d: {edge.distance.toFixed(3)}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: "#686B64", display: "block", fontSize: "0.68rem" }}>
-                              Tree edge rank #{edge.edgeRank} ({edge.pairedObs} sessions)
-                            </Typography>
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  </Stack>
-                ) : (
-                  <Alert severity="info" sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0 }}>
-                    In the latest 252-day spanning tree, <strong>{data.company.symbol}</strong> is connected through higher-order cluster bridges. In MST filtering, exactly N-1 edges span the whole market to eliminate correlation redundancy.
-                  </Alert>
-                )}
-              </Paper>
 
               {/* ─── Linked Records: Notes & Decisions ─── */}
               {(() => {
@@ -781,11 +600,6 @@ export default function CompanyDetail() {
                         sx={{ minWidth: { sm: 300 }, "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
                         slotProps={{
                           input: {
-                            startAdornment: (
-                              <InputAdornment position="start" sx={{ color: "#94a3b8", fontSize: "0.85rem" }}>
-                                🔍
-                              </InputAdornment>
-                            ),
                             endAdornment: journalSearchQuery ? (
                               <IconButton size="small" onClick={() => setJournalSearchQuery("")}>
                                 ✕

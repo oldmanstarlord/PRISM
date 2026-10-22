@@ -168,7 +168,7 @@ export function StockRiskSection({
                         <Tooltip title={`Model estimate: Sector divergence residual (${s.sector_divergence_20d.toFixed(1)}σ) signals unusual behaviour.`}>
                           <Chip
                             size="small"
-                            label="⚡ Model: Unusual"
+                            label="Model: Unusual"
                             sx={{
                               height: 18,
                               borderRadius: 0,
@@ -710,170 +710,7 @@ export function PortfolioRiskSection({
         </Paper>
       </Stack>
 
-      {/* Model A Walk-Forward Volatility Forecast vs Realised */}
-      <Paper
-        sx={{
-          p: 2.5,
-          bgcolor: "#F9EBD7",
-          boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
-          borderRadius: 0,
-        }}
-      >
-        <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}>
-          <Box>
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 0.5 }}>
-              <Chip
-                size="small"
-                label="Model estimate"
-                sx={{ bgcolor: "#DCE9DE", color: "#046A38", fontWeight: 700, borderRadius: 0, fontSize: "0.70rem" }}
-              />
-              <Typography variant="subtitle1" sx={{ fontWeight: 750, color: "#292D2A" }}>
-                Walk-Forward Volatility Forecast vs. Realised Volatility
-              </Typography>
-            </Stack>
-            <Typography variant="body2" sx={{ color: "#686B64" }}>
-              Model A (HAR / GARCH multi-horizon ensemble) 21-day predictive forecast versus 252-day empirical realised covariance.
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={3} sx={{ alignItems: "baseline" }}>
-            <Box sx={{ textAlign: "right" }}>
-              <Typography variant="caption" sx={{ color: "#686B64", display: "block" }}>
-                Realised Volatility
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: "JetBrains Mono", color: "#292D2A" }}>
-                {portfolio_profile.annualized_volatility.toFixed(1)}%
-              </Typography>
-            </Box>
-            <Box sx={{ textAlign: "right" }}>
-              <Typography variant="caption" sx={{ color: "#046A38", display: "block", fontWeight: 700 }}>
-                Model A Forecast (21d)
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "JetBrains Mono", color: "#046A38" }}>
-                {(portfolio_profile.annualized_volatility * 0.96).toFixed(1)}%
-              </Typography>
-            </Box>
-          </Stack>
-        </Stack>
-      </Paper>
 
-      {/* Summary Findings & Dynamic Commentary */}
-      {portfolio_profile.summary_findings.length > 0 && (
-        <Alert severity="info" icon={false} sx={{ bgcolor: "#DCE9DE", color: "#046A38", boxShadow: "0 2px 6px rgba(4,106,56,0.12)", borderRadius: 0 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: "#046A38" }}>
-            Key Portfolio Risk Observations:
-          </Typography>
-          <Box component="ul" sx={{ m: 0, pl: 2 }}>
-            {portfolio_profile.summary_findings.map((f) => (
-              <li key={f}>
-                <Typography variant="body2" sx={{ color: "#292D2A" }}>{f}</Typography>
-              </li>
-            ))}
-          </Box>
-        </Alert>
-      )}
-
-      {/* Tail Risk & Extreme Loss Estimates (Historical VaR / CVaR & Parametric Comparison) */}
-      <Paper sx={{ p: 3 }}>
-        <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, mb: 2, gap: 1 }}>
-          <Box>
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                Tail Risk & Extreme Loss Estimates (VaR / CVaR)
-              </Typography>
-              <Chip label="Historical Estimate" size="small" sx={{ bgcolor: "#E3D7C4", color: "#686B64", fontWeight: 700, borderRadius: 0 }} />
-            </Stack>
-            <Typography variant="caption" color="text.secondary">
-              1-day horizon, 252-day lookback. Non-parametric historical quantile vs normal parametric benchmark. Historical estimates only; not loss bounds.
-            </Typography>
-          </Box>
-        </Stack>
-
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-          {/* 95% Confidence */}
-          <Paper sx={{ p: 2.5, flex: 1, bgcolor: "#F9EBD7", borderRadius: 0, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
-            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
-              95% Confidence (1-in-20 Day Event)
-            </Typography>
-            <Stack direction="row" spacing={2.5} sx={{ mt: 1, flexWrap: "wrap" }}>
-              <Box>
-                <Typography variant="caption" color="text.secondary">Historical VaR</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: "error.main", fontFamily: "JetBrains Mono, monospace" }}>
-                  {portfolio_profile.var_historical_95 !== undefined && portfolio_profile.var_historical_95 !== null
-                    ? `-${portfolio_profile.var_historical_95.toFixed(2)}%`
-                    : "—"}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary">Expected Shortfall (CVaR)</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: "error.main", fontFamily: "JetBrains Mono, monospace" }}>
-                  {portfolio_profile.cvar_historical_95 !== undefined && portfolio_profile.cvar_historical_95 !== null
-                    ? `-${portfolio_profile.cvar_historical_95.toFixed(2)}%`
-                    : "—"}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary">Parametric VaR</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: "JetBrains Mono, monospace" }}>
-                  {portfolio_profile.var_parametric_95 !== undefined && portfolio_profile.var_parametric_95 !== null
-                    ? `-${portfolio_profile.var_parametric_95.toFixed(2)}%`
-                    : "—"}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary">Backtest Exceptions (252d)</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: "JetBrains Mono, monospace" }}>
-                  {portfolio_profile.var_backtest_exceptions_95 ?? "—"}{" "}
-                  <Typography component="span" variant="caption" color="text.secondary">
-                    (exp ~12.6)
-                  </Typography>
-                </Typography>
-              </Box>
-            </Stack>
-          </Paper>
-
-          {/* 99% Confidence */}
-          <Paper sx={{ p: 2.5, flex: 1, bgcolor: "#F9EBD7", borderRadius: 0, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
-            <Typography variant="overline" color="text.secondary" sx={{ fontWeight: 700 }}>
-              99% Confidence (1-in-100 Day Event)
-            </Typography>
-            <Stack direction="row" spacing={2.5} sx={{ mt: 1, flexWrap: "wrap" }}>
-              <Box>
-                <Typography variant="caption" color="text.secondary">Historical VaR</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: "error.main", fontFamily: "JetBrains Mono, monospace" }}>
-                  {portfolio_profile.var_historical_99 !== undefined && portfolio_profile.var_historical_99 !== null
-                    ? `-${portfolio_profile.var_historical_99.toFixed(2)}%`
-                    : "—"}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary">Expected Shortfall (CVaR)</Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: "error.main", fontFamily: "JetBrains Mono, monospace" }}>
-                  {portfolio_profile.cvar_historical_99 !== undefined && portfolio_profile.cvar_historical_99 !== null
-                    ? `-${portfolio_profile.cvar_historical_99.toFixed(2)}%`
-                    : "—"}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary">Parametric VaR</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: "JetBrains Mono, monospace" }}>
-                  {portfolio_profile.var_parametric_99 !== undefined && portfolio_profile.var_parametric_99 !== null
-                    ? `-${portfolio_profile.var_parametric_99.toFixed(2)}%`
-                    : "—"}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="text.secondary">Backtest Exceptions (252d)</Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: "JetBrains Mono, monospace" }}>
-                  {portfolio_profile.var_backtest_exceptions_99 ?? "—"}{" "}
-                  <Typography component="span" variant="caption" color="text.secondary">
-                    (exp ~2.5)
-                  </Typography>
-                </Typography>
-              </Box>
-            </Stack>
-          </Paper>
-        </Stack>
-      </Paper>
 
       {/* Holding Euler Risk Contributions Table */}
       <Paper sx={{ p: 3, overflowX: "auto" }}>
@@ -1170,8 +1007,8 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
                 sec.allocation_status === "Excessive"
                   ? "error"
                   : sec.allocation_status === "Elevated"
-                  ? "warning"
-                  : "success";
+                    ? "warning"
+                    : "success";
 
               return (
                 <TableRow key={sec.sector} hover>

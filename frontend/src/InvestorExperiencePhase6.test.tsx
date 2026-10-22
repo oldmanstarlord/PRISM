@@ -220,10 +220,8 @@ describe("Investor Experience Phase 6 Test Suite", () => {
         </MemoryRouter>
       );
 
-      // Verify Header, Dates, and Units
+      // Verify Header and Units
       expect(screen.getByText("EXECUTIVE PORTFOLIO OVERVIEW")).toBeInTheDocument();
-      expect(screen.getByText("As of: 2026-10-20")).toBeInTheDocument();
-      expect(screen.getByText("Period: 1Y (Daily, 252d window)")).toBeInTheDocument();
 
       // Verify 5 Key Core Metrics
       expect(screen.getByText("Market Value")).toBeInTheDocument();
@@ -242,17 +240,6 @@ describe("Investor Experience Phase 6 Test Suite", () => {
 
       expect(screen.getByText("Max Drawdown")).toBeInTheDocument();
       expect(screen.getByText("-9.5%")).toBeInTheDocument();
-
-      // Verify Model & News Badges
-      const modelChip = screen.getByText(/Model estimate: Regime Low Volatility Bull/i);
-      expect(modelChip).toBeInTheDocument();
-      fireEvent.click(modelChip);
-      expect(onNavigateMock).toHaveBeenCalledWith("ai-insights");
-
-      const newsChip = screen.getByText(/News: 14 articles · Positive →/i);
-      expect(newsChip).toBeInTheDocument();
-      fireEvent.click(newsChip);
-      expect(onNavigateMock).toHaveBeenCalledWith("news-preview");
     });
 
     it("renders empty/stale state message when monitoring snapshot is null", () => {

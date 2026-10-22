@@ -28,15 +28,6 @@ import {
   SvgIcon,
   SvgIconProps,
 } from "@mui/material";
-import {
-  ALERT_THRESHOLD_CONFIGS,
-  DEFAULT_ALERT_THRESHOLDS,
-  loadAlertThresholds,
-  saveAlertThresholds,
-  resetAlertThresholds,
-} from "./methodologyRegistry";
-import type { AlertThresholdConfig } from "./methodologyRegistry";
-import { WhatDoesThisMeanExplainer } from "./WhatDoesThisMeanExplainer";
 import { RiskReviewInboxPanel } from "./RiskReviewInboxPanel";
 
 function HubIcon(props: SvgIconProps) {
@@ -120,42 +111,7 @@ export function StructuralMonitoringDashboard({
   newsSummary?: PortfolioNewsSummary | null;
   onNavigateTab?: (tabId: string) => void;
 }) {
-  const [configOpen, setConfigOpen] = useState(false);
-  const [editingThresholds, setEditingThresholds] = useState<Record<string, number>>(() => loadAlertThresholds(portfolioId));
-  const [thresholdErrors, setThresholdErrors] = useState<Record<string, string>>({});
 
-  const handleOpenConfig = () => {
-    setEditingThresholds(loadAlertThresholds(portfolioId));
-    setThresholdErrors({});
-    setConfigOpen(true);
-  };
-
-  const handleReset = () => {
-    resetAlertThresholds(portfolioId);
-    setEditingThresholds({ ...DEFAULT_ALERT_THRESHOLDS });
-    setThresholdErrors({});
-    onRefresh?.();
-  };
-
-  const handleSave = () => {
-    const errors: Record<string, string> = {};
-    for (const cfg of ALERT_THRESHOLD_CONFIGS) {
-      const val = editingThresholds[cfg.id];
-      if (val === undefined || isNaN(val)) {
-        errors[cfg.id] = "Value is required";
-      } else if (val < cfg.min || val > cfg.max) {
-        errors[cfg.id] = `Must be between ${cfg.min} and ${cfg.max} ${cfg.unit}`;
-      }
-    }
-    if (Object.keys(errors).length > 0) {
-      setThresholdErrors(errors);
-      return;
-    }
-    saveAlertThresholds(editingThresholds, portfolioId);
-    setThresholdErrors({});
-    setConfigOpen(false);
-    onRefresh?.();
-  };
 
   if (!monitoring) {
     return (
@@ -177,13 +133,13 @@ export function StructuralMonitoringDashboard({
   const annualVol = financials?.volatility != null
     ? financials.volatility * 100
     : analysis?.performance?.annualized_volatility != null
-    ? analysis.performance.annualized_volatility * 100
-    : null;
+      ? analysis.performance.annualized_volatility * 100
+      : null;
   const maxDd = financials?.maxDrawdown != null
     ? financials.maxDrawdown * 100
     : analysis?.performance?.max_drawdown != null
-    ? analysis.performance.max_drawdown * 100
-    : null;
+      ? analysis.performance.max_drawdown * 100
+      : null;
   const freshness = financials?.dataFreshness ?? monitoring.data_freshness;
   const asOf = financials?.asOfDate ?? analysis?.envelope.data_cutoff ?? null;
   const period = financials?.period ?? (
@@ -211,66 +167,13 @@ export function StructuralMonitoringDashboard({
             sx={{ justifyContent: "space-between", alignItems: { md: "center" }, gap: 1.5 }}
           >
             <Box>
-              <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexWrap: "wrap", mb: 0.5 }}>
-                <Typography variant="overline" sx={{ letterSpacing: 1.5, color: "#686B64", fontWeight: 700 }}>
-                  EXECUTIVE PORTFOLIO OVERVIEW
-                </Typography>
-                <Chip
-                  size="small"
-                  label={`As of: ${asOf ?? "Unavailable"}`}
-                  sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.72rem", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }}
-                />
-                <Chip
-                  size="small"
-                  label={`Period: ${period ?? "Unavailable"}`}
-                  sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.72rem", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }}
-                />
-                <Chip
-                  size="small"
-                  label={`Freshness: ${freshness}`}
-                  sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.72rem", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }}
-                />
-              </Stack>
+              <Typography variant="overline" sx={{ letterSpacing: 1.5, color: "#686B64", fontWeight: 700, display: "block", mb: 0.5 }}>
+                EXECUTIVE PORTFOLIO OVERVIEW
+              </Typography>
               <Typography variant="h5" sx={{ fontWeight: 800, color: "#292D2A" }}>
                 Portfolio Financial State & Structural Health
               </Typography>
             </Box>
-
-            {/* Compact Model Estimate & News Badges */}
-            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-              <Tooltip title="Walk-forward Markov regime switching model estimate. Click to open AI Insights tab." arrow>
-                <Chip
-                  size="small"
-                  onClick={() => onNavigateTab?.("ai-insights")}
-                  label={`Model estimate: Regime ${marketRegime?.active_regime_name ?? "Low Volatility Bull"} (${((marketRegime?.filtered_probability ?? 0.85) * 100).toFixed(0)}%) →`}
-                  sx={{
-                    bgcolor: "#DCE9DE",
-                    color: "#046A38",
-                    fontWeight: 700,
-                    borderRadius: 0,
-                    cursor: onNavigateTab ? "pointer" : "default",
-                    "&:hover": onNavigateTab ? { bgcolor: "#c5dec9" } : {},
-                  }}
-                />
-              </Tooltip>
-
-              <Tooltip title="Real-time sentiment and curated market intelligence. Click to open News tab." arrow>
-                <Chip
-                  size="small"
-                  onClick={() => onNavigateTab?.("news-preview")}
-                  label={`News: ${newsSummary?.total_articles_tracked ?? newsSummary?.sample_articles?.length ?? 12} articles · ${newsSummary?.portfolio_sentiment_average != null ? (newsSummary.portfolio_sentiment_average > 0.05 ? "Positive" : newsSummary.portfolio_sentiment_average < -0.05 ? "Negative" : "Neutral") : "Neutral"} →`}
-                  sx={{
-                    bgcolor: "#F9EBD7",
-                    color: "#292D2A",
-                    fontWeight: 700,
-                    borderRadius: 0,
-                    border: "1px solid rgba(41,45,42,0.08)",
-                    cursor: onNavigateTab ? "pointer" : "default",
-                    "&:hover": onNavigateTab ? { bgcolor: "#ebe0ce" } : {},
-                  }}
-                />
-              </Tooltip>
-            </Stack>
           </Stack>
 
           {/* 5 Core Executive Indicator Cells */}
@@ -382,11 +285,7 @@ export function StructuralMonitoringDashboard({
         </Stack>
       </Paper>
 
-      {/* Risk Review Inbox Panel */}
-      <RiskReviewInboxPanel
-        portfolioId={portfolioId}
-        triggeredIndicators={triggeredIndicators}
-      />
+
 
       {/* KPI Summary Cards */}
       <Box
@@ -420,14 +319,14 @@ export function StructuralMonitoringDashboard({
                   monitoring.portfolio_classification === "Low"
                     ? "#DCE9DE"
                     : monitoring.portfolio_classification === "Moderate"
-                    ? "#E3D7C4"
-                    : "#F6D9CC",
+                      ? "#E3D7C4"
+                      : "#F6D9CC",
                 color:
                   monitoring.portfolio_classification === "Low"
                     ? "#046A38"
                     : monitoring.portfolio_classification === "Moderate"
-                    ? "#8A5A00"
-                    : "#B8321A",
+                      ? "#8A5A00"
+                      : "#B8321A",
               }}
             />
           </CardContent>
@@ -477,14 +376,14 @@ export function StructuralMonitoringDashboard({
                     monitoring.top_sector_status === "Balanced"
                       ? "#DCE9DE"
                       : monitoring.top_sector_status === "Elevated"
-                      ? "#F9EBD7"
-                      : "#F6D9CC",
+                        ? "#F9EBD7"
+                        : "#F6D9CC",
                   color:
                     monitoring.top_sector_status === "Balanced"
                       ? "#046A38"
                       : monitoring.top_sector_status === "Elevated"
-                      ? "#8A5A00"
-                      : "#B8321A",
+                        ? "#8A5A00"
+                        : "#B8321A",
                 }}
               />
             </Stack>
@@ -506,451 +405,13 @@ export function StructuralMonitoringDashboard({
         </Card>
       </Box>
 
-      {/* Active Monitoring Indicators */}
-      <Card elevation={0} sx={{ borderRadius: 0, bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-        <CardContent>
-          <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, mb: 2, gap: 1 }}>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 750 }}>
-                Prudential Monitoring Indicators & Analytical Alerts
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Configurable threshold triggers across concentration, market sensitivity, and downside volatility.
-              </Typography>
-            </Box>
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={handleOpenConfig}
-                sx={{
-                  color: "#292D2A",
-                  borderColor: "#E3D7C4",
-                  textTransform: "none",
-                  fontWeight: 600,
-                  borderRadius: 0,
-                  "&:hover": { borderColor: "#292D2A", bgcolor: "#E3D7C4" },
-                }}
-              >
-                Configure Alerts
-              </Button>
-              <Chip
-                label={`${triggeredIndicators.length} Active Alert${triggeredIndicators.length === 1 ? "" : "s"}`}
-                color={triggeredIndicators.length > 0 ? "warning" : "success"}
-                sx={{ fontWeight: 700, borderRadius: 0 }}
-              />
-            </Stack>
-          </Stack>
+      {/* Risk Review Inbox Panel (relocated to bottom of page) */}
+      <RiskReviewInboxPanel
+        portfolioId={portfolioId}
+        triggeredIndicators={triggeredIndicators}
+      />
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-              gap: 2,
-            }}
-          >
-            {monitoring.indicators.map((ind) => (
-              <Paper
-                key={ind.id}
-                elevation={0}
-                sx={{
-                  p: 2,
-                  borderRadius: 0,
-                  bgcolor: ind.triggered
-                    ? ind.severity === "critical"
-                      ? "#F6D9CC"
-                      : "#F9EBD7"
-                    : "#F9EBD7",
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                }}
-              >
-                <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
-                  <Box>
-                    <Stack direction="row" sx={{ alignItems: "center", gap: 1 }}>
-                      {ind.triggered ? (
-                        <WarningIcon
-                          sx={{
-                            color: ind.severity === "critical" ? "#E34222" : "#8A5A00",
-                            fontSize: 20,
-                          }}
-                        />
-                      ) : (
-                        <InfoIcon sx={{ color: "#046A38", fontSize: 20 }} />
-                      )}
-                      <Typography variant="subtitle2" sx={{ fontWeight: 750 }}>
-                        {ind.title}
-                      </Typography>
-                    </Stack>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.25, fontFamily: "JetBrains Mono, monospace" }}>
-                      {ind.metric_name} · Trigger: {ind.current_value !== undefined ? ind.current_value : "—"} · Threshold: {ind.threshold_value} · Window: {ind.observation_period}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    size="small"
-                    label={ind.triggered ? ind.severity.toUpperCase() : "NORMAL"}
-                    sx={{
-                      fontSize: "0.68rem",
-                      fontWeight: 700,
-                      borderRadius: 0,
-                      bgcolor: ind.triggered
-                        ? ind.severity === "critical"
-                          ? "#F6D9CC"
-                          : "#F9EBD7"
-                        : "#E3D7C4",
-                      color: ind.triggered
-                        ? ind.severity === "critical"
-                          ? "#B8321A"
-                          : "#8A5A00"
-                        : "#292D2A",
-                    }}
-                  />
-                </Stack>
-                <Typography variant="body2" sx={{ mt: 1, color: "#292D2A", fontSize: "0.85rem" }}>
-                  {ind.explanation}
-                </Typography>
 
-                {/* Contributing Holdings */}
-                {ind.contributing_holdings && ind.contributing_holdings.length > 0 && (
-                  <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", gap: 0.5, alignItems: "center" }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#686B64", mr: 0.5 }}>
-                      Contributing Holdings:
-                    </Typography>
-                    {ind.contributing_holdings.map((sym) => (
-                      <Chip
-                        key={sym}
-                        label={sym}
-                        size="small"
-                        sx={{ height: 18, fontSize: "0.65rem", bgcolor: "#E3D7C4", color: "#292D2A", borderRadius: 0, fontWeight: 600 }}
-                      />
-                    ))}
-                  </Box>
-                )}
-
-                {/* Assumptions */}
-                {ind.assumptions && ind.assumptions.length > 0 && (
-                  <Typography variant="caption" sx={{ display: "block", mt: 0.75, color: "#8A5A00", fontSize: "0.72rem" }}>
-                    Assumptions: {ind.assumptions.join(" · ")}
-                  </Typography>
-                )}
-
-                {/* Reusable Methodology Explainer */}
-                <Box sx={{ mt: 1.5 }}>
-                  <WhatDoesThisMeanExplainer metricId={ind.id} defaultExpanded={false} />
-                </Box>
-              </Paper>
-            ))}
-          </Box>
-
-          {/* Configurable Alert Thresholds Dialog */}
-          <Dialog
-            open={configOpen}
-            onClose={() => setConfigOpen(false)}
-            maxWidth="sm"
-            fullWidth
-            slotProps={{
-              paper: {
-                sx: {
-                  bgcolor: "#F9EBD7",
-                  borderRadius: 0,
-                  boxShadow: "0 12px 32px rgba(41,45,42,0.22)",
-                  color: "#292D2A",
-                },
-              },
-            }}
-          >
-            <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
-              Configure Prudential Alert Thresholds
-            </DialogTitle>
-            <DialogContent sx={{ pt: 1 }}>
-              <Typography variant="body2" sx={{ color: "#686B64", mb: 2.5 }}>
-                Adjust mathematical trigger thresholds across single-stock concentration, sector exposure, and downside volatility. Thresholds are persisted per portfolio and validated against quantitative stability bounds.
-              </Typography>
-
-              <Stack spacing={2.5}>
-                {ALERT_THRESHOLD_CONFIGS.map((cfg: AlertThresholdConfig) => {
-                  const currentVal = editingThresholds[cfg.id] ?? cfg.defaultValue;
-                  const hasErr = Boolean(thresholdErrors[cfg.id]);
-                  return (
-                    <Box key={cfg.id} sx={{ p: 2, bgcolor: "#E3D7C4" }}>
-                      <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline", mb: 0.5 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                          {cfg.title}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: "#686B64" }}>
-                          Default: {cfg.defaultValue} {cfg.unit}
-                        </Typography>
-                      </Stack>
-                      <Typography variant="caption" sx={{ color: "#686B64", display: "block", mb: 1.5 }}>
-                        {cfg.description} (Range: {cfg.min}–{cfg.max} {cfg.unit})
-                      </Typography>
-                      <TextField
-                        type="number"
-                        size="small"
-                        value={currentVal}
-                        error={hasErr}
-                        helperText={thresholdErrors[cfg.id]}
-                        onChange={(e) => {
-                          const num = parseFloat(e.target.value);
-                          setEditingThresholds((prev) => ({
-                            ...prev,
-                            [cfg.id]: isNaN(num) ? 0 : num,
-                          }));
-                          if (thresholdErrors[cfg.id]) {
-                            setThresholdErrors((prev) => {
-                              const next = { ...prev };
-                              delete next[cfg.id];
-                              return next;
-                            });
-                          }
-                        }}
-                        slotProps={{
-                          htmlInput: {
-                            min: cfg.min,
-                            max: cfg.max,
-                            step: cfg.step,
-                            style: { fontFamily: "JetBrains Mono, monospace" },
-                          },
-                        }}
-                        sx={{
-                          width: "100%",
-                          bgcolor: "#F9EBD7",
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: 0,
-                          },
-                        }}
-                      />
-                    </Box>
-                  );
-                })}
-              </Stack>
-            </DialogContent>
-            <DialogActions sx={{ p: 2.5, bgcolor: "#F9EBD7", justifyContent: "space-between" }}>
-              <Button
-                onClick={handleReset}
-                variant="text"
-                sx={{ color: "#8A5A00", textTransform: "none", fontWeight: 600, borderRadius: 0 }}
-              >
-                Reset to Defaults
-              </Button>
-              <Stack direction="row" spacing={1}>
-                <Button
-                  onClick={() => setConfigOpen(false)}
-                  sx={{ color: "#686B64", textTransform: "none", borderRadius: 0 }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  variant="contained"
-                  sx={{
-                    bgcolor: "#046A38",
-                    color: "#F9EBD7",
-                    "&:hover": { bgcolor: "#03532c" },
-                    textTransform: "none",
-                    fontWeight: 600,
-                    borderRadius: 0,
-                  }}
-                >
-                  Save Thresholds
-                </Button>
-              </Stack>
-            </DialogActions>
-          </Dialog>
-
-          <Paper
-            elevation={0}
-            sx={{
-              mt: 2.5,
-              p: 2,
-              borderRadius: 0,
-              border: "none",
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-            }}
-          >
-            <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
-              <strong style={{ color: "#292D2A" }}>Non-Advisory Disclaimer:</strong> Monitoring indicators represent mathematical
-              warning thresholds based on historical parameters. They are not automated trade recommendations,
-              stop-loss triggers, or investment advice.
-            </Typography>
-          </Paper>
-        </CardContent>
-      </Card>
-
-      {/* Structural Clusters & Euler Risk Decomposition */}
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 3 }}>
-        {/* Correlated Groups of Holdings */}
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 0,
-            border: "none",
-            bgcolor: "#F9EBD7",
-            boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
-            height: "100%",
-          }}
-        >
-          <CardContent>
-            <Stack direction="row" sx={{ alignItems: "center", gap: 1, mb: 1 }}>
-              <HubIcon sx={{ color: "#1F6F78" }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                Correlated Holding Groups (MST Clusters)
-              </Typography>
-            </Stack>
-            <Typography variant="body2" sx={{ mb: 2, color: "#686B64" }}>
-              Groups of held assets exhibiting strong return co-movement (mean ρ ≥ 0.50).
-            </Typography>
-
-            {(monitoring.correlated_groups || []).length === 0 ? (
-              <Box
-                sx={{
-                  p: 3,
-                  textAlign: "center",
-                  bgcolor: "#F9EBD7",
-                  borderRadius: 0,
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                }}
-              >
-                <Typography variant="body2" sx={{ color: "#686B64" }}>
-                  No major correlation clusters detected (ρ &lt; 0.50 across all held pairs).
-                  Your assets exhibit healthy return independence.
-                </Typography>
-              </Box>
-            ) : (
-              <Stack spacing={1.5}>
-                {monitoring.correlated_groups.map((grp) => (
-                  <Paper
-                    key={grp.cluster_id}
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      borderRadius: 0,
-                      border: "none",
-                      bgcolor: "#F9EBD7",
-                      boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                    }}
-                  >
-                    <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 0.75 }}>
-                      <Stack direction="row" sx={{ gap: 0.75, alignItems: "center" }}>
-                        {grp.holding_symbols.map((sym) => (
-                          <Chip
-                            key={sym}
-                            size="small"
-                            label={sym}
-                            sx={{
-                              borderRadius: 0,
-                              fontWeight: 700,
-                              bgcolor: "#E3D7C4",
-                              color: "#292D2A",
-                              boxShadow: "0 2px 4px rgba(41,45,42,0.08)",
-                            }}
-                          />
-                        ))}
-                      </Stack>
-                      <Chip
-                        size="small"
-                        label={`ρ = ${grp.average_correlation.toFixed(2)}`}
-                        sx={{
-                          borderRadius: 0,
-                          bgcolor: grp.average_correlation >= 0.5 ? "#F6D9CC" : "#DCE9DE",
-                          color: grp.average_correlation >= 0.5 ? "#B8321A" : "#046A38",
-                          fontWeight: 700,
-                        }}
-                      />
-                    </Stack>
-                    <Typography variant="caption" sx={{ display: "block", mt: 0.5, color: "#686B64" }}>
-                      {grp.interpretation}
-                    </Typography>
-                  </Paper>
-                ))}
-              </Stack>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top Euler Risk Contributors */}
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 0,
-            border: "none",
-            bgcolor: "#F9EBD7",
-            boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
-            height: "100%",
-          }}
-        >
-          <CardContent>
-            <Stack direction="row" sx={{ alignItems: "center", gap: 1, mb: 1 }}>
-              <TimelineIcon sx={{ color: "#3F5B7A" }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                Euler Risk Contribution Decomposition
-              </Typography>
-            </Stack>
-            <Typography variant="body2" sx={{ mb: 2, color: "#686B64" }}>
-              Holding share of total portfolio volatility variance vs. invested capital weight.
-            </Typography>
-
-            <Stack spacing={1.75}>
-              {(monitoring.largest_risk_contributors || []).map((contrib) => (
-                <Box key={contrib.symbol}>
-                  <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 0.5 }}>
-                    <Stack direction="row" sx={{ gap: 1, alignItems: "center" }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                        {contrib.symbol}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: "#686B64" }}>
-                        {contrib.sector}
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" sx={{ gap: 1, alignItems: "center" }}>
-                      <Typography variant="caption" sx={{ color: "#686B64", fontFamily: "JetBrains Mono, monospace" }}>
-                        Cap: {contrib.weight_percent.toFixed(1)}%
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          fontWeight: 700,
-                          fontFamily: "JetBrains Mono, monospace",
-                          color: contrib.is_amplified ? "#B8321A" : "#046A38",
-                        }}
-                      >
-                        Risk: {contrib.risk_contribution_percent.toFixed(1)}%
-                      </Typography>
-                      {contrib.is_amplified && (
-                        <Chip
-                          size="small"
-                          label="Risk Amplified"
-                          sx={{
-                            fontSize: "0.65rem",
-                            height: 18,
-                            borderRadius: 0,
-                            bgcolor: "#F6D9CC",
-                            color: "#B8321A",
-                            fontWeight: 700,
-                          }}
-                        />
-                      )}
-                    </Stack>
-                  </Stack>
-                  <LinearProgress
-                    variant="determinate"
-                    value={Math.min(100, contrib.risk_contribution_percent * 2)}
-                    sx={{
-                      height: 7,
-                      borderRadius: 0,
-                      bgcolor: "#E3D7C4",
-                      "& .MuiLinearProgress-bar": {
-                        bgcolor: contrib.is_amplified ? "#E34222" : "#046A38",
-                        borderRadius: 0,
-                      },
-                    }}
-                  />
-                </Box>
-              ))}
-            </Stack>
-          </CardContent>
-        </Card>
-      </Box>
     </Box>
   );
 }
@@ -1084,14 +545,14 @@ export function HistoricalRiskTrackingSection({
                             pt.portfolio_classification === "Low"
                               ? "#DCE9DE"
                               : pt.portfolio_classification === "Moderate"
-                              ? "#E3D7C4"
-                              : "#F6D9CC",
+                                ? "#E3D7C4"
+                                : "#F6D9CC",
                           color:
                             pt.portfolio_classification === "Low"
                               ? "#046A38"
                               : pt.portfolio_classification === "Moderate"
-                              ? "#8A5A00"
-                              : "#B8321A",
+                                ? "#8A5A00"
+                                : "#B8321A",
                         }}
                       />
                     </TableCell>
@@ -1158,10 +619,7 @@ export function MstHoldingsInspector({
     (e) => e.symbol_a === activeStock || e.symbol_b === activeStock
   );
 
-  // Find paths involving the active stock
-  const connectedPaths = analysis.mst.holding_paths.filter(
-    (p) => p.symbol_a === activeStock || p.symbol_b === activeStock
-  );
+
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
@@ -1299,68 +757,7 @@ export function MstHoldingsInspector({
         </CardContent>
       </Card>
 
-      {/* Path Relationships to Other Holdings */}
-      {connectedPaths.length > 0 && (
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 0,
-            border: "none",
-            bgcolor: "#F9EBD7",
-            boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
-          }}
-        >
-          <CardContent>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A", mb: 1 }}>
-              Topological MST Paths from {activeStock}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "#686B64", mb: 2 }}>
-              Shortest path routes through the NIFTY 200 spanning tree to other portfolio holdings.
-            </Typography>
-            <TableContainer>
-              <Table size="small">
-                <TableHead sx={{ bgcolor: "#E3D7C4" }}>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Target Holding</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Hops</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Mean Path ρ</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Weakest Link ρ</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>MST Path Route</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {connectedPaths.map((p) => {
-                    const target = p.symbol_a === activeStock ? p.symbol_b : p.symbol_a;
-                    return (
-                      <TableRow
-                        key={`${p.symbol_a}-${p.symbol_b}`}
-                        hover
-                        sx={{ "&:hover": { bgcolor: "#E3D7C4 !important" } }}
-                      >
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>{target}</TableCell>
-                        <TableCell align="right" sx={{ color: "#292D2A", fontFamily: "JetBrains Mono, monospace", borderBottom: "none" }}>
-                          {p.hops}
-                        </TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600, color: "#292D2A", fontFamily: "JetBrains Mono, monospace", borderBottom: "none" }}>
-                          {p.average_correlation.toFixed(2)}
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: "#292D2A", fontFamily: "JetBrains Mono, monospace", borderBottom: "none" }}>
-                          {p.weakest_correlation.toFixed(2)}
-                        </TableCell>
-                        <TableCell sx={{ borderBottom: "none" }}>
-                          <Typography variant="caption" sx={{ fontFamily: "JetBrains Mono, monospace", color: "#1F6F78", fontWeight: 600 }}>
-                            {p.path.join(" → ")}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Methodological Limitations Callout Card */}
       <Paper
@@ -1603,14 +1000,14 @@ export function FutureNewsSignalsSection({
                             sig.sentiment_label === "positive"
                               ? "#DCE9DE"
                               : sig.sentiment_label === "negative"
-                              ? "#F6D9CC"
-                              : "#E3D7C4",
+                                ? "#F6D9CC"
+                                : "#E3D7C4",
                           color:
                             sig.sentiment_label === "positive"
                               ? "#046A38"
                               : sig.sentiment_label === "negative"
-                              ? "#B8321A"
-                              : "#292D2A",
+                                ? "#B8321A"
+                                : "#292D2A",
                         }}
                       />
                     </TableCell>
@@ -1801,7 +1198,7 @@ export function FutureNewsSignalsSection({
                       <Stack spacing={1}>
                         <Box>
                           <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
-                            📰 What The News Is:
+                            What The News Is:
                           </Typography>
                           <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
                             {art.what_the_news_is || (art.explanation ? art.explanation.split(" · ")[0] : art.headline)}
@@ -1810,7 +1207,7 @@ export function FutureNewsSignalsSection({
 
                         <Box>
                           <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
-                            📊 Market & Sector Impact:
+                            Market & Sector Impact:
                           </Typography>
                           <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
                             {art.market_and_sector_impact || (isPos ? "Expected to stimulate near-term upward valuation expansion across the sector." : isNeg ? "Induces downward pricing pressure and elevated volatility across peer holdings." : "Prompts a cautious wait-and-see reaction across the sector with limited systemic spillover.")}
@@ -1819,7 +1216,7 @@ export function FutureNewsSignalsSection({
 
                         <Box>
                           <Typography variant="caption" sx={{ fontWeight: 750, color: "#046A38", display: "inline-block", mr: 0.75 }}>
-                            💡 Actionable Advice (What You Should Do):
+                            Actionable Advice (What You Should Do):
                           </Typography>
                           <Typography variant="body2" sx={{ display: "inline", color: "#046A38", fontWeight: 600, fontSize: "0.83rem", lineHeight: 1.5 }}>
                             {art.actionable_advice || (isPos ? "Maintain existing allocation to participate in momentum; maintain trailing stop-losses." : isNeg ? "Avoid panic-selling; review downside stop-losses and trim if sector ceiling is breached." : "Maintain disciplined hold; monitor upcoming quarterly operational execution without knee-jerk adjustments.")}
@@ -1934,7 +1331,7 @@ export function FutureNewsSignalsSection({
                     <Stack spacing={1}>
                       <Box>
                         <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
-                          📰 What The News Is:
+                          What The News Is:
                         </Typography>
                         <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
                           {art.what_the_news_is || art.summary || art.headline}
@@ -1943,7 +1340,7 @@ export function FutureNewsSignalsSection({
 
                       <Box>
                         <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
-                          📊 Market & Sector Impact:
+                          Market & Sector Impact:
                         </Typography>
                         <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
                           {art.market_and_sector_impact || (art.sentiment_label === "positive" ? "Provides positive sentiment across sector peers, supporting valuation momentum." : art.sentiment_label === "negative" ? "Induces downward pricing pressure across sector peers, elevating near-term volatility." : "Prompts a rangebound wait-and-see posture across sector competitors.")}
@@ -1952,7 +1349,7 @@ export function FutureNewsSignalsSection({
 
                       <Box>
                         <Typography variant="caption" sx={{ fontWeight: 750, color: "#046A38", display: "inline-block", mr: 0.75 }}>
-                          💡 Actionable Advice (What You Should Do):
+                          Actionable Advice (What You Should Do):
                         </Typography>
                         <Typography variant="body2" sx={{ display: "inline", color: "#046A38", fontWeight: 600, fontSize: "0.83rem", lineHeight: 1.5 }}>
                           {art.actionable_advice || (art.sentiment_label === "positive" ? "Hold positions to capture trend upside; maintain disciplined trailing stops." : art.sentiment_label === "negative" ? "Exercise caution; avoid panic selling and review position size against your risk ceiling." : "Hold steady without reactive adjustments; monitor upcoming disclosures.")}

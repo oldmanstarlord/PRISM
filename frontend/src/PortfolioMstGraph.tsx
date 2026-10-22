@@ -44,8 +44,8 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
   const [decisionsCountMap, setDecisionsCountMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    void getNotesCountMap().then(setNotesCountMap).catch(() => {});
-    void getDecisionsCountMap().then(setDecisionsCountMap).catch(() => {});
+    void getNotesCountMap().then(setNotesCountMap).catch(() => { });
+    void getDecisionsCountMap().then(setDecisionsCountMap).catch(() => { });
   }, []);
 
   const graphData = useMemo(() => {
@@ -265,11 +265,11 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
         isHolding: Boolean(data.isHolding),
         riskMetrics: data.isHolding
           ? {
-              volatility: data.volatility,
-              marginalRisk: data.marginalRisk,
-              riskContribution: data.riskContribution,
-              divergence: data.divergence,
-            }
+            volatility: data.volatility,
+            marginalRisk: data.marginalRisk,
+            riskContribution: data.riskContribution,
+            divergence: data.divergence,
+          }
           : null,
       });
     });
@@ -292,8 +292,8 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
         secondary: `${data.correlation >= mst.cluster_correlation_floor
           ? `This edge meets the ${mst.cluster_correlation_floor.toFixed(2)} cluster threshold.`
           : `This weaker edge joins groups separated by the ${mst.cluster_correlation_floor.toFixed(2)} cluster threshold.`} ${data.persistence === null
-          ? "Stability is unavailable until another compatible MST run exists."
-          : `It persisted in ${(Number(data.persistence) * 100).toFixed(0)}% of compared runs (${data.confidence} confidence).`}`,
+            ? "Stability is unavailable until another compatible MST run exists."
+            : `It persisted in ${(Number(data.persistence) * 100).toFixed(0)}% of compared runs (${data.confidence} confidence).`}`,
       });
     });
     instance.on("tap", (event) => {

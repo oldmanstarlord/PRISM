@@ -49,7 +49,7 @@ import {
   StructuralMonitoringDashboard,
 } from "./Phase3StructuralSections";
 import { loadAlertThresholds } from "./methodologyRegistry";
-import { CorrelationMstExplainer, PortfolioRiskExplainer } from "./PrismExplainer";
+import { CorrelationMstExplainer } from "./PrismExplainer";
 import PortfolioMstGraph from "./PortfolioMstGraph";
 import PortfolioSnapshotSection from "./PortfolioSnapshotSection";
 import StockResearchNotes from "./StockResearchNotes";
@@ -498,27 +498,27 @@ function generateInsights(analysis: PortfolioAnalysisResponse): string[] {
   const { concentration, diversification, performance, holdings } = analysis;
 
   if (concentration.largest_holding_weight > 0.3) {
-    insights.push(`⚠️ ${concentration.largest_holding_symbol} represents ${(concentration.largest_holding_weight * 100).toFixed(1)}%, exceeding the diagnostic concentration threshold.`);
+    insights.push(`${concentration.largest_holding_symbol} represents ${(concentration.largest_holding_weight * 100).toFixed(1)}%, exceeding the diagnostic concentration threshold.`);
   }
   if (diversification.effective_bets_risk < 2) {
-    insights.push("🔴 The portfolio behaves almost like a single risk exposure under the observed covariance structure.");
+    insights.push("The portfolio behaves almost like a single risk exposure under the observed covariance structure.");
   } else if (diversification.effective_bets_risk < 3) {
-    insights.push("🟡 Low observed diversification benefit — most holdings move together in the estimation window.");
+    insights.push("Low observed diversification benefit — most holdings move together in the estimation window.");
   } else {
-    insights.push(`🟢 Good diversification with ${diversification.effective_bets_risk.toFixed(1)} effective independent bets across your portfolio.`);
+    insights.push(`Good diversification with ${diversification.effective_bets_risk.toFixed(1)} effective independent bets across your portfolio.`);
   }
   if (performance.max_drawdown < -0.2) {
-    insights.push(`📉 Maximum drawdown of ${(performance.max_drawdown * 100).toFixed(1)}% is significant. Stress test your portfolio to understand tail risks.`);
+    insights.push(`Maximum drawdown of ${(performance.max_drawdown * 100).toFixed(1)}% is significant. Stress test your portfolio to understand tail risks.`);
   }
   if (performance.annualized_volatility > 0.3) {
-    insights.push(`📊 Annual volatility of ${(performance.annualized_volatility * 100).toFixed(1)}% is elevated relative to the reference range.`);
+    insights.push(`Annual volatility of ${(performance.annualized_volatility * 100).toFixed(1)}% is elevated relative to the reference range.`);
   }
   const topRisk = [...holdings].sort((a, b) => b.risk_contribution - a.risk_contribution)[0];
   if (topRisk && topRisk.risk_contribution > 0.4) {
-    insights.push(`🎯 ${topRisk.symbol} contributes ${(topRisk.risk_contribution * 100).toFixed(1)}% of total risk — it's your portfolio's risk anchor.`);
+    insights.push(`${topRisk.symbol} contributes ${(topRisk.risk_contribution * 100).toFixed(1)}% of total risk — it's your portfolio's risk anchor.`);
   }
   if (concentration.effective_industries < 2) {
-    insights.push("🏭 High single-sector concentration creates common exposure to sector-wide shocks.");
+    insights.push("High single-sector concentration creates common exposure to sector-wide shocks.");
   }
   return insights;
 }
@@ -1548,7 +1548,7 @@ export default function PortfolioManager() {
                     "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
                   }}
                 >
-                  {quotesLoading ? <CircularProgress size={16} sx={{ color: "#046A38" }} /> : "🔄 Refresh Quotes"}
+                  {quotesLoading ? <CircularProgress size={16} sx={{ color: "#046A38" }} /> : "Refresh Quotes"}
                 </Button>
               </span>
             </Tooltip>
@@ -1735,7 +1735,7 @@ export default function PortfolioManager() {
                   </Typography>
                   <Chip
                     size="small"
-                    label={autoRefreshQuotes ? `⏱ Auto-sync in ${refreshCountdown}s` : "Manual Mode"}
+                    label={autoRefreshQuotes ? `Auto-sync in ${refreshCountdown}s` : "Manual Mode"}
                     sx={{
                       height: 20,
                       fontWeight: 700,
@@ -1787,58 +1787,7 @@ export default function PortfolioManager() {
               </Stack>
             </Paper>
 
-            {/* Plain-English Institutional Explanations Card */}
-            <Paper
-              sx={{
-                p: 2.5,
-                borderRadius: 0,
-                border: "none",
-                bgcolor: "#F9EBD7",
-                boxShadow: "0 4px 12px rgba(41,45,42,0.10)",
-                mb: 2,
-              }}
-            >
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: "#292D2A", mb: 0.5 }}>
-                💡 Understanding Portfolio Valuation & Performance
-              </Typography>
-              <Typography variant="caption" sx={{ color: "#686B64", display: "block", mb: 1.5 }}>
-                A quick institutional primer on how your portfolio metrics are calculated and what they mean.
-              </Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 1.5 }}>
-                <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
-                    Invested Capital (Cost Basis)
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
-                    Total actual money committed to current holdings (Σ Quantity × Purchase Price). Represents your capital base.
-                  </Typography>
-                </Box>
-                <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
-                    Current Market Value
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
-                    Real-time valuation (Σ Quantity × Live NSE Quote). Streams live prices from yfinance and auto-updates dynamically.
-                  </Typography>
-                </Box>
-                <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
-                    Unrealized P&L
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
-                    Paper profit or loss (Market Value − Cost Basis). Realized only upon selling.
-                  </Typography>
-                </Box>
-                <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
-                  <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
-                    Today's Net P&L
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
-                    Intraday day-over-day price change (Σ Quantity × (Current Price − Previous Close)).
-                  </Typography>
-                </Box>
-              </Box>
-            </Paper>
+
 
             {/* ─── 6 SUMMARY CARDS ─── */}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
@@ -2005,30 +1954,7 @@ export default function PortfolioManager() {
               )}
             </Stack>
 
-            {/* ─── Condition-Responsive Portfolio Risk Explainer ─── */}
-            <PortfolioRiskExplainer
-              riskScore={pRisk?.score ?? 2}
-              riskLabel={pRisk?.label ?? "Moderate"}
-              annualizedVolatility={analysis?.performance.annualized_volatility ?? 0.143}
-              effectiveHoldings={analysis?.concentration.effective_holdings ?? 16.5}
-              totalHoldings={holdings.length}
-              effectiveIndustries={analysis?.concentration.effective_industries ?? 5.0}
-              topRiskContributor={
-                analysis?.holdings?.[0]
-                  ? {
-                      symbol: analysis.holdings[0].symbol,
-                      riskContribution: analysis.holdings[0].risk_contribution,
-                      weight: analysis.holdings[0].weight,
-                      sector: holdings.find((h) => h.symbol === analysis.holdings[0].symbol)?.sector,
-                    }
-                  : undefined
-              }
-              historicalTrend={
-                comprehensiveRisk?.portfolio_profile?.historical_risk_trend === "Elevating"
-                  ? "Elevating"
-                  : "Stabilizing"
-              }
-            />
+
 
             {/* ─── Search & Filter Controls ─── */}
             <Paper sx={{ p: 2 }}>
@@ -2043,11 +1969,6 @@ export default function PortfolioManager() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   sx={{ minWidth: 280, flex: 1 }}
-                  slotProps={{
-                    input: {
-                      startAdornment: <InputAdornment position="start">🔍</InputAdornment>,
-                    },
-                  }}
                 />
                 <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
                   <FormControl size="small" sx={{ minWidth: 180 }}>
@@ -2260,7 +2181,7 @@ export default function PortfolioManager() {
                                   <Tooltip title={`${notesCountMap[h.symbol.toUpperCase()]} research notes`}>
                                     <Chip
                                       size="small"
-                                      label={`📝 ${notesCountMap[h.symbol.toUpperCase()]}`}
+                                      label={`Notes: ${notesCountMap[h.symbol.toUpperCase()]}`}
                                       onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -2287,7 +2208,7 @@ export default function PortfolioManager() {
                                       <Tooltip title={`${s.news_volume_7d || s.news_volume_24h} news articles · Sentiment: ${s.sentiment_label.toUpperCase()} · Click to open News Intelligence`}>
                                         <Chip
                                           size="small"
-                                          label={`📰 ${s.news_volume_7d || s.news_volume_24h || 1} ${isPos ? "▲" : isNeg ? "▼" : "■"}`}
+                                          label={`News: ${s.news_volume_7d || s.news_volume_24h || 1} ${isPos ? "▲" : isNeg ? "▼" : "■"}`}
                                           onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
@@ -2324,7 +2245,7 @@ export default function PortfolioManager() {
                                     >
                                       <Chip
                                         size="small"
-                                        label="⚡ Model: Unusual"
+                                        label="Model: Unusual"
                                         onClick={(e) => {
                                           e.preventDefault();
                                           e.stopPropagation();
@@ -2560,19 +2481,19 @@ export default function PortfolioManager() {
                                   <IconButton
                                     size="small"
                                     onClick={() => setSelectedNotesStock({ symbol: h.symbol, companyName: h.companyName })}
-                                    sx={{ color: notesCountMap[h.symbol.toUpperCase()] ? "#046A38" : "#686B64", borderRadius: 0 }}
+                                    sx={{ color: notesCountMap[h.symbol.toUpperCase()] ? "#046A38" : "#686B64", borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}
                                   >
-                                    📝
+                                    Notes
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Edit holding">
-                                  <IconButton size="small" onClick={() => setEditHolding(h)} sx={{ borderRadius: 0 }}>
-                                    ✏️
+                                  <IconButton size="small" onClick={() => setEditHolding(h)} sx={{ borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}>
+                                    Edit
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Remove holding">
-                                  <IconButton size="small" onClick={() => removeHolding(h.id)} sx={{ borderRadius: 0 }}>
-                                    🗑️
+                                  <IconButton size="small" onClick={() => removeHolding(h.id)} sx={{ borderRadius: 0, fontSize: "0.75rem", fontWeight: 600, color: "#B8321A" }}>
+                                    Delete
                                   </IconButton>
                                 </Tooltip>
                               </Stack>
@@ -2840,30 +2761,7 @@ export default function PortfolioManager() {
                   <Metric label="Effective risk bets" value={analysis.diversification.effective_bets_risk.toFixed(1)} />
                 </Stack>
 
-                {/* Smart Insights */}
-                {insights.length > 0 && (
-                  <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: "#292D2A" }}>
-                      Smart Risk Insights
-                    </Typography>
-                    <Stack spacing={1}>
-                      {insights.map((i) => (
-                        <Alert severity="info" key={i} sx={{ borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A", border: "none", boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
-                          {i}
-                        </Alert>
-                      ))}
-                    </Stack>
-                  </Paper>
-                )}
 
-                {/* Algorithmic Findings */}
-                <Stack spacing={1}>
-                  {analysis.findings.map((f) => (
-                    <Alert severity="success" key={f} sx={{ borderRadius: 0, bgcolor: "#DCE9DE", color: "#046A38", border: "none", boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
-                      {f}
-                    </Alert>
-                  ))}
-                </Stack>
 
                 {/* Performance Chart */}
                 <PerformanceChart points={analysis.performance.points} />
@@ -2943,7 +2841,7 @@ export default function PortfolioManager() {
                     "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
                   }}
                 >
-                  📥 Import CSV
+                  Import CSV
                 </Button>
                 <Button
                   size="small"
@@ -2963,7 +2861,7 @@ export default function PortfolioManager() {
                     "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
                   }}
                 >
-                  📤 Export CSV
+                  Export CSV
                 </Button>
                 <Button
                   size="small"
@@ -2985,7 +2883,7 @@ export default function PortfolioManager() {
                     "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
                   }}
                 >
-                  💾 Journal Backup / Restore
+                  Journal Backup / Restore
                 </Button>
               </Stack>
             </Stack>
@@ -3011,7 +2909,7 @@ export default function PortfolioManager() {
               >
                 <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
                   <Chip
-                    label={reconciliation.isReconciled ? "✅ Ledger Reconciled" : "⚠️ Discrepancy Detected"}
+                    label={reconciliation.isReconciled ? "Ledger Reconciled" : "Discrepancy Detected"}
                     size="small"
                     sx={{
                       bgcolor: reconciliation.isReconciled ? "#046A38" : "#8A5A00",
@@ -3151,7 +3049,7 @@ export default function PortfolioManager() {
                               "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
                             }}
                           >
-                            📓 Record Decision
+                            Record Decision
                           </Button>
                         </Tooltip>
                       </TableCell>
@@ -3228,7 +3126,7 @@ export default function PortfolioManager() {
         }}
       >
         <DialogTitle sx={{ fontWeight: 700, pb: 1, color: "#292D2A" }}>
-          📝 Research Notes: {selectedNotesStock?.symbol}
+           Research Notes: {selectedNotesStock?.symbol}
           {selectedNotesStock?.companyName && (
             <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
               {selectedNotesStock.companyName}
@@ -3304,10 +3202,10 @@ export default function PortfolioManager() {
                       onChange={(e) => setTxDecisionType(e.target.value as DecisionType)}
                       sx={{ bgcolor: "#F9EBD7", borderRadius: 0 }}
                     >
-                      <MenuItem value="Buy">🟢 Buy</MenuItem>
-                      <MenuItem value="Hold">🔵 Hold</MenuItem>
-                      <MenuItem value="Sell">🔴 Sell</MenuItem>
-                      <MenuItem value="Review">🟡 Review</MenuItem>
+                      <MenuItem value="Buy">Buy</MenuItem>
+                      <MenuItem value="Hold">Hold</MenuItem>
+                      <MenuItem value="Sell">Sell</MenuItem>
+                      <MenuItem value="Review">Review</MenuItem>
                     </Select>
                   </FormControl>
 
@@ -3414,7 +3312,7 @@ export default function PortfolioManager() {
                   }}
                 >
                   <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 1 }}>
-                    📸 Captured Context Snapshot (At Decision Time):
+                    Captured Context Snapshot (At Decision Time):
                   </Typography>
                   <Stack spacing={0.5} sx={{ fontSize: "0.8rem", color: "#686B64" }}>
                     <Stack direction="row" sx={{ justifyContent: "space-between" }}>
@@ -3520,7 +3418,7 @@ export default function PortfolioManager() {
         }}
       >
         <DialogTitle sx={{ fontWeight: 700, pb: 1, color: "#292D2A" }}>
-          💾 Journal Backup & Restore
+          Journal Backup & Restore
           <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
             Export or restore your research notes, investment decisions, and portfolio snapshots locally in JSON format.
           </Typography>
@@ -4539,37 +4437,6 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
           ))}
         </Box>
       </Stack>
-      <Box sx={{ overflowX: "auto", mt: 3 }}>
-        <Typography variant="h6">Holding-to-holding paths</Typography>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Pair</TableCell>
-              <TableCell align="right">Hops</TableCell>
-              <TableCell align="right">Average edge ρ</TableCell>
-              <TableCell>Stability</TableCell>
-              <TableCell>Unique MST path</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {analysis.mst.holding_paths.map((p) => (
-              <TableRow key={`${p.symbol_a}-${p.symbol_b}`}>
-                <TableCell>
-                  {p.symbol_a} / {p.symbol_b}
-                </TableCell>
-                <TableCell align="right">{p.hops}</TableCell>
-                <TableCell align="right">{p.average_correlation.toFixed(2)}</TableCell>
-                <TableCell>
-                  {p.minimum_edge_persistence === null
-                    ? "Unavailable"
-                    : `${(p.minimum_edge_persistence * 100).toFixed(0)}% · ${p.confidence}`}
-                </TableCell>
-                <TableCell>{p.path.join(" → ")}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Box>
     </Paper>
   );
 }

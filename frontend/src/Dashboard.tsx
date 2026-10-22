@@ -26,7 +26,7 @@ import { useNavigate } from "react-router-dom";
 
 import AppShell from "./AppShell";
 import { fetchJson } from "./api";
-import type { DataCoverageResponse, Horizon, PipelineStatus, RankingsResponse } from "./types";
+import type { Horizon, RankingsResponse } from "./types";
 
 const bandColor = { normal: "default", moderate: "warning", strong: "error", extreme: "error" } as const;
 
@@ -34,18 +34,13 @@ type SortField = "divergence" | "magnitude" | "symbol" | "industry" | "percentil
 type SortOrder = "asc" | "desc";
 type FilterPreset = "all" | "positive" | "negative" | "outliers";
 
-function formatTimestamp(value: string) {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
-}
-
 export default function Dashboard() {
   const navigate = useNavigate();
   const [horizon, setHorizon] = useState<Horizon>(20);
   const [data, setData] = useState<RankingsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [pipeline, setPipeline] = useState<PipelineStatus | null>(null);
-  const [coverage, setCoverage] = useState<DataCoverageResponse | null>(null);
+
 
   // Search & Filter & Sort state
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,21 +80,7 @@ export default function Dashboard() {
     };
   }, [horizon]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchJson<PipelineStatus>("/pipeline/status", controller.signal)
-      .then(setPipeline)
-      .catch(() => undefined);
-    return () => controller.abort();
-  }, []);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchJson<DataCoverageResponse>("/market-data/coverage/latest", controller.signal)
-      .then(setCoverage)
-      .catch(() => undefined);
-    return () => controller.abort();
-  }, []);
 
   // Distinct industries from current dataset
   const industries = useMemo(() => {
@@ -183,45 +164,6 @@ export default function Dashboard() {
   return (
     <AppShell>
       <Stack spacing={2.5}>
-        {pipeline && (
-          <Alert severity={pipeline.is_stale || pipeline.status === "failed" ? "warning" : "success"}>
-            Pipeline: <strong>{pipeline.status}</strong>. Market data: {pipeline.latest_market_date ?? "unavailable"}; Layer 1: {pipeline.layer_1_date ?? "unavailable"}; Layer 2: {pipeline.layer_2_date ?? "unavailable"}.
-            {pipeline.failed_stage && ` Failed stage: ${pipeline.failed_stage}.`}
-            {pipeline.is_stale && " Displayed analysis is stale relative to stored market data."}
-          </Alert>
-        )}
-
-        {coverage && (
-          <Paper sx={{ p: 2.5 }} aria-label="NIFTY 200 data coverage">
-            <Stack spacing={1.5}>
-              <Stack direction={{ xs: "column", md: "row" }} sx={{ gap: 2, justifyContent: "space-between" }}>
-                <Box>
-                  <Typography variant="h6">NIFTY 200 data coverage</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Data date: {coverage.data_date ?? "unavailable"}; status: {coverage.status}
-                  </Typography>
-                </Box>
-                {coverage.universe_count !== undefined && (
-                  <Typography variant="body2">
-                    Verified {coverage.verified_ticker_count}/{coverage.universe_count} · History {coverage.enough_history_count}/{coverage.universe_count} · Quality pass {coverage.quality_pass_count}/{coverage.universe_count} · Metrics {coverage.metrics_ready_count}/{coverage.universe_count} · Fundamentals {coverage.fundamentals_ready_count}/{coverage.universe_count}
-                  </Typography>
-                )}
-              </Stack>
-              {coverage.excluded_symbols.length > 0 && (
-                <Alert severity="warning">
-                  {coverage.excluded_symbols.length} unavailable: {coverage.excluded_symbols.slice(0, 8).map((item) => `${item.symbol} (${item.reasons.join(", ")})`).join("; ")}
-                  {coverage.excluded_symbols.length > 8 ? "; …" : ""}
-                </Alert>
-              )}
-              {coverage.spot_checks?.status === "unavailable" && (
-                <Typography variant="caption" color="text.secondary">
-                  Independent spot-check: unavailable ({coverage.spot_checks.reason}).
-                </Typography>
-              )}
-            </Stack>
-          </Paper>
-        )}
-
         {/* ─── Top Header with Days Tracker ─── */}
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -275,79 +217,7 @@ export default function Dashboard() {
           </Stack>
         </Stack>
 
-        {/* ─── Institutional Guide: How Sector Divergence Works ─── */}
-        <Paper
-          sx={{
-            p: 2.5,
-            borderRadius: 0,
-            border: "none",
-            bgcolor: "#F9EBD7",
-            boxShadow: "0 4px 12px rgba(41,45,42,0.10)",
-          }}
-        >
-          <Typography component="div" variant="subtitle2" sx={{ fontWeight: 800, color: "#292D2A", mb: 0.5 }}>
-            💡 Institutional Guide: Cross-Sectional Drift & Horizon Dynamics
-          </Typography>
-          <Typography variant="caption" sx={{ color: "#686B64", display: "block", mb: 1.5 }}>
-            Sector divergence identifies individual stocks decoupling from their industry peers to distinguish stock-specific idiosyncratic alpha from broad sector tides.
-          </Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(4, 1fr)" }, gap: 1.5 }}>
-            <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
-                1-Day Horizon
-              </Typography>
-              <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
-                Captures intraday/overnight earnings beats, guidance surprises, or targeted news shocks before peer diffusion.
-              </Typography>
-            </Box>
-            <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
-                5-Day Horizon
-              </Typography>
-              <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
-                Reflects weekly swing momentum, sector-level index rebalancing, and intermediate institutional positioning.
-              </Typography>
-            </Box>
-            <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
-                20-Day Horizon
-              </Typography>
-              <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
-                Measures persistent monthly structural divergence, separating secular multi-week alpha from short-term market noise.
-              </Typography>
-            </Box>
-            <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
-              <Typography variant="caption" sx={{ fontWeight: 800, color: "#292D2A", display: "block" }}>
-                Z-Score (Sigma σ)
-              </Typography>
-              <Typography variant="caption" sx={{ color: "#292D2A", fontSize: "0.72rem" }}>
-                Standard deviations away from leave-one-out peer median. |Z| ≥ 2.0σ signals rare (top 5%) structural dislocation.
-              </Typography>
-            </Box>
-          </Box>
-        </Paper>
-
         {error && <Alert severity="warning">Results are not available ({error}).</Alert>}
-
-        {data && (
-          <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2 }}>
-            <Paper sx={{ p: 2.5, flex: 1 }}>
-              <Typography variant="overline" color="text.secondary">Market data through</Typography>
-              <Typography variant="h6">{data.run.signal_date}</Typography>
-            </Paper>
-            <Paper sx={{ p: 2.5, flex: 1 }}>
-              <Typography variant="overline" color="text.secondary">Calculated</Typography>
-              <Typography variant="h6">{formatTimestamp(data.run.completed_at)}</Typography>
-            </Paper>
-            <Paper sx={{ p: 2.5, flex: 1 }}>
-              <Typography variant="overline" color="text.secondary">Coverage</Typography>
-              <Typography variant="h6">{data.run.score_count} scores</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {data.run.exclusion_count} exclusions / {data.run.issue_count} issues
-              </Typography>
-            </Paper>
-          </Stack>
-        )}
 
         {/* ─── Condition-Responsive Methodology & Insights Explainer ─── */}
         <Paper
@@ -362,7 +232,7 @@ export default function Dashboard() {
           <Stack spacing={2}>
             <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1 }}>
               <Typography variant="subtitle1" component="div" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                💡 Understanding Peer Dispersion &amp; Horizon Dynamics ({horizon}-Day Horizon)
+                 Understanding Peer Dispersion &amp; Horizon Dynamics ({horizon}-Day Horizon)
               </Typography>
               <Chip
                 size="small"
@@ -397,7 +267,7 @@ export default function Dashboard() {
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ pt: 0.5 }}>
               <Box sx={{ flex: 1, p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
                 <Typography variant="caption" sx={{ fontWeight: 700, color: "#046A38", textTransform: "uppercase", display: "block", mb: 0.5 }}>
-                  📈 Positive Residual (+&sigma;)
+                   Positive Residual (+&sigma;)
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#292D2A", fontSize: "0.82rem" }}>
                   The stock is outperforming its leave-one-out peer model, indicating business resilience, margin expansion, or institutional accumulation.
@@ -405,7 +275,7 @@ export default function Dashboard() {
               </Box>
               <Box sx={{ flex: 1, p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
                 <Typography variant="caption" sx={{ fontWeight: 700, color: "#B8321A", textTransform: "uppercase", display: "block", mb: 0.5 }}>
-                  📉 Negative Residual (-&sigma;)
+                   Negative Residual (-&sigma;)
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#292D2A", fontSize: "0.82rem" }}>
                   The stock is lagging its industry benchmark, indicating relative valuation compression, guidance cuts, or operational headwinds.
@@ -413,7 +283,7 @@ export default function Dashboard() {
               </Box>
               <Box sx={{ flex: 1, p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
                 <Typography variant="caption" sx={{ fontWeight: 700, color: "#8A5A00", textTransform: "uppercase", display: "block", mb: 0.5 }}>
-                  ⚠️ Outlier Bands (|&sigma;| &ge; 1.5)
+                   Outlier Bands (|&sigma;| &ge; 1.5)
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#292D2A", fontSize: "0.82rem" }}>
                   Statistically rare dislocations (top 13% of deviations). Useful for identifying decoupled leaders or mean-reversion candidates.
@@ -436,7 +306,6 @@ export default function Dashboard() {
                 sx={{ flex: 2, minWidth: { sm: 280 } }}
                 slotProps={{
                   input: {
-                    startAdornment: <InputAdornment position="start">🔍</InputAdornment>,
                     endAdornment: searchQuery ? (
                       <InputAdornment position="end">
                         <Button size="small" onClick={() => setSearchQuery("")} sx={{ minWidth: 24, p: 0.5 }}>
@@ -458,14 +327,14 @@ export default function Dashboard() {
                     sortField === "divergence" && sortOrder === "desc"
                       ? "best-to-worst"
                       : sortField === "divergence" && sortOrder === "asc"
-                      ? "worst-to-best"
-                      : sortField === "industry" && sortOrder === "asc"
-                      ? "industry-asc"
-                      : sortField === "magnitude" && sortOrder === "desc"
-                      ? "magnitude-desc"
-                      : sortField === "symbol" && sortOrder === "asc"
-                      ? "symbol-asc"
-                      : "custom"
+                        ? "worst-to-best"
+                        : sortField === "industry" && sortOrder === "asc"
+                          ? "industry-asc"
+                          : sortField === "magnitude" && sortOrder === "desc"
+                            ? "magnitude-desc"
+                            : sortField === "symbol" && sortOrder === "asc"
+                              ? "symbol-asc"
+                              : "custom"
                   }
                   onChange={(e) => {
                     const val = e.target.value;
@@ -487,11 +356,11 @@ export default function Dashboard() {
                     }
                   }}
                 >
-                  <MenuItem value="magnitude-desc">⚡ Most Extreme (|σ| magnitude)</MenuItem>
-                  <MenuItem value="best-to-worst">📈 Best to Worst (Highest residual)</MenuItem>
-                  <MenuItem value="worst-to-best">📉 Worst to Best (Lowest residual)</MenuItem>
-                  <MenuItem value="industry-asc">🏭 Sort by Industry (A &rarr; Z)</MenuItem>
-                  <MenuItem value="symbol-asc">🔤 Sort by Symbol (A &rarr; Z)</MenuItem>
+                  <MenuItem value="magnitude-desc"> Most Extreme (|σ| magnitude)</MenuItem>
+                  <MenuItem value="best-to-worst"> Best to Worst (Highest residual)</MenuItem>
+                  <MenuItem value="worst-to-best"> Worst to Best (Lowest residual)</MenuItem>
+                  <MenuItem value="industry-asc"> Sort by Industry (A &rarr; Z)</MenuItem>
+                  <MenuItem value="symbol-asc"> Sort by Symbol (A &rarr; Z)</MenuItem>
                   <MenuItem value="custom" disabled>Custom column sort</MenuItem>
                 </Select>
               </FormControl>
@@ -537,7 +406,7 @@ export default function Dashboard() {
                 />
                 <Chip
                   size="small"
-                  label="📈 Positive Residuals"
+                  label=" Positive Residuals"
                   clickable
                   color={filterPreset === "positive" ? "success" : "default"}
                   variant={filterPreset === "positive" ? "filled" : "outlined"}
@@ -545,7 +414,7 @@ export default function Dashboard() {
                 />
                 <Chip
                   size="small"
-                  label="📉 Negative Residuals"
+                  label=" Negative Residuals"
                   clickable
                   color={filterPreset === "negative" ? "error" : "default"}
                   variant={filterPreset === "negative" ? "filled" : "outlined"}
@@ -553,7 +422,7 @@ export default function Dashboard() {
                 />
                 <Chip
                   size="small"
-                  label="⚠️ Outliers (Strong / Extreme)"
+                  label=" Outliers (Strong / Extreme)"
                   clickable
                   color={filterPreset === "outliers" ? "warning" : "default"}
                   variant={filterPreset === "outliers" ? "filled" : "outlined"}
