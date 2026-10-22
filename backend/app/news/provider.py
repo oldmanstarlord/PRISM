@@ -10,6 +10,7 @@ import httpx
 from lxml import etree
 
 from backend.app.core.config import Settings
+from backend.app.news.publication_window import is_current_day
 from backend.app.news.store import NewsStore
 
 
@@ -141,7 +142,7 @@ class FirecrawlProvider:
                     "sources": [{"type": "news"}],
                     "limit": 10,
                     "includeDomains": self.config.news_sources,
-                    "tbs": "qdr:w",
+                    "tbs": "qdr:d",
                 },
                 credits=2,
             )
@@ -151,6 +152,10 @@ class FirecrawlProvider:
         candidates, seen = [], set()
         for item in items:
             if not isinstance(item, dict):
+                continue
+            published = publication_date(item.get("date"))
+            # Missing discovery dates can still be verified from publisher metadata.
+            if published and not is_current_day(published):
                 continue
             url = canonical_url(str(item.get("url", "")), self.config.news_sources)
             if url and url not in seen:

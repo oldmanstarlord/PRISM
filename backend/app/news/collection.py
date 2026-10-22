@@ -2,9 +2,13 @@
 
 import hashlib
 import logging
+import os
 import re
+import subprocess
+import sys
 from datetime import UTC, datetime, timedelta
 from difflib import SequenceMatcher
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -15,6 +19,7 @@ from backend.app.core.config import Settings
 from backend.app.db.models import Security, SecurityAlias
 from backend.app.news.entity_matcher import AMBIGUOUS_TICKER_COLLISIONS, NIFTY_CORE_ENTITIES
 from backend.app.news.provider import FirecrawlProvider, ProviderError
+from backend.app.news.publication_window import MARKET_TIMEZONE, NEWS_TIMEZONE, is_current_day
 from backend.app.news.sentiment import MODEL_VERSION, ModelUnavailable, SentimentAnalyzer
 from backend.app.news.store import NewsStore, RefreshBlocked
 
@@ -110,8 +115,10 @@ class NewsService:
             and now - datetime.fromisoformat(started) < timedelta(minutes=30)
         )
         last_success = state.get("last_success_at")
-        stale = not last_success or now - datetime.fromisoformat(last_success) > timedelta(
-            minutes=self.config.news_refresh_minutes * 2
+        stale = not is_current_day(last_success, now) or (
+            bool(last_success) and now - datetime.fromisoformat(last_success) > timedelta(
+                minutes=self.config.news_refresh_minutes * 2
+            )
         )
         key = self.config.firecrawl_api_key
         configured = bool(key and key.get_secret_value().strip())
@@ -119,6 +126,8 @@ class NewsService:
         ready = self.analyzer.downloaded()
         return {
             "provider": "Firecrawl",
+            "news_date": now.astimezone(MARKET_TIMEZONE).date().isoformat(),
+            "timezone": NEWS_TIMEZONE,
             "configured": configured,
             "model": MODEL_VERSION,
             "model_ready": ready,
@@ -144,17 +153,13 @@ class NewsService:
 
     def feed(self, symbol: str | None = None) -> dict[str, Any]:
         now = datetime.now(UTC)
-        cutoff = now - timedelta(days=7)
         articles = self.store.articles()
         # Never turn a recently retrieved old story into fresh news.
         articles = [
             a
             for a in articles
             if not a.get("duplicate_of")
-            and (
-                not a.get("published_at")
-                or cutoff <= datetime.fromisoformat(a["published_at"]) <= now
-            )
+            and is_current_day(a.get("published_at"), now)
         ]
         if symbol:
             articles = [a for a in articles if symbol.upper() in a["companies"]]
@@ -206,11 +211,7 @@ class NewsService:
                     try:
                         article = provider.scrape(item)
                         published = article.get("published_at")
-                        if published and not (
-                            datetime.now(UTC) - timedelta(days=7)
-                            <= datetime.fromisoformat(published)
-                            <= datetime.now(UTC)
-                        ):
+                        if not is_current_day(published):
                             continue
                         article["content_hash"] = fingerprint(article["text"])
                         previous = next(
@@ -227,6 +228,7 @@ class NewsService:
                                 **previous,
                                 "url": article["url"],
                                 "retrieved_at": article["retrieved_at"],
+                                "published_at": article["published_at"],
                             }
                             if previous["url"] != article["url"]:
                                 cached["duplicate_of"] = previous.get(
@@ -256,6 +258,26 @@ class NewsService:
             error = str(exc)
         except Exception:
             logger.exception("News collection failed")
-            error = "News processing failed; previously collected articles are still available"
+            error = "News processing failed; today's cached articles are still available"
         finally:
             self.store.finish(token, error, list(dict.fromkeys(warnings)), added)
+
+    def collect_in_worker(self, token: str) -> None:
+        # FinBERT's native CPU libraries must not share the API's ML runtimes:
+        # a native model crash cannot be caught by Python exception handling.
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "jobs.collect_news", "--run-token", token],
+                cwd=Path(__file__).resolve().parents[3],
+                env={**os.environ, "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
+                     "OPENBLAS_NUM_THREADS": "1"},
+                timeout=1800,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+            if result.returncode:
+                self.store.finish(token, "News worker stopped; collection will retry later", [], 0)
+        except (OSError, subprocess.TimeoutExpired):
+            logger.warning("News collection worker was unavailable or timed out")
+            self.store.finish(token, "News worker unavailable; collection will retry later", [], 0)

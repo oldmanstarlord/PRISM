@@ -24,6 +24,7 @@ export interface NewsFeed {
     error: string | null; warnings: string[]; sources: string[];
     credits_reserved_today: number; daily_credit_budget: number;
     refresh_minutes: number; auto_refresh: boolean; can_refresh: boolean;
+    news_date?: string; timezone?: string;
   };
   articles: {
     url: string; title: string; publisher: string; published_at: string | null;
@@ -33,7 +34,17 @@ export interface NewsFeed {
 }
 
 function timestamp(value: string | null) {
-  return value ? new Date(value).toLocaleString() : "Not available";
+  return value ? `${new Date(value).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST` : "Not available";
+}
+
+function newsDate(value: Date) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(value);
+}
+
+function publishedToday(value: string | null, now: Date) {
+  if (!value || !/(Z|[+-]\d{2}:\d{2})$/i.test(value)) return false;
+  const published = new Date(value);
+  return Number.isFinite(published.getTime()) && published <= now && newsDate(published) === newsDate(now);
 }
 
 const color = { positive: "success", negative: "error", neutral: "default", uncertain: "warning" } as const;
@@ -45,6 +56,15 @@ export function NewsIntelligencePanel() {
   const [revision, setRevision] = useState(0);
   const [symbol, setSymbol] = useState("all");
   const [sentiment, setSentiment] = useState("all");
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    // Expire yesterday's cards even if the tab remains open across midnight or is offline.
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,8 +101,9 @@ export function NewsIntelligencePanel() {
   }
 
   const state = feed?.status;
-  const symbols = [...new Set(feed?.articles.flatMap(article => Object.keys(article.companies)) ?? [])].sort();
-  const articles = (feed?.articles ?? []).filter(article => {
+  const todayArticles = (feed?.articles ?? []).filter(article => publishedToday(article.published_at, now));
+  const symbols = [...new Set(todayArticles.flatMap(article => Object.keys(article.companies)))].sort();
+  const articles = todayArticles.filter(article => {
     const result = symbol === "all" ? article.sentiment : article.companies[symbol];
     return result && (sentiment === "all" || result.label === sentiment);
   });
@@ -93,7 +114,7 @@ export function NewsIntelligencePanel() {
         <Typography variant="overline" color="text.secondary">FINANCIAL NEWS · LOCAL SENTIMENT</Typography>
         <Typography component="h1" variant="h4" sx={{ fontWeight: 700 }}>News Intelligence</Typography>
         <Typography color="text.secondary" sx={{ mt: 1 }}>
-          Financial reporting from multiple publishers, analyzed by FinBERT on your backend.
+          Today's company and market news. Only articles published today in India are shown.
         </Typography>
       </Box>
       <Button variant="contained" disabled={!state?.can_refresh || busy} onClick={() => { void refresh(); }}
@@ -109,11 +130,11 @@ export function NewsIntelligencePanel() {
           color={state.configured ? "success" : "warning"} variant="outlined" />
         <Chip label={state.model_ready ? "FinBERT downloaded · local" : "FinBERT setup needed"}
           color={state.model_ready ? "success" : "warning"} variant="outlined" />
-        <Chip label={`${feed.articles.length} unique articles`} variant="outlined" />
+        <Chip label={`${todayArticles.length} article${todayArticles.length === 1 ? "" : "s"} today · IST`} variant="outlined" />
         <Chip label={state.auto_refresh ? `Auto refresh: ${state.refresh_minutes} min` : "Manual collection"} variant="outlined" />
       </Stack>
       {!state.configured && <Alert severity="info">
-        Connect a Firecrawl API key on the backend to collect live news. Previously collected articles remain available.
+        Connect a Firecrawl API key on the backend to collect live news. Only today's cached articles are shown.
       </Alert>}
       {!state.model_ready && <Alert severity="warning">Download the local FinBERT model before collecting news.</Alert>}
       {state.running && <Box><LinearProgress /><Typography sx={{ mt: 1 }} variant="body2">
@@ -122,7 +143,7 @@ export function NewsIntelligencePanel() {
       {state.error && <Alert severity="warning">Last collection: {state.error}</Alert>}
       {state.warnings.map(warning => <Alert key={warning} severity="warning">{warning}</Alert>)}
       {state.stale && state.last_success_at && <Alert severity="info">
-        Collection is older than the refresh window. Check article publication times before using the results.
+        A fresh collection is due. Older articles remain hidden while today's news is collected.
       </Alert>}
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
@@ -148,8 +169,8 @@ export function NewsIntelligencePanel() {
           </Select></FormControl>
       </Stack>
       {!articles.length && <Paper variant="outlined" sx={{ p: 5, textAlign: "center" }}>
-        <Typography variant="h6">{feed.articles.length ? "No articles match these filters" : "No news collected yet"}</Typography>
-        <Typography color="text.secondary">{feed.articles.length ? "Try another company or sentiment." : "Once setup is complete, refresh to collect and analyze real publisher articles."}</Typography>
+        <Typography variant="h6">{todayArticles.length ? "No articles match these filters" : "No news published today yet"}</Typography>
+        <Typography color="text.secondary">{todayArticles.length ? "Try another company or sentiment." : "No verified articles for today are available yet. New articles will appear after collection; previous days are not shown."}</Typography>
       </Paper>}
       {articles.map(article => {
         const result = symbol === "all" ? article.sentiment : article.companies[symbol];

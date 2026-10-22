@@ -64,5 +64,5 @@ def refresh_news(body: RefreshRequest, tasks: BackgroundTasks) -> dict[str, str]
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except RefreshBlocked as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
-    tasks.add_task(service.collect, token)
+    tasks.add_task(service.collect_in_worker, token)
     return {"status": "started"}

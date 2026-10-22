@@ -11,8 +11,12 @@ from backend.app.news.store import RefreshBlocked
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--watch", action="store_true")
+    parser.add_argument("--run-token", help=argparse.SUPPRESS)
     args = parser.parse_args()
     service = NewsService(settings)
+    if args.run_token:
+        service.collect(args.run_token)
+        return
     while True:
         try:
             service.collect(service.prepare())

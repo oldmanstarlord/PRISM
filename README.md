@@ -74,6 +74,13 @@ deployment.
   exposed as unavailable states; they are not replaced with plausible values.
 - News is a qualitative diagnostic overlay and never changes covariance, volatility, beta, VaR,
   or Expected Shortfall.
+- News feeds show only verified publication timestamps from the current calendar day in
+  `Asia/Kolkata` (IST), including portfolio news. Undated, future and previous-day stories are
+  hidden even if recently fetched. The browser also expires cards at midnight IST.
+- `PRISM_NEWS_AUTO_REFRESH=true` enables collection on API startup, hourly by default, and at
+  midnight IST. The API must remain running; refresh cooldowns, shared-cache locks and the
+  configured daily Firecrawl credit budget still apply. Missing current-day coverage stays empty.
+  Collection runs in a separate, time-bounded process so native NLP failures cannot stop the API.
 - ML outputs are labelled model estimates and retain the baseline-fallback governance rule.
 
 ## Verification

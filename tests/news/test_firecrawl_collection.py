@@ -1,3 +1,4 @@
+import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock
@@ -15,6 +16,7 @@ from backend.app.news.provider import (
     canonical_url,
     publication_date,
 )
+from backend.app.news.publication_window import is_current_day
 from backend.app.news.sentiment import MODEL_VERSION
 from backend.app.news.store import NewsStore, RefreshBlocked
 
@@ -236,6 +238,77 @@ def test_stale_stories_and_duplicates_excluded_from_feed(config):
             }
         )
     assert service.feed()["articles"] == []
+
+
+@pytest.mark.parametrize("published,expected", [
+    ("2026-10-21T18:29:59Z", False),  # Yesterday at 23:59:59 IST.
+    ("2026-10-21T18:30:00Z", True),   # Today at midnight IST, previous UTC date.
+    ("2026-10-22T05:00:00+05:30", True),
+    ("2026-10-22T01:00:01Z", False),  # Future publication, even on the same day.
+    ("2026-10-22T05:00:00", False),
+    (None, False),
+    ("invalid-date", False),
+])
+def test_publication_window_uses_indian_calendar_day(published, expected):
+    assert is_current_day(published, datetime(2026, 10, 22, 1, tzinfo=UTC)) is expected
+
+
+def test_feed_never_promotes_old_or_undated_articles_retrieved_today(config, monkeypatch):
+    service = NewsService(config)
+    now = datetime(2026, 10, 22, 1, tzinfo=UTC)
+
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now.astimezone(tz)
+
+    monkeypatch.setattr(collection, "datetime", FrozenDateTime)
+    dates = ["2026-10-21T18:30:00Z", "2026-10-21T18:29:59Z", None, "bad", now.isoformat()]
+    for index, published in enumerate(dates):
+        service.store.save({
+            "url": f"https://example.com/{index}", "title": str(index),
+            "content_hash": str(index), "retrieved_at": datetime.now(UTC).isoformat(),
+            "published_at": published, "companies": {}, "sentiment": score(),
+        })
+    feed = service.feed()
+    assert {a["title"] for a in feed["articles"]} == {"0", "4"}
+    assert feed["status"]["news_date"] == "2026-10-22"
+    assert feed["status"]["timezone"] == "Asia/Kolkata"
+
+
+def test_collection_skips_old_missing_and_future_publication_dates(config, monkeypatch):
+    service = NewsService(config)
+    service.analyzer = Mock()
+    service.analyzer.downloaded.return_value = True
+    service.analyzer.analyze.return_value = score()
+    monkeypatch.setattr(collection, "load_companies", lambda config: [])
+    monkeypatch.setattr(FirecrawlProvider, "discover", lambda self: ([
+        {"url": f"https://example.com/{kind}"} for kind in ["old", "missing", "future"]
+    ], []))
+    dates = {"old": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
+             "missing": None, "future": (datetime.now(UTC) + timedelta(days=1)).isoformat()}
+    monkeypatch.setattr(FirecrawlProvider, "scrape", lambda self, item: {
+        **item, "published_at": dates[item["url"].rsplit("/", 1)[-1]],
+    })
+    service.collect(service.prepare())
+    service.analyzer.analyze.assert_not_called()
+    assert service.feed()["articles"] == []
+
+
+@pytest.mark.parametrize("outcome", [Mock(returncode=-11), subprocess.TimeoutExpired("news", 1800)])
+def test_native_worker_crash_or_timeout_releases_refresh_lease(config, monkeypatch, outcome):
+    service = NewsService(config)
+    token = service.store.begin(5)
+    run = (
+        Mock(side_effect=outcome) if isinstance(outcome, Exception) else Mock(return_value=outcome)
+    )
+    monkeypatch.setattr(collection.subprocess, "run", run)
+    service.collect_in_worker(token)
+    state = service.store.state()
+    assert not state["running"]
+    assert "worker" in state["error"]
+    assert "last_success_at" not in state
+    assert run.call_args.args[0][-2:] == ["--run-token", token]
 
 
 def test_refresh_requires_auth_outside_loopback_and_missing_key_is_explicit(config, monkeypatch):

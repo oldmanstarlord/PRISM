@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     news_max_articles: int = Field(default=8, ge=1, le=10)
     news_daily_credit_budget: int = Field(default=50, ge=0, le=10000)
     news_refresh_minutes: int = Field(default=60, ge=5, le=1440)
-    news_auto_refresh: bool = False
+    news_auto_refresh: bool = True
     trusted_hosts: list[str] = ["localhost", "127.0.0.1", "testserver"]
     max_request_bytes: int = Field(default=1_048_576, ge=1_024, le=10_485_760)
     request_timeout_seconds: float = Field(default=60.0, ge=1.0, le=300.0)

@@ -5,6 +5,7 @@ from typing import Any
 
 from backend.app.news.collection_router import get_news_service
 from backend.app.news.exposure_aggregator import ExposureAggregator
+from backend.app.news.publication_window import MARKET_TIMEZONE
 from backend.app.news.schemas import (
     NewsArticleCard,
     NewsEntityMatchSchema,
@@ -70,7 +71,7 @@ def cached_portfolio_intelligence(holdings: list[dict[str, Any]]) -> PortfolioNe
     now = datetime.now(UTC).isoformat()
     return PortfolioNewsIntelligence(
         as_of=state["last_success_at"] or now,
-        data_cutoff=now[:10],
+        data_cutoff=datetime.now(MARKET_TIMEZONE).date().isoformat(),
         provider_name="Firecrawl + local FinBERT",
         provider_status="configured" if state["configured"] else "not_configured",
         provider_disclaimer="Cached public publisher articles. Sentiment describes text, "
