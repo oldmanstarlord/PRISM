@@ -1,3 +1,4 @@
+import { GuidedSteps, ReviewDetails } from "./GuidedReview";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { NewsIntelligencePanel } from "./NewsIntelligence";
 import {
@@ -13,7 +14,6 @@ import {
   DialogTitle,
   FormControl,
   IconButton,
-  InputAdornment,
   InputLabel,
   LinearProgress,
   Link as MuiLink,
@@ -65,17 +65,12 @@ import {
   type DecisionType,
 } from "./journalStorage";
 import {
-  DEFAULT_CURATED_HOLDINGS,
-  DEFAULT_CURATED_TRANSACTIONS,
-} from "./demoPortfolioData";
-import {
   exportTransactionsToCsv,
   parseTransactionCsv,
   type CsvTransactionRow,
 } from "./portfolioCsv";
 import type {
   BatchQuotesResponse,
-  BenchmarkQuote,
   ComprehensiveRiskResponse,
   LiveQuote,
   PortfolioAnalysisResponse,
@@ -324,11 +319,11 @@ function loadHoldings(): PortfolioHolding[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as PortfolioHolding[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
-    return DEFAULT_CURATED_HOLDINGS;
+    return [];
   } catch {
-    return DEFAULT_CURATED_HOLDINGS;
+    return [];
   }
 }
 
@@ -341,11 +336,11 @@ function loadTransactions(): TransactionRecord[] {
     const raw = localStorage.getItem(TX_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as TransactionRecord[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
-    return DEFAULT_CURATED_TRANSACTIONS;
+    return [];
   } catch {
-    return DEFAULT_CURATED_TRANSACTIONS;
+    return [];
   }
 }
 
@@ -491,38 +486,6 @@ function diversityGrade(effectiveHoldings: number, effectiveIndustries: number, 
   return { grade: "D", label: "Highly concentrated", color: "#B8321A" };
 }
 
-/* ─── Insight generator ─── */
-
-function generateInsights(analysis: PortfolioAnalysisResponse): string[] {
-  const insights: string[] = [];
-  const { concentration, diversification, performance, holdings } = analysis;
-
-  if (concentration.largest_holding_weight > 0.3) {
-    insights.push(`${concentration.largest_holding_symbol} represents ${(concentration.largest_holding_weight * 100).toFixed(1)}%, exceeding the diagnostic concentration threshold.`);
-  }
-  if (diversification.effective_bets_risk < 2) {
-    insights.push("The portfolio behaves almost like a single risk exposure under the observed covariance structure.");
-  } else if (diversification.effective_bets_risk < 3) {
-    insights.push("Low observed diversification benefit — most holdings move together in the estimation window.");
-  } else {
-    insights.push(`Good diversification with ${diversification.effective_bets_risk.toFixed(1)} effective independent bets across your portfolio.`);
-  }
-  if (performance.max_drawdown < -0.2) {
-    insights.push(`Maximum drawdown of ${(performance.max_drawdown * 100).toFixed(1)}% is significant. Stress test your portfolio to understand tail risks.`);
-  }
-  if (performance.annualized_volatility > 0.3) {
-    insights.push(`Annual volatility of ${(performance.annualized_volatility * 100).toFixed(1)}% is elevated relative to the reference range.`);
-  }
-  const topRisk = [...holdings].sort((a, b) => b.risk_contribution - a.risk_contribution)[0];
-  if (topRisk && topRisk.risk_contribution > 0.4) {
-    insights.push(`${topRisk.symbol} contributes ${(topRisk.risk_contribution * 100).toFixed(1)}% of total risk — it's your portfolio's risk anchor.`);
-  }
-  if (concentration.effective_industries < 2) {
-    insights.push("High single-sector concentration creates common exposure to sector-wide shocks.");
-  }
-  return insights;
-}
-
 const bandColor = { normal: "default", moderate: "warning", strong: "error", extreme: "error" } as const;
 
 /* ─── Shared Layout ─── */
@@ -556,10 +519,18 @@ type PortfolioTab =
   | "portfolio-risk"
   | "sector-exposure"
   | "diversification"
+  | "network"
   | "analysis"
+  | "stress"
   | "news-preview"
   | "transactions"
   | "ai-insights";
+
+const portfolioGroups: { label: string; description: string; tabs: { id: PortfolioTab; label: string }[] }[] = [
+  { label: "Holdings", description: "Start with your holdings, then review your activity.", tabs: [{ id: "dashboard", label: "Overview" }, { id: "transactions", label: "Activity" }] },
+  { label: "Review risk", description: "Review portfolio health and investigate individual risks.", tabs: [{ id: "monitoring", label: "Summary" }, { id: "stock-risk", label: "Company risk" }, { id: "portfolio-risk", label: "Portfolio risk" }, { id: "sector-exposure", label: "Sectors" }, { id: "diversification", label: "Diversification" }] },
+  { label: "Research", description: "Explore the evidence behind your portfolio decisions.", tabs: [{ id: "network", label: "Portfolio network" }, { id: "analysis", label: "Performance" }, { id: "stress", label: "Stress testing" }, { id: "stock-decisions", label: "Decision review" }, { id: "ai-insights", label: "AI insights" }, { id: "news-preview", label: "News" }] },
+];
 
 /* ─── Main Portfolio Manager Component ─── */
 
@@ -568,7 +539,6 @@ export default function PortfolioManager() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>(loadTransactions);
   const [securities, setSecurities] = useState<SecurityInfo[]>([]);
   const [quotes, setQuotes] = useState<Record<string, LiveQuote>>({});
-  const [benchmark, setBenchmark] = useState<BenchmarkQuote | null>(null);
   const [quotesLoading, setQuotesLoading] = useState(false);
   const [lastQuotesUpdated, setLastQuotesUpdated] = useState<string | null>(null);
 
@@ -603,7 +573,9 @@ export default function PortfolioManager() {
           "portfolio-risk",
           "sector-exposure",
           "diversification",
+          "network",
           "analysis",
+          "stress",
           "news-preview",
           "transactions",
           "ai-insights",
@@ -614,7 +586,7 @@ export default function PortfolioManager() {
     } catch {
       // fallback
     }
-    return "stock-risk";
+    return "dashboard";
   });
 
   const handleSelectTab = (tabId: typeof activeTab) => {
@@ -726,7 +698,7 @@ export default function PortfolioManager() {
           })),
         });
         setSyncStatus("saved");
-      } catch (err) {
+      } catch {
         setIsPersistingTx(false);
         setSnackbar("Failed to persist CSV transactions to server. Import aborted.");
         return;
@@ -913,7 +885,6 @@ export default function PortfolioManager() {
         controller.signal,
       );
       setQuotes((prev) => ({ ...prev, ...res.quotes }));
-      if (res.benchmark) setBenchmark(res.benchmark);
       setLastQuotesUpdated(new Date().toLocaleTimeString("en-IN"));
     } catch {
       // Graceful fallback: UI displays available prices or fallback markers
@@ -1296,7 +1267,7 @@ export default function PortfolioManager() {
           ],
         });
         setSyncStatus("saved");
-      } catch (err) {
+      } catch {
         setIsPersistingTx(false);
         setSnackbar("Failed to record transaction on server. Action cancelled.");
         return;
@@ -1366,7 +1337,7 @@ export default function PortfolioManager() {
           ],
         });
         setSyncStatus("saved");
-      } catch (err) {
+      } catch {
         setIsPersistingTx(false);
         setSnackbar("Failed to record sell transaction on server. Action cancelled.");
         return;
@@ -1440,7 +1411,12 @@ export default function PortfolioManager() {
         analysis.holdings.length,
       )
     : null;
-  const insights = analysis ? generateInsights(analysis) : [];
+
+  const activeGroup = Math.max(0, portfolioGroups.findIndex(group => group.tabs.some(tab => tab.id === activeTab)));
+  const selectView = (id: PortfolioTab) => {
+    handleSelectTab(id);
+    if (!["dashboard", "transactions", "ai-insights", "news-preview"].includes(id) && !structuralMonitoring && holdings.length > 0) void runAnalysis();
+  };
 
   return (
     <Page>
@@ -1452,9 +1428,9 @@ export default function PortfolioManager() {
           className="no-print"
         >
           <Box>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, fontSize: "1.25rem" }}>
-                Portfolio Holdings
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+              <Typography variant="h1">
+                My portfolio
               </Typography>
               {session?.user ? (
                 <Chip
@@ -1463,43 +1439,64 @@ export default function PortfolioManager() {
                     syncStatus === "loading" || isPersistingTx
                       ? "Saving..."
                       : syncStatus === "error"
-                      ? "Sync Error"
-                      : "Cloud Persisted"
+                      ? "Could not save"
+                      : "Saved to account"
                   }
                   color={syncStatus === "error" ? "error" : "success"}
                   variant="outlined"
-                  sx={{ height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }}
+                  sx={{ height: 20, fontSize: "0.875rem", borderRadius: 0, fontWeight: 600 }}
                 />
               ) : (
                 <Chip
                   size="small"
-                  label="Local Mode"
+                  label="Saved on this device"
                   variant="outlined"
-                  sx={{ height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }}
+                  sx={{ height: 20, fontSize: "0.875rem", borderRadius: 0, fontWeight: 600 }}
                 />
               )}
             </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.78rem" }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.875rem" }}>
               {holdings.length} stock{holdings.length !== 1 ? "s" : ""} · Currency: <strong>INR (₹)</strong>
               {lastQuotesUpdated && ` · Market quotes updated at ${lastQuotesUpdated}`}
             </Typography>
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
-            {benchmark && benchmark.latest_price && (
-              <Chip
-                label={`NIFTY 50: ${benchmark.latest_price.toLocaleString("en-IN", { maximumFractionDigits: 1 })} (${formatPercent(benchmark.change_percent)})`}
-                sx={{
-                  borderRadius: 0,
-                  fontWeight: 700,
-                  fontFamily: "JetBrains Mono, monospace",
-                  bgcolor: benchmark.change && benchmark.change >= 0 ? "#DCE9DE" : "#F6D9CC",
-                  color: benchmark.change && benchmark.change >= 0 ? "#046A38" : "#B8321A",
-                }}
-                size="small"
-              />
-            )}
-            {import.meta.env.DEV && (
+            <Button
+              variant="contained"
+              onClick={() => setAddDialogOpen(true)}
+              sx={{
+                borderRadius: 0,
+                bgcolor: "#046A38",
+                color: "#F9EBD7",
+                fontWeight: 700,
+                boxShadow: "0 3px 8px rgba(4,106,56,0.20)",
+                "&:hover": { bgcolor: "#03532c" },
+              }}
+            >
+              Add holding
+            </Button>
+            <Button
+              onClick={() => setSellDialogOpen(true)}
+              disabled={!holdings.length}
+              sx={{
+                borderRadius: 0,
+                border: "none",
+                bgcolor: "#E3D7C4",
+                color: "#292D2A",
+                fontWeight: 700,
+                boxShadow: "0 3px 8px rgba(227,66,34,0.20)",
+                "&:hover": { bgcolor: "#d8cabc" },
+              }}
+            >
+              Record sale
+            </Button>
+
+          </Stack>
+        </Stack>
+
+        <ReviewDetails title="More portfolio actions"><Stack direction="row" sx={{ gap: 2, flexWrap: "wrap", alignItems: "center" }}>
+            {import.meta.env.DEV && <ReviewDetails title="Demo data">
             <Tooltip title="DEMO fixture: load a synthetic 18-stock portfolio for local interface testing only">
               <Button
                 size="small"
@@ -1531,8 +1528,8 @@ export default function PortfolioManager() {
                 DEMO Portfolio
               </Button>
             </Tooltip>
-            )}
-            <Tooltip title="Refresh market prices via yfinance">
+            </ReviewDetails>}
+            <Tooltip title="Refresh market prices">
               <span>
                 <Button
                   size="small"
@@ -1548,39 +1545,10 @@ export default function PortfolioManager() {
                     "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
                   }}
                 >
-                  {quotesLoading ? <CircularProgress size={16} sx={{ color: "#046A38" }} /> : "Refresh Quotes"}
+                  {quotesLoading ? <CircularProgress size={16} sx={{ color: "#046A38" }} /> : "Refresh prices"}
                 </Button>
               </span>
             </Tooltip>
-            <Button
-              variant="contained"
-              onClick={() => setAddDialogOpen(true)}
-              sx={{
-                borderRadius: 0,
-                bgcolor: "#046A38",
-                color: "#F9EBD7",
-                fontWeight: 700,
-                boxShadow: "0 3px 8px rgba(4,106,56,0.20)",
-                "&:hover": { bgcolor: "#03532c" },
-              }}
-            >
-              + Buy Stock
-            </Button>
-            <Button
-              onClick={() => setSellDialogOpen(true)}
-              disabled={!holdings.length}
-              sx={{
-                borderRadius: 0,
-                border: "none",
-                bgcolor: "#E34222",
-                color: "#F9EBD7",
-                fontWeight: 700,
-                boxShadow: "0 3px 8px rgba(227,66,34,0.20)",
-                "&:hover": { bgcolor: "#b8321a" },
-              }}
-            >
-              − Sell Stock
-            </Button>
             <Button
               variant="contained"
               onClick={() => void runAnalysis()}
@@ -1594,79 +1562,18 @@ export default function PortfolioManager() {
                 "&:hover": { bgcolor: "#03532c" },
               }}
             >
-              {analysisLoading ? <CircularProgress size={20} sx={{ color: "#F9EBD7" }} /> : "Run Risk Analysis"}
-            </Button>
-          </Stack>
-        </Stack>
+              {analysisLoading ? <CircularProgress size={20} sx={{ color: "#F9EBD7" }} /> : "Refresh analysis"}
+            </Button>        </Stack></ReviewDetails>
 
         {error && <Alert severity="error">{error}</Alert>}
 
-        {/* ─── Navigation Tabs ─── */}
-        <Stack
-          direction="row"
-          spacing={0.5}
-          className="no-print"
-          sx={{
-            p: 0.5,
-            bgcolor: "#F9EBD7",
-            boxShadow: "0 4px 12px rgba(41,45,42,0.12)",
-            overflowX: "auto",
-            borderRadius: 0,
-          }}
-        >
-          {[
-            { id: "monitoring" as const, label: "Structural Overview" },
-            { id: "dashboard" as const, label: "Holdings Dashboard" },
-            {
-              id: "stock-decisions" as const,
-              label: decisionResponse
-                ? `Decision Engine (${decisionResponse.summary.hold_count} HOLD · ${decisionResponse.summary.wait_and_watch_count} WATCH${decisionResponse.summary.sell_count > 0 ? ` · ${decisionResponse.summary.sell_count} SELL` : ""})`
-                : "Decision Engine (HOLD / SELL)",
-            },
-            { id: "stock-risk" as const, label: "Stock Risk Analysis" },
-            { id: "portfolio-risk" as const, label: "Portfolio Risk & History" },
-            { id: "sector-exposure" as const, label: "Sector Exposure" },
-            { id: "diversification" as const, label: "Diversification" },
-            { id: "analysis" as const, label: "Network & Stress (MST)" },
-            { id: "news-preview" as const, label: "News Intelligence" },
-            { id: "transactions" as const, label: "Transaction Ledger" },
-            { id: "ai-insights" as const, label: "AI Insights" },
-          ].map((tab) => (
-            <Button
-              key={tab.id}
-              size="small"
-              onClick={() => {
-                handleSelectTab(tab.id);
-                if (
-                  tab.id !== "dashboard" &&
-                  tab.id !== "transactions" &&
-                  tab.id !== "ai-insights" &&
-                  !structuralMonitoring &&
-                  holdings.length > 0
-                ) {
-                  void runAnalysis();
-                }
-              }}
-              sx={{
-                px: 1.25,
-                py: 0.4,
-                whiteSpace: "nowrap",
-                borderRadius: 0,
-                textTransform: "none",
-                fontSize: "0.78rem",
-                color: activeTab === tab.id ? "#F9EBD7" : "#292D2A",
-                bgcolor: activeTab === tab.id ? "#046A38" : "transparent",
-                fontWeight: activeTab === tab.id ? 700 : 500,
-                boxShadow: activeTab === tab.id ? "0 2px 6px rgba(4,106,56,0.20)" : "none",
-                "&:hover": {
-                  bgcolor: activeTab === tab.id ? "#03532c" : "#E3D7C4",
-                },
-              }}
-            >
-              {tab.label}
-            </Button>
-          ))}
-        </Stack>
+        <Box className="no-print">
+          <GuidedSteps label="Portfolio review" steps={portfolioGroups.map(group => ({ label: group.label }))} activeStep={activeGroup} onChange={index => selectView(portfolioGroups[index].tabs[0].id)} />
+          <Typography variant="body2" sx={{ mt: 2, mb: 1 }}>{portfolioGroups[activeGroup].description}</Typography>
+          <Stack component="nav" aria-label={`${portfolioGroups[activeGroup].label} views`} direction="row" sx={{ gap: 1, flexWrap: "wrap" }}>
+            {portfolioGroups[activeGroup].tabs.map(tab => <Button key={tab.id} onClick={() => selectView(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} sx={{ px: 2, color: activeTab === tab.id ? "#F9EBD7" : "text.primary", bgcolor: activeTab === tab.id ? "primary.main" : "transparent", "&:hover": { bgcolor: activeTab === tab.id ? "primary.dark" : "#E3D7C4" } }}>{tab.label}</Button>)}
+          </Stack>
+        </Box>
 
         {/* ═══════════════════════════════════════════════
             TAB 0: STRUCTURAL OVERVIEW & MONITORING
@@ -1701,93 +1608,19 @@ export default function PortfolioManager() {
         {/* ═══════════════════════════════════════════════
             TAB 1: HOLDINGS DASHBOARD
            ═══════════════════════════════════════════════ */}
-        {activeTab === "dashboard" && (
+        {activeTab === "dashboard" && !holdings.length && <Paper sx={{ p: { xs: 3, sm: 5 }, bgcolor: "#E3D7C4", boxShadow: "none" }}>
+          <Typography variant="h2">Start with your first holding</Typography>
+          <Typography sx={{ mt: 1, mb: 3, maxWidth: "55ch" }}>Record a company you own to see its value, track activity, and review portfolio risk.</Typography>
+          <Button variant="contained" onClick={() => setAddDialogOpen(true)}>Add your first holding</Button>
+        </Paper>}
+        {activeTab === "dashboard" && holdings.length > 0 && (
           <>
-            {/* Live Data Stream Status & Refresh Controls */}
-            <Paper
-              sx={{
-                p: 2,
-                borderRadius: 0,
-                border: "none",
-                bgcolor: "#292D2A",
-                color: "#F9EBD7",
-                boxShadow: "0 4px 14px rgba(41,45,42,0.12)",
-                mb: 2,
-              }}
-            >
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}
-              >
-                <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-                  <Box
-                    component="span"
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      bgcolor: autoRefreshQuotes ? "#046A38" : "#8A5A00",
-                      boxShadow: autoRefreshQuotes ? "0 0 8px #046A38" : "none",
-                    }}
-                  />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#F9EBD7" }}>
-                    {autoRefreshQuotes ? "Live Market Stream Active" : "Stream Paused"}
-                  </Typography>
-                  <Chip
-                    size="small"
-                    label={autoRefreshQuotes ? `Auto-sync in ${refreshCountdown}s` : "Manual Mode"}
-                    sx={{
-                      height: 20,
-                      fontWeight: 700,
-                      fontSize: "0.70rem",
-                      bgcolor: "rgba(227, 215, 196, 0.15)",
-                      color: "#E3D7C4",
-                      borderRadius: "2px",
-                    }}
-                  />
-                  {lastQuotesUpdated && (
-                    <Typography variant="caption" sx={{ color: "#E3D7C4" }}>
-                      Last quote update: {lastQuotesUpdated}
-                    </Typography>
-                  )}
-                </Stack>
-
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                  <Button
-                    size="small"
-                    onClick={() => setAutoRefreshQuotes(!autoRefreshQuotes)}
-                    sx={{
-                      fontSize: "0.74rem",
-                      color: "#E3D7C4",
-                      bgcolor: "rgba(227, 215, 196, 0.12)",
-                      "&:hover": { bgcolor: "rgba(227, 215, 196, 0.22)" },
-                    }}
-                  >
-                    {autoRefreshQuotes ? "Pause Polling" : "Resume Polling"}
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      setRefreshCountdown(20);
-                      void refreshQuotes(undefined, true);
-                    }}
-                    disabled={quotesLoading}
-                    startIcon={quotesLoading ? <CircularProgress size={12} sx={{ color: "#F9EBD7" }} /> : undefined}
-                    sx={{
-                      fontSize: "0.74rem",
-                      fontWeight: 700,
-                      color: "#F9EBD7",
-                      bgcolor: "#046A38",
-                      "&:hover": { bgcolor: "#034d28" },
-                    }}
-                  >
-                    {quotesLoading ? "Syncing Quotes…" : "Sync Live Quotes Now"}
-                  </Button>
-                </Stack>
+            <ReviewDetails title="Price update settings">
+              <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2, alignItems: { sm: "center" } }}>
+                <Typography variant="body2">{autoRefreshQuotes ? `Prices refresh in ${refreshCountdown}s.` : "Automatic price updates are paused."} {lastQuotesUpdated && `Last update: ${lastQuotesUpdated}.`}</Typography>
+                <Button onClick={() => setAutoRefreshQuotes(!autoRefreshQuotes)}>{autoRefreshQuotes ? "Pause updates" : "Resume updates"}</Button>
               </Stack>
-            </Paper>
-
-
+            </ReviewDetails>
 
             {/* ─── 6 SUMMARY CARDS ─── */}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
@@ -2005,7 +1838,7 @@ export default function PortfolioManager() {
             {/* ─── HOLDINGS TABLE ─── */}
             <Paper sx={{ p: 3 }}>
               <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                <Typography variant="h5">Holdings Table</Typography>
+                <Typography variant="h5">Your holdings</Typography>
                 <Typography variant="body2" color="text.secondary">
                   Showing {displayedHoldings.length} of {holdings.length} position{holdings.length !== 1 ? "s" : ""}
                 </Typography>
@@ -2190,7 +2023,7 @@ export default function PortfolioManager() {
                                       sx={{
                                         cursor: "pointer",
                                         height: 20,
-                                        fontSize: "0.68rem",
+                                        fontSize: "0.875rem",
                                         fontWeight: 700,
                                         bgcolor: "rgba(4, 106, 56, 0.12)",
                                         color: "#046A38",
@@ -2218,7 +2051,7 @@ export default function PortfolioManager() {
                                             cursor: "pointer",
                                             height: 20,
                                             borderRadius: 0,
-                                            fontSize: "0.68rem",
+                                            fontSize: "0.875rem",
                                             fontWeight: 700,
                                             bgcolor: isPos ? "#DCE9DE" : isNeg ? "#F6D9CC" : "#E3D7C4",
                                             color: isPos ? "#046A38" : isNeg ? "#B8321A" : "#292D2A",
@@ -2255,7 +2088,7 @@ export default function PortfolioManager() {
                                           cursor: "pointer",
                                           height: 20,
                                           borderRadius: 0,
-                                          fontSize: "0.68rem",
+                                          fontSize: "0.875rem",
                                           fontWeight: 700,
                                           bgcolor: "#F6D9CC",
                                           color: "#B8321A",
@@ -2274,7 +2107,7 @@ export default function PortfolioManager() {
 
                             {/* Sector */}
                             <TableCell>
-                              <Chip size="small" label={h.sector} sx={{ fontSize: "0.75rem", borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A", border: "none" }} />
+                              <Chip size="small" label={h.sector} sx={{ fontSize: "0.875rem", borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A", border: "none" }} />
                             </TableCell>
 
                             {/* Decision Flag (HOLD / WAIT & WATCH / SELL) */}
@@ -2285,7 +2118,7 @@ export default function PortfolioManager() {
                                   const isHold = dec.decision === "HOLD";
                                   const isSell = dec.decision === "SELL";
                                   const bg = isHold ? "#046A38" : isSell ? "#E34222" : "#8A5A00";
-                                  const icon = isHold ? "✓" : isSell ? "⚠" : "⏳";
+
                                   return (
                                     <Tooltip
                                       title={
@@ -2305,7 +2138,7 @@ export default function PortfolioManager() {
                                     >
                                       <Chip
                                         size="small"
-                                        label={`${icon} ${dec.decision}`}
+                                        label={dec.decision}
                                         onClick={(e) => {
                                           e.preventDefault();
                                           e.stopPropagation();
@@ -2316,7 +2149,7 @@ export default function PortfolioManager() {
                                           height: 24,
                                           borderRadius: 0,
                                           fontWeight: 800,
-                                          fontSize: "0.75rem",
+                                          fontSize: "0.875rem",
                                           bgcolor: bg,
                                           color: "#F9EBD7",
                                           boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
@@ -2341,7 +2174,7 @@ export default function PortfolioManager() {
                                     cursor: "pointer",
                                     height: 20,
                                     borderRadius: 0,
-                                    fontSize: "0.68rem",
+                                    fontSize: "0.875rem",
                                     bgcolor: "#E3D7C4",
                                   }}
                                 />
@@ -2381,7 +2214,7 @@ export default function PortfolioManager() {
                                       size="small"
                                       label={h.quote?.data_quality === "fallback" ? "Close" : "Live"}
                                       color={h.quote?.data_quality === "fallback" ? "default" : "success"}
-                                      sx={{ height: 16, fontSize: "0.65rem" }}
+                                      sx={{ height: 16, fontSize: "0.875rem" }}
                                     />
                                   </Tooltip>
                                 </Box>
@@ -2465,7 +2298,7 @@ export default function PortfolioManager() {
                                     {isTodayGain ? "+" : ""}
                                     {formatCurrency(h.todayPnl)}
                                   </Typography>
-                                  <Typography variant="caption" sx={{ fontSize: "0.7rem", fontFamily: "JetBrains Mono, monospace" }}>
+                                  <Typography variant="caption" sx={{ fontSize: "0.875rem", fontFamily: "JetBrains Mono, monospace" }}>
                                     {formatPercent(h.todayChangePercent)}
                                   </Typography>
                                 </Box>
@@ -2481,18 +2314,18 @@ export default function PortfolioManager() {
                                   <IconButton
                                     size="small"
                                     onClick={() => setSelectedNotesStock({ symbol: h.symbol, companyName: h.companyName })}
-                                    sx={{ color: notesCountMap[h.symbol.toUpperCase()] ? "#046A38" : "#686B64", borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}
+                                    sx={{ color: notesCountMap[h.symbol.toUpperCase()] ? "#046A38" : "#686B64", borderRadius: 0, fontSize: "0.875rem", fontWeight: 600 }}
                                   >
                                     Notes
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Edit holding">
-                                  <IconButton size="small" onClick={() => setEditHolding(h)} sx={{ borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}>
+                                  <IconButton size="small" onClick={() => setEditHolding(h)} sx={{ borderRadius: 0, fontSize: "0.875rem", fontWeight: 600 }}>
                                     Edit
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Remove holding">
-                                  <IconButton size="small" onClick={() => removeHolding(h.id)} sx={{ borderRadius: 0, fontSize: "0.75rem", fontWeight: 600, color: "#B8321A" }}>
+                                  <IconButton size="small" onClick={() => removeHolding(h.id)} sx={{ borderRadius: 0, fontSize: "0.875rem", fontWeight: 600, color: "#B8321A" }}>
                                     Delete
                                   </IconButton>
                                 </Tooltip>
@@ -2603,9 +2436,66 @@ export default function PortfolioManager() {
           />
         )}
 
-        {/* ═══════════════════════════════════════════════
-            TAB 2: RISK & MST ANALYSIS (PRESERVED)
-           ═══════════════════════════════════════════════ */}
+        {activeTab === "network" && (
+          <>
+            {analysis ? (
+              <>
+                <PortfolioMstGraph mst={analysis.mst} holdings={analysis.holdings} />
+                <ReviewDetails title="Network details and methodology">
+                  <Stack spacing={3}>
+                    <MstDiagnostics analysis={analysis} />
+                    <CorrelationMstExplainer />
+                    <MstHoldingsInspector analysis={analysis} />
+                  </Stack>
+                </ReviewDetails>
+              </>
+            ) : analysisLoading ? (
+              <Paper sx={{ p: 3 }}>
+                <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+                  <CircularProgress size={24} />
+                  <Typography>Loading your portfolio network…</Typography>
+                </Stack>
+              </Paper>
+            ) : (
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h5" gutterBottom>Portfolio network</Typography>
+                <Typography sx={{ mb: 2 }}>
+                  {holdings.length ? "Run your portfolio analysis to see the connections between your holdings." : "Add holdings to see how the companies in your portfolio connect."}
+                </Typography>
+                <Button variant="contained" onClick={() => holdings.length ? void runAnalysis() : setAddDialogOpen(true)}>
+                  {holdings.length ? "Load portfolio network" : "Add holding"}
+                </Button>
+              </Paper>
+            )}
+          </>
+        )}
+
+        {activeTab === "stress" && (
+          <>
+            {analysis ? (
+              <StressPanel analysis={analysis} loading={analysisLoading} onRun={(stress) => void runAnalysis(stress)} />
+            ) : analysisLoading ? (
+              <Paper sx={{ p: 3 }}>
+                <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+                  <CircularProgress size={24} />
+                  <Typography>Loading stress testing…</Typography>
+                </Stack>
+              </Paper>
+            ) : (
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h5" gutterBottom>Stress testing</Typography>
+                <Typography sx={{ mb: 2 }}>
+                  {holdings.length ? "Run your portfolio analysis to test how a hypothetical shock could affect your holdings." : "Add holdings to test how a hypothetical shock could affect your portfolio."}
+                </Typography>
+                <Button variant="contained" onClick={() => holdings.length ? void runAnalysis() : setAddDialogOpen(true)}>
+                  {holdings.length ? "Load stress testing" : "Add holding"}
+                </Button>
+              </Paper>
+            )}
+          </>
+        )}
+
+        {/* Performance and risk analysis */}
         {activeTab === "analysis" && (
           <>
             {!analysis && !analysisLoading && (
@@ -2614,7 +2504,7 @@ export default function PortfolioManager() {
                   No Risk Analysis Calculated Yet
                 </Typography>
                 <Typography color="text.secondary" gutterBottom>
-                  Click "Run Risk Analysis" to calculate covariance risk, minimum spanning tree (MST) paths, and stress testing.
+                  Click "Refresh analysis" to calculate portfolio performance and covariance risk.
                 </Typography>
                 <Button variant="contained" onClick={() => void runAnalysis()} disabled={!holdings.length} sx={{ mt: 1 }}>
                   Run Risk Analysis
@@ -2775,18 +2665,6 @@ export default function PortfolioManager() {
                 {/* Risk Contribution Table (Euler Decomposition) */}
                 <RiskContributionTable holdings={analysis.holdings} />
 
-                {/* Structural Correlation Drivers & Cluster Explainer */}
-                <CorrelationMstExplainer />
-
-                {/* Holding-level MST Ego-Network Inspector & Methodological Limitations */}
-                <MstHoldingsInspector analysis={analysis} />
-
-                {/* MST Diagnostics Graph */}
-                <MstDiagnostics analysis={analysis} />
-
-                {/* Stress Testing */}
-                <StressPanel analysis={analysis} loading={analysisLoading} onRun={(stress) => void runAnalysis(stress)} />
-
                 {/* Divergence Table */}
                 <HoldingTable holdings={analysis.holdings} />
 
@@ -2801,7 +2679,7 @@ export default function PortfolioManager() {
             TAB: NEWS SIGNALS (PREVIEW)
            ═══════════════════════════════════════════════ */}
         {activeTab === "news-preview" && (
-          <NewsIntelligencePanel />
+          <NewsIntelligencePanel embedded />
         )}
 
         {/* ═══════════════════════════════════════════════
@@ -2812,10 +2690,10 @@ export default function PortfolioManager() {
             <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: 2, flexWrap: "wrap", gap: 1.5 }}>
               <Box>
                 <Typography variant="h5" gutterBottom>
-                  Transaction Ledger
+                  Activity
                 </Typography>
                 <Typography color="text.secondary">
-                  Full chronological audit trail. Transactions are the authoritative single source of truth; holdings, cash, and P&L are derived under Weighted-Average Cost (WAC) basis.
+                  Recorded purchases and sales, in date order.
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
@@ -2834,7 +2712,7 @@ export default function PortfolioManager() {
                     color: "#292D2A",
                     boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
                     textTransform: "none",
-                    fontSize: "0.82rem",
+                    fontSize: "0.875rem",
                     py: 0.6,
                     px: 1.5,
                     fontWeight: 600,
@@ -2854,7 +2732,7 @@ export default function PortfolioManager() {
                     color: "#292D2A",
                     boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
                     textTransform: "none",
-                    fontSize: "0.82rem",
+                    fontSize: "0.875rem",
                     py: 0.6,
                     px: 1.5,
                     fontWeight: 600,
@@ -2876,7 +2754,7 @@ export default function PortfolioManager() {
                     color: "#292D2A",
                     boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
                     textTransform: "none",
-                    fontSize: "0.82rem",
+                    fontSize: "0.875rem",
                     py: 0.6,
                     px: 1.5,
                     fontWeight: 600,
@@ -2919,11 +2797,11 @@ export default function PortfolioManager() {
                     }}
                   />
                   <Typography variant="body2" sx={{ fontWeight: 600, color: "#292D2A" }}>
-                    Source of Truth: {transactions.length} Ledger Events · {derivedLedger.holdings.length} Positions Derived
+                    {transactions.length} transactions · {derivedLedger.holdings.length} holdings
                   </Typography>
                 </Stack>
-                <Stack direction="row" spacing={2.5} sx={{ fontSize: "0.85rem", color: "#292D2A", flexWrap: "wrap", alignItems: "center" }}>
-                  <Box><strong>Derived Cash:</strong> {formatCurrency(derivedLedger.cash)}</Box>
+                <Stack direction="row" spacing={2.5} sx={{ fontSize: "0.875rem", color: "#292D2A", flexWrap: "wrap", alignItems: "center" }}>
+                  <Box><strong>Cash:</strong> {formatCurrency(derivedLedger.cash)}</Box>
                   <Box><strong>Realized P&L:</strong> {formatCurrency(derivedLedger.totalRealizedPnl)}</Box>
                   <Box><strong>Invested Cost:</strong> {formatCurrency(derivedLedger.totalInvestedCost)}</Box>
                   {!reconciliation.isReconciled && (
@@ -2937,7 +2815,7 @@ export default function PortfolioManager() {
                       sx={{
                         py: 0.2,
                         px: 1,
-                        fontSize: "0.75rem",
+                        fontSize: "0.875rem",
                         bgcolor: "#8A5A00",
                         color: "#F9EBD7",
                         borderRadius: 0,
@@ -3038,7 +2916,7 @@ export default function PortfolioManager() {
                             sx={{
                               py: 0.3,
                               px: 1,
-                              fontSize: "0.75rem",
+                              fontSize: "0.875rem",
                               borderRadius: 0,
                               border: "none",
                               bgcolor: "#E3D7C4",
@@ -3314,7 +3192,7 @@ export default function PortfolioManager() {
                   <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 1 }}>
                     Captured Context Snapshot (At Decision Time):
                   </Typography>
-                  <Stack spacing={0.5} sx={{ fontSize: "0.8rem", color: "#686B64" }}>
+                  <Stack spacing={0.5} sx={{ fontSize: "0.875rem", color: "#686B64" }}>
                     <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                       <span>Portfolio Risk Score:</span>
                       <span style={{ fontWeight: 600, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
@@ -3426,7 +3304,7 @@ export default function PortfolioManager() {
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2.5}>
             {backupStatus && (
-              <Alert severity="info" sx={{ fontSize: "0.82rem", borderRadius: 0 }}>
+              <Alert severity="info" sx={{ fontSize: "0.875rem", borderRadius: 0 }}>
                 {backupStatus}
               </Alert>
             )}
@@ -3435,7 +3313,7 @@ export default function PortfolioManager() {
               <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 0.5 }}>
                 1. Export Backup
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: "0.85rem", mb: 1.5, color: "#686B64" }}>
+              <Typography variant="body2" sx={{ fontSize: "0.875rem", mb: 1.5, color: "#686B64" }}>
                 Download a JSON backup of all research notes, investment decisions, and portfolio snapshots to your device.
               </Typography>
               <Button
@@ -3475,7 +3353,7 @@ export default function PortfolioManager() {
               <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 0.5 }}>
                 2. Restore from Backup
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: "0.85rem", mb: 1.5, color: "#686B64" }}>
+              <Typography variant="body2" sx={{ fontSize: "0.875rem", mb: 1.5, color: "#686B64" }}>
                 Select a previously exported JSON backup file to import notes and decisions.
               </Typography>
               <Button
@@ -3603,7 +3481,7 @@ export default function PortfolioManager() {
                   borderRadius: 0,
                   bgcolor: "#F9EBD7",
                   fontFamily: "JetBrains Mono, monospace",
-                  fontSize: "0.85rem",
+                  fontSize: "0.875rem",
                 },
               }}
             />
@@ -4383,7 +4261,6 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
       >
         MST stability: {analysis.mst.stability.confidence}. {analysis.mst.stability.reason}
       </Alert>
-      <PortfolioMstGraph mst={analysis.mst} holdings={analysis.holdings} />
       <Stack direction={{ xs: "column", md: "row" }} spacing={3} sx={{ mt: 2 }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h6">Portfolio clusters</Typography>

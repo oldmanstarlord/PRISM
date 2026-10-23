@@ -188,7 +188,7 @@ export default function StockDecisionJournal({
   const renderMetricValue = (val: number | null | undefined, suffix = "") => {
     if (val === null || val === undefined || isNaN(val)) {
       return (
-        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.8rem" }}>
+        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.875rem" }}>
           Unavailable
         </Typography>
       );
@@ -199,7 +199,7 @@ export default function StockDecisionJournal({
   const renderStringValue = (val: string | null | undefined) => {
     if (!val || !val.trim()) {
       return (
-        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.8rem" }}>
+        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.875rem" }}>
           Unavailable
         </Typography>
       );
@@ -239,7 +239,7 @@ export default function StockDecisionJournal({
               bgcolor: decisions.length > 0 ? "#DCE9DE" : "#E3D7C4",
               color: decisions.length > 0 ? "#046A38" : "#292D2A",
               fontWeight: 700,
-              fontSize: "0.75rem",
+              fontSize: "0.875rem",
               borderRadius: 0,
             }}
           />
@@ -257,7 +257,7 @@ export default function StockDecisionJournal({
             sx={{
               bgcolor: "#046A38",
               color: "#F9EBD7",
-              fontSize: "0.8rem",
+              fontSize: "0.875rem",
               py: 0.5,
               px: 1.5,
               borderRadius: 0,
@@ -267,7 +267,7 @@ export default function StockDecisionJournal({
           >
             + Record Decision
           </Button>
-          <IconButton size="small" sx={{ color: "#686B64", borderRadius: 0 }}>
+          <IconButton aria-label={expanded ? "Hide decision history" : "Show decision history"} aria-expanded={expanded} size="small" sx={{ color: "#686B64", borderRadius: 0 }}>
             {expanded ? "▲" : "▼"}
           </IconButton>
         </Stack>
@@ -299,7 +299,7 @@ export default function StockDecisionJournal({
                 size="small"
                 variant="contained"
                 onClick={handleOpenCreate}
-                sx={{ fontSize: "0.8rem", bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
+                sx={{ fontSize: "0.875rem", bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
               >
                 Log First Decision
               </Button>
@@ -312,7 +312,7 @@ export default function StockDecisionJournal({
                   placeholder={`Search decisions & rationale for ${normSymbol}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  sx={{ "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
+                  sx={{ "& .MuiInputBase-input": { fontSize: "0.875rem" } }}
                 />
               )}
 
@@ -351,7 +351,7 @@ export default function StockDecisionJournal({
                             label={decision.decisionType.toUpperCase()}
                             sx={{
                               fontWeight: 700,
-                              fontSize: "0.75rem",
+                              fontSize: "0.875rem",
                               height: 24,
                               borderRadius: 0,
                               bgcolor: typeColors.bg,
@@ -366,7 +366,7 @@ export default function StockDecisionJournal({
                               key={tag}
                               label={tag}
                               size="small"
-                              sx={{ fontSize: "0.7rem", height: 20, borderRadius: 0, bgcolor: "#E3D7C4", color: "#292D2A" }}
+                              sx={{ fontSize: "0.875rem", height: 20, borderRadius: 0, bgcolor: "#E3D7C4", color: "#292D2A" }}
                             />
                           ))}
                         </Stack>
@@ -375,7 +375,7 @@ export default function StockDecisionJournal({
                           <IconButton
                             size="small"
                             onClick={() => setDeleteConfirmId(decision.id)}
-                            sx={{ color: "#686B64", borderRadius: 0, "&:hover": { color: "#B8321A" }, fontSize: "0.75rem", fontWeight: 600 }}
+                            sx={{ color: "#686B64", borderRadius: 0, "&:hover": { color: "#B8321A" }, fontSize: "0.875rem", fontWeight: 600 }}
                           >
                             Delete
                           </IconButton>
@@ -410,7 +410,7 @@ export default function StockDecisionJournal({
                             Metrics Comparison: Snapshot at Decision vs. Current
                           </Typography>
                         </Box>
-                        <Table size="small" sx={{ "& .MuiTableCell-root": { py: 0.8, px: 1.5, fontSize: "0.8rem", color: "#292D2A" } }}>
+                        <Table size="small" sx={{ "& .MuiTableCell-root": { py: 0.8, px: 1.5, fontSize: "0.875rem", color: "#292D2A" } }}>
                           <TableHead>
                             <TableRow sx={{ bgcolor: "#F9EBD7" }}>
                               <TableCell sx={{ fontWeight: 700, color: "#292D2A" }}>Metric</TableCell>
@@ -620,7 +620,7 @@ export default function StockDecisionJournal({
               <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 1 }}>
                 Snapshot Being Captured Right Now:
               </Typography>
-              <Stack spacing={0.5} sx={{ fontSize: "0.8rem", color: "#292D2A" }}>
+              <Stack spacing={0.5} sx={{ fontSize: "0.875rem", color: "#292D2A" }}>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                   <span style={{ color: "#686B64" }}>Risk Score:</span>
                   <span style={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>

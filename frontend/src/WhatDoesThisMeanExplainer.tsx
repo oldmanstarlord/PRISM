@@ -140,7 +140,7 @@ export function WhatDoesThisMeanExplainer({
                   color: "#292D2A",
                   fontWeight: 700,
                   fontFamily: "JetBrains Mono",
-                  fontSize: "0.72rem",
+                  fontSize: "0.875rem",
                   boxShadow: "0 1px 3px rgba(41,45,42,0.10)",
                 }}
               />
@@ -153,7 +153,7 @@ export function WhatDoesThisMeanExplainer({
                 bgcolor: "#046A38",
                 color: "#F9EBD7",
                 fontWeight: 700,
-                fontSize: "0.70rem",
+                fontSize: "0.875rem",
               }}
             />
           </Stack>
@@ -227,7 +227,7 @@ export function WhatDoesThisMeanExplainer({
                           bgcolor: "#E3D7C4",
                           color: "#292D2A",
                           fontWeight: 600,
-                          fontSize: "0.75rem",
+                          fontSize: "0.875rem",
                         }}
                       />
                     );
@@ -242,7 +242,7 @@ export function WhatDoesThisMeanExplainer({
                         bgcolor: "#E3D7C4",
                         color: "#292D2A",
                         fontWeight: 600,
-                        fontSize: "0.75rem",
+                        fontSize: "0.875rem",
                       }}
                     />
                   );
@@ -257,7 +257,7 @@ export function WhatDoesThisMeanExplainer({
               <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 700, textTransform: "uppercase", display: "block", mb: 0.5 }}>
                 Assumptions
               </Typography>
-              <Box component="ul" sx={{ m: 0, pl: 2.5, color: "#686B64", fontSize: "0.82rem", lineHeight: 1.6 }}>
+              <Box component="ul" sx={{ m: 0, pl: 2.5, color: "#686B64", fontSize: "0.875rem", lineHeight: 1.6 }}>
                 {assumptions.map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}
@@ -268,7 +268,7 @@ export function WhatDoesThisMeanExplainer({
               <Typography variant="caption" sx={{ color: "#8A5A00", fontWeight: 700, textTransform: "uppercase", display: "block", mb: 0.5 }}>
                 Diagnostic Limitations & Warnings
               </Typography>
-              <Box component="ul" sx={{ m: 0, pl: 2.5, color: "#8A5A00", fontSize: "0.82rem", lineHeight: 1.6 }}>
+              <Box component="ul" sx={{ m: 0, pl: 2.5, color: "#8A5A00", fontSize: "0.875rem", lineHeight: 1.6 }}>
                 {limitations.map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}

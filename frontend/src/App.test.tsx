@@ -9,8 +9,8 @@ describe("App", () => {
     globalThis.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "PRISM" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "PRISM" })).toBeInTheDocument();
     expect(screen.getByText(/does not provide investment advice/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /sector divergence/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /explore the market/i })).toBeInTheDocument();
   });
 });

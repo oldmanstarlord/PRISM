@@ -16,7 +16,7 @@ export default function ComparisonChart({ points, symbol }: Props) {
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => ({ value: max - ratio * (max - min), y: top + ratio * (height - top - bottom) }));
 
   return (
-    <Box>
+    <Box sx={{ overflowX: "auto" }}>
       <Stack direction="row" spacing={3} sx={{ mb: 1 }}>
         <Typography variant="body2" sx={{ color: "#046A38", fontWeight: 700 }}>
           ━ {symbol}
@@ -30,22 +30,22 @@ export default function ComparisonChart({ points, symbol }: Props) {
         role="img"
         aria-label={`${symbol} indexed performance versus industry peers`}
         viewBox={`0 0 ${width} ${height}`}
-        sx={{ width: "100%", height: "auto", display: "block" }}
+        sx={{ width: "100%", minWidth: 600, height: "auto", display: "block" }}
       >
         {ticks.map((tick) => (
           <g key={tick.y}>
             <line x1={left} x2={width - right} y1={tick.y} y2={tick.y} stroke="rgba(41,45,42,0.12)" strokeDasharray="3 3" />
-            <text x={left - 8} y={tick.y + 4} textAnchor="end" fontSize="11" fontWeight="500" fill="#686B64" fontFamily="JetBrains Mono, monospace">
+            <text x={left - 8} y={tick.y + 4} textAnchor="end" fontSize="14" fontWeight="500" fill="#686B64" fontFamily="JetBrains Mono, monospace">
               {tick.value.toFixed(0)}
             </text>
           </g>
         ))}
         <polyline points={line("benchmark_index")} fill="none" stroke="#3F5B7A" strokeWidth="2.5" />
         <polyline points={line("stock_index")} fill="none" stroke="#046A38" strokeWidth="3" />
-        <text x={left} y={height - 12} fontSize="11" fontWeight="500" fill="#686B64" fontFamily="Inter, sans-serif">
+        <text x={left} y={height - 12} fontSize="14" fontWeight="500" fill="#686B64" fontFamily="Inter, sans-serif">
           {points[0]?.trade_date}
         </text>
-        <text x={width - right} y={height - 12} textAnchor="end" fontSize="11" fontWeight="500" fill="#686B64" fontFamily="Inter, sans-serif">
+        <text x={width - right} y={height - 12} textAnchor="end" fontSize="14" fontWeight="500" fill="#686B64" fontFamily="Inter, sans-serif">
           {points.at(-1)?.trade_date}
         </text>
       </Box>

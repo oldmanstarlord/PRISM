@@ -22,7 +22,7 @@ it("polls published rankings and reports a paused market without hiding the last
     },
   }));
   vi.stubGlobal("fetch", fetch);
-  await act(async () => { render(<MemoryRouter><Dashboard /></MemoryRouter>); });
+  await act(async () => { render(<MemoryRouter initialEntries={["/?step=companies&horizon=20"]}><Dashboard /></MemoryRouter>); });
   expect(screen.getByText(/Market open · recalculates every 30 minutes/)).toBeInTheDocument();
   expect(screen.getByText("TCS")).toBeInTheDocument();
   closed = true;

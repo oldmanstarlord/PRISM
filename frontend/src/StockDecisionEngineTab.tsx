@@ -118,7 +118,6 @@ export default function StockDecisionEngineTab({
           color: "#F9EBD7",
           border: "#058b4a",
           label: "HOLD",
-          icon: "✓",
           desc: "Strong or acceptable fundamentals with no major deterioration signals.",
         };
       case "WAIT & WATCH":
@@ -127,7 +126,6 @@ export default function StockDecisionEngineTab({
           color: "#F9EBD7",
           border: "#b07400",
           label: "WAIT & WATCH",
-          icon: "⏳",
           desc: "Mixed signals, uncertain conditions, or near decision thresholds.",
         };
       case "SELL":
@@ -136,7 +134,6 @@ export default function StockDecisionEngineTab({
           color: "#F9EBD7",
           border: "#b8321a",
           label: "SELL",
-          icon: "⚠",
           desc: "Significant evidence of financial weakness or downside risk.",
         };
     }
@@ -201,7 +198,7 @@ export default function StockDecisionEngineTab({
                 sx={{
                   bgcolor: "#046A38",
                   color: "#F9EBD7",
-                  fontSize: "0.72rem",
+                  fontSize: "0.875rem",
                   fontWeight: 600,
                   borderRadius: 0,
                 }}
@@ -209,7 +206,7 @@ export default function StockDecisionEngineTab({
             </Box>
             <Typography
               variant="body2"
-              sx={{ color: COLORS.sandBeige, mt: 0.5, fontSize: "0.85rem" }}
+              sx={{ color: COLORS.sandBeige, mt: 0.5, fontSize: "0.875rem" }}
             >
               Actionable flags (SELL / HOLD / WAIT & WATCH) combining Five-Factor
               Fundamental Strength (60%), Sector Divergence (25%), and News Sentiment (15%).
@@ -329,7 +326,7 @@ export default function StockDecisionEngineTab({
                   size="small"
                   sx={{
                     height: 18,
-                    fontSize: "0.65rem",
+                    fontSize: "0.875rem",
                     bgcolor: "#046A38",
                     color: "#F9EBD7",
                     borderRadius: 0,
@@ -371,7 +368,7 @@ export default function StockDecisionEngineTab({
                   size="small"
                   sx={{
                     height: 18,
-                    fontSize: "0.65rem",
+                    fontSize: "0.875rem",
                     bgcolor: "#8A5A00",
                     color: "#F9EBD7",
                     borderRadius: 0,
@@ -413,7 +410,7 @@ export default function StockDecisionEngineTab({
                   size="small"
                   sx={{
                     height: 18,
-                    fontSize: "0.65rem",
+                    fontSize: "0.875rem",
                     bgcolor: "#E34222",
                     color: "#F9EBD7",
                     borderRadius: 0,
@@ -532,7 +529,7 @@ export default function StockDecisionEngineTab({
                     sx={{
                       borderRadius: 0,
                       fontWeight: 700,
-                      fontSize: "0.75rem",
+                      fontSize: "0.875rem",
                       cursor: "pointer",
                       bgcolor: isSelected
                         ? flag === "HOLD"
@@ -563,7 +560,7 @@ export default function StockDecisionEngineTab({
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 0,
                     bgcolor: "#F9EBD7",
-                    fontSize: "0.82rem",
+                    fontSize: "0.875rem",
                   },
                 }}
               />
@@ -574,7 +571,7 @@ export default function StockDecisionEngineTab({
                 sx={{
                   borderRadius: 0,
                   bgcolor: "#F9EBD7",
-                  fontSize: "0.82rem",
+                  fontSize: "0.875rem",
                   minWidth: 140,
                 }}
               >
@@ -666,7 +663,7 @@ export default function StockDecisionEngineTab({
                             size="small"
                             sx={{
                               height: 20,
-                              fontSize: "0.68rem",
+                              fontSize: "0.875rem",
                               borderRadius: 0,
                               bgcolor: "#E3D7C4",
                               color: COLORS.deepCharcoal,
@@ -675,11 +672,11 @@ export default function StockDecisionEngineTab({
                           />
                         )}
                       </Box>
-                      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, fontSize: "0.82rem" }}>
+                      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, fontSize: "0.875rem" }}>
                         {stock.company_name || stock.sector || "Equity"}
                       </Typography>
                       {stock.sector && (
-                        <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.75rem" }}>
+                        <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.875rem" }}>
                           Sector: {stock.sector}
                         </Typography>
                       )}
@@ -704,7 +701,7 @@ export default function StockDecisionEngineTab({
                           variant="subtitle2"
                           sx={{ fontWeight: 800, letterSpacing: "0.06em", fontSize: "0.88rem" }}
                         >
-                          {badge.icon} {badge.label}
+                          {badge.label}
                         </Typography>
                       </Box>
                     </Tooltip>
@@ -714,7 +711,7 @@ export default function StockDecisionEngineTab({
                         size="small"
                         sx={{
                           height: 18,
-                          fontSize: "0.65rem",
+                          fontSize: "0.875rem",
                           borderRadius: 0,
                           bgcolor: conf.bg,
                           color: conf.color,
@@ -761,7 +758,7 @@ export default function StockDecisionEngineTab({
                           },
                         }}
                       />
-                      <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontSize: "0.7rem" }}>
+                      <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontSize: "0.875rem" }}>
                         Regime: {stock.applied_weights.regime} (
                         {Math.round(stock.applied_weights.fundamental * 100)}/
                         {Math.round(stock.applied_weights.sector * 100)}/
@@ -869,7 +866,7 @@ export default function StockDecisionEngineTab({
                         p: "4px 8px",
                         borderRadius: 0,
                         textTransform: "none",
-                        fontSize: "0.75rem",
+                        fontSize: "0.875rem",
                         color: COLORS.deepCharcoal,
                         border: "1px solid #E3D7C4",
                         "&:hover": { bgcolor: "#E3D7C4" },
@@ -894,7 +891,7 @@ export default function StockDecisionEngineTab({
                           bgcolor: "#FDF0D5",
                           color: "#8A5A00",
                           border: "1px solid #8A5A00",
-                          fontSize: "0.78rem",
+                          fontSize: "0.875rem",
                           "& .MuiAlert-icon": { color: "#8A5A00", py: 0 },
                         }}
                       >
@@ -932,22 +929,22 @@ export default function StockDecisionEngineTab({
                             Source: 5-Factor Risk Score (Inverted)
                           </Typography>
                           <Divider sx={{ my: 0.5 }} />
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                             <strong>Strength Score:</strong>{" "}
                             {stock.fundamental.fundamental_strength_score.toFixed(1)} / 100
                           </Typography>
                           {stock.fundamental.raw_risk_score !== null &&
                             stock.fundamental.raw_risk_score !== undefined && (
-                              <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                              <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                                 <strong>Raw Risk Percentile:</strong>{" "}
                                 {stock.fundamental.raw_risk_score.toFixed(1)} (lower = safer)
                               </Typography>
                             )}
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                             <strong>Classification:</strong>{" "}
                             {stock.fundamental.fundamental_classification}
                           </Typography>
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                             <strong>Anomaly ML Model:</strong>{" "}
                             {stock.fundamental.anomaly_flag ? (
                               <Chip
@@ -955,7 +952,7 @@ export default function StockDecisionEngineTab({
                                 size="small"
                                 sx={{
                                   height: 18,
-                                  fontSize: "0.65rem",
+                                  fontSize: "0.875rem",
                                   bgcolor: "#E34222",
                                   color: "#F9EBD7",
                                   borderRadius: 0,
@@ -996,23 +993,23 @@ export default function StockDecisionEngineTab({
                             Source: 20-Day Sector Peer Residual
                           </Typography>
                           <Divider sx={{ my: 0.5 }} />
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                             <strong>Sector Strength:</strong>{" "}
                             {stock.sector_strength.sector_strength_score.toFixed(1)} / 100
                           </Typography>
                           {stock.sector_strength.divergence_value !== null &&
                             stock.sector_strength.divergence_value !== undefined && (
-                              <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                              <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                                 <strong>Divergence Z-Score:</strong>{" "}
                                 {stock.sector_strength.divergence_value > 0 ? "+" : ""}
                                 {stock.sector_strength.divergence_value.toFixed(2)}σ
                               </Typography>
                             )}
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                             <strong>Interpretation:</strong>{" "}
                             {stock.sector_strength.interpretation || "Industry Rank"}
                           </Typography>
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                             <strong>Horizon:</strong> {stock.sector_strength.horizon_days} trading days
                           </Typography>
                           {stock.sector_strength.failure_reason && (
@@ -1046,18 +1043,18 @@ export default function StockDecisionEngineTab({
                             Source: FinBERT + News Classifier
                           </Typography>
                           <Divider sx={{ my: 0.5 }} />
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                             <strong>News Score:</strong> {stock.news.news_score.toFixed(1)} / 100
                           </Typography>
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                             <strong>Dominant Sentiment:</strong>{" "}
                             <span style={{ textTransform: "capitalize" }}>{stock.news.sentiment}</span>
                           </Typography>
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                             <strong>Articles Tracked (7d):</strong> {stock.news.articles_analyzed}
                           </Typography>
                           {stock.news.major_events && stock.news.major_events.length > 0 && (
-                            <Typography variant="body2" sx={{ fontSize: "0.82rem" }}>
+                            <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
                               <strong>Events:</strong> {stock.news.major_events.join(", ")}
                             </Typography>
                           )}
@@ -1090,7 +1087,7 @@ export default function StockDecisionEngineTab({
                           variant="body2"
                           sx={{
                             color: COLORS.deepCharcoal,
-                            fontSize: "0.84rem",
+                            fontSize: "0.875rem",
                             mb: 1.5,
                             lineHeight: 1.5,
                           }}
@@ -1104,7 +1101,7 @@ export default function StockDecisionEngineTab({
                                 component="li"
                                 key={rIdx}
                                 variant="caption"
-                                sx={{ color: COLORS.deepCharcoal, fontSize: "0.8rem", mb: 0.5 }}
+                                sx={{ color: COLORS.deepCharcoal, fontSize: "0.875rem", mb: 0.5 }}
                               >
                                 {reason}
                               </Typography>
@@ -1146,7 +1143,7 @@ export default function StockDecisionEngineTab({
             borderRadius: 0,
             bgcolor: "#E3D7C4",
             color: COLORS.deepCharcoal,
-            fontSize: "0.78rem",
+            fontSize: "0.875rem",
           }}
         >
           <Typography variant="caption" sx={{ fontWeight: 700, display: "block", mb: 0.5 }}>

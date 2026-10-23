@@ -107,12 +107,12 @@ export function StockRiskSection({
           <Typography variant="h5" sx={{ fontWeight: 700, fontSize: "1.2rem" }}>
             Stock-Level Risk Assessment
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.78rem" }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.875rem" }}>
             Multi-horizon volatility, market sensitivity (Beta), and explainable 0–100 risk scoring.
           </Typography>
         </Box>
         <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", fontSize: "0.72rem" }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", fontSize: "0.875rem" }}>
             LOOKBACK:
           </Typography>
           {(["1M", "3M", "6M", "1Y"] as const).map((h) => (
@@ -121,7 +121,7 @@ export function StockRiskSection({
               size="small"
               variant={selectedHorizon === h ? "contained" : "outlined"}
               onClick={() => setSelectedHorizon(h)}
-              sx={{ minWidth: 36, py: 0.25, px: 0.8, fontSize: "0.72rem" }}
+              sx={{ minWidth: 36, py: 0.25, px: 0.8, fontSize: "0.875rem" }}
             >
               {h}
             </Button>
@@ -172,7 +172,7 @@ export function StockRiskSection({
                             sx={{
                               height: 18,
                               borderRadius: 0,
-                              fontSize: "0.65rem",
+                              fontSize: "0.875rem",
                               fontWeight: 700,
                               bgcolor: "#F6D9CC",
                               color: "#B8321A",
@@ -194,7 +194,7 @@ export function StockRiskSection({
                         const isHold = dec.decision === "HOLD";
                         const isSell = dec.decision === "SELL";
                         const bg = isHold ? "#046A38" : isSell ? "#E34222" : "#8A5A00";
-                        const icon = isHold ? "✓" : isSell ? "⚠" : "⏳";
+
                         return (
                           <Tooltip
                             title={
@@ -214,7 +214,7 @@ export function StockRiskSection({
                           >
                             <Chip
                               size="small"
-                              label={`${icon} ${dec.decision}`}
+                              label={dec.decision}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -225,7 +225,7 @@ export function StockRiskSection({
                                 height: 24,
                                 borderRadius: 0,
                                 fontWeight: 800,
-                                fontSize: "0.75rem",
+                                fontSize: "0.875rem",
                                 bgcolor: bg,
                                 color: "#F9EBD7",
                                 boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
@@ -248,7 +248,7 @@ export function StockRiskSection({
                           cursor: onSelectTab ? "pointer" : "default",
                           height: 20,
                           borderRadius: 0,
-                          fontSize: "0.68rem",
+                          fontSize: "0.875rem",
                           bgcolor: "#E3D7C4",
                         }}
                       />
@@ -306,7 +306,7 @@ export function StockRiskSection({
                     )}
                   </TableCell>
                   <TableCell align="center">
-                    <Chip size="small" label={trendInfo.icon} color={trendInfo.color} sx={{ fontSize: "0.72rem" }} />
+                    <Chip size="small" label={trendInfo.icon} color={trendInfo.color} sx={{ fontSize: "0.875rem" }} />
                   </TableCell>
                   <TableCell align="center">
                     {s.sector_divergence_20d !== null ? (
@@ -314,7 +314,7 @@ export function StockRiskSection({
                         size="small"
                         label={`${s.sector_divergence_20d > 0 ? "+" : ""}${s.sector_divergence_20d.toFixed(2)}σ`}
                         color={Math.abs(s.sector_divergence_20d) > 2.0 ? "warning" : "default"}
-                        sx={{ fontSize: "0.75rem" }}
+                        sx={{ fontSize: "0.875rem" }}
                       />
                     ) : (
                       "—"
@@ -427,14 +427,14 @@ export function StockRiskSection({
                             size="small"
                             label={f.normalized_score.toFixed(1)}
                             color={f.normalized_score > 65 ? "error" : f.normalized_score > 40 ? "warning" : "success"}
-                            sx={{ height: 20, fontSize: "0.75rem" }}
+                            sx={{ height: 20, fontSize: "0.875rem" }}
                           />
                         </TableCell>
                         <TableCell align="right">{(f.weight * 100).toFixed(0)}%</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 700 }}>
                           +{f.contribution.toFixed(2)} pts
                         </TableCell>
-                        <TableCell sx={{ color: "text.secondary", fontSize: "0.85rem" }}>
+                        <TableCell sx={{ color: "text.secondary", fontSize: "0.875rem" }}>
                           {f.interpretation}
                         </TableCell>
                       </TableRow>
@@ -753,7 +753,7 @@ export function PortfolioRiskSection({
                         <Chip
                           label="HEDGE"
                           size="small"
-                          sx={{ ml: 1, bgcolor: "#DCE9DE", color: "#046A38", fontWeight: 700, height: 18, fontSize: "0.65rem", borderRadius: 0 }}
+                          sx={{ ml: 1, bgcolor: "#DCE9DE", color: "#046A38", fontWeight: 700, height: 18, fontSize: "0.875rem", borderRadius: 0 }}
                         />
                       )}
                     </TableCell>
@@ -871,7 +871,7 @@ export function PortfolioRiskSection({
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
                     {metric.label ?? metric.name}
                   </Typography>
-                  <Chip label={metric.units} size="small" sx={{ bgcolor: "#F6D9CC", color: "#B8321A", fontSize: "0.65rem", height: 18, borderRadius: 0 }} />
+                  <Chip label={metric.units} size="small" sx={{ bgcolor: "#F6D9CC", color: "#B8321A", fontSize: "0.875rem", height: 18, borderRadius: 0 }} />
                   <Typography variant="caption" color="text.secondary">
                     Window: {metric.window ?? metric.defaultWindow} (min {metric.min_observations ?? metric.minObservations} obs)
                   </Typography>
@@ -1061,7 +1061,7 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
                         size="small"
                         label={`${sec.average_sector_divergence > 0 ? "+" : ""}${sec.average_sector_divergence.toFixed(2)}σ`}
                         color={Math.abs(sec.average_sector_divergence) > 1.5 ? "warning" : "default"}
-                        sx={{ fontSize: "0.75rem" }}
+                        sx={{ fontSize: "0.875rem" }}
                       />
                     ) : (
                       "—"
@@ -1092,7 +1092,7 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
               </Stack>
               <Box sx={{ display: "flex", gap: 1 }}>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" sx={{ fontSize: "0.68rem", color: "#686B64" }}>
+                  <Typography variant="caption" sx={{ fontSize: "0.875rem", color: "#686B64" }}>
                     Capital:
                   </Typography>
                   <LinearProgress
@@ -1103,7 +1103,7 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
                   />
                 </Box>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" sx={{ fontSize: "0.68rem", color: "#686B64" }}>
+                  <Typography variant="caption" sx={{ fontSize: "0.875rem", color: "#686B64" }}>
                     Risk Contribution:
                   </Typography>
                   <LinearProgress
@@ -1310,7 +1310,7 @@ export function DiversificationSection({
                           bgcolor: cellBg,
                           color: cellColor,
                           fontWeight: 700,
-                          fontSize: "0.82rem",
+                          fontSize: "0.875rem",
                           border: "none",
                         }}
                       >

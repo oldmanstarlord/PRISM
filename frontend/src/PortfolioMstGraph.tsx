@@ -383,7 +383,7 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
                       size="small"
                       label={`${notesCountMap[selection.symbol] ?? 0} notes`}
                       sx={{
-                        fontSize: "0.72rem",
+                        fontSize: "0.875rem",
                         borderRadius: 0,
                         bgcolor: (notesCountMap[selection.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
                         color: (notesCountMap[selection.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
@@ -394,7 +394,7 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
                       size="small"
                       label={`${decisionsCountMap[selection.symbol] ?? 0} decisions`}
                       sx={{
-                        fontSize: "0.72rem",
+                        fontSize: "0.875rem",
                         borderRadius: 0,
                         bgcolor: (decisionsCountMap[selection.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
                         color: (decisionsCountMap[selection.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
@@ -409,20 +409,20 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
                         Risk Profile
                       </Typography>
                       <Stack spacing={0.35}>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
                           <span style={{ color: "#686B64" }}>Ann. Volatility:</span>
                           <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{(selection.riskMetrics.volatility * 100).toFixed(1)}%</strong>
                         </Box>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
                           <span style={{ color: "#686B64" }}>Marginal Risk:</span>
                           <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{(selection.riskMetrics.marginalRisk * 100).toFixed(2)}%</strong>
                         </Box>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
                           <span style={{ color: "#686B64" }}>Risk Share:</span>
                           <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{(selection.riskMetrics.riskContribution * 100).toFixed(1)}%</strong>
                         </Box>
                         {selection.riskMetrics.divergence !== null && (
-                          <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem" }}>
+                          <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
                             <span style={{ color: "#686B64" }}>20D Divergence:</span>
                             <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{selection.riskMetrics.divergence.toFixed(2)}σ</strong>
                           </Box>
@@ -442,7 +442,7 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
                       bgcolor: "#046A38",
                       color: "#F9EBD7",
                       borderRadius: 0,
-                      fontSize: "0.78rem",
+                      fontSize: "0.875rem",
                       fontWeight: 600,
                       boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
                       "&:hover": { bgcolor: "#03532c" },

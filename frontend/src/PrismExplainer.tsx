@@ -754,7 +754,7 @@ export function CorrelationMstExplainer({
                       fontWeight: 700,
                       bgcolor: roleBg,
                       color: roleColor,
-                      fontSize: "0.75rem",
+                      fontSize: "0.875rem",
                     }}
                   />
                 </Stack>
@@ -774,7 +774,7 @@ export function CorrelationMstExplainer({
                       textTransform: "none",
                       color: "#292D2A",
                       borderColor: "rgba(41,45,42,0.25)",
-                      fontSize: "0.76rem",
+                      fontSize: "0.875rem",
                       "&:hover": { borderColor: "#292D2A", bgcolor: "rgba(41,45,42,0.04)" },
                     }}
                   >
@@ -789,7 +789,7 @@ export function CorrelationMstExplainer({
                   sx={{
                     borderRadius: 0,
                     textTransform: "none",
-                    fontSize: "0.76rem",
+                    fontSize: "0.875rem",
                     bgcolor: "#046A38",
                     color: "#F9EBD7",
                     "&:hover": { bgcolor: "#034d28" },
@@ -875,22 +875,22 @@ export function CorrelationMstExplainer({
                   <Table size="small">
                     <TableHead sx={{ bgcolor: "#E3D7C4" }}>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }}>
+                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.875rem" }}>
                           Connected Stock
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }}>
+                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.875rem" }}>
                           Industry
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }} align="right">
+                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.875rem" }} align="right">
                           Correlation (ρ)
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }} align="right">
+                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.875rem" }} align="right">
                           Mantegna Distance (d)
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }} align="center">
+                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.875rem" }} align="center">
                           Edge Rank
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }}>
+                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.875rem" }}>
                           Link Nature
                         </TableCell>
                       </TableRow>
@@ -909,7 +909,7 @@ export function CorrelationMstExplainer({
                                   fontWeight: 700,
                                   color: "#046A38",
                                   textTransform: "none",
-                                  fontSize: "0.82rem",
+                                  fontSize: "0.875rem",
                                   "&:hover": { textDecoration: "underline", bgcolor: "transparent" },
                                 }}
                               >
@@ -919,14 +919,14 @@ export function CorrelationMstExplainer({
                               <strong>{neighbor.symbol}</strong>
                             )}
                           </TableCell>
-                          <TableCell sx={{ fontSize: "0.8rem", color: "#686B64" }}>{neighbor.industry}</TableCell>
-                          <TableCell sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#046A38" }} align="right">
+                          <TableCell sx={{ fontSize: "0.875rem", color: "#686B64" }}>{neighbor.industry}</TableCell>
+                          <TableCell sx={{ fontSize: "0.875rem", fontWeight: 700, color: "#046A38" }} align="right">
                             +{neighbor.correlation.toFixed(3)}
                           </TableCell>
-                          <TableCell sx={{ fontSize: "0.8rem", color: "#292D2A" }} align="right">
+                          <TableCell sx={{ fontSize: "0.875rem", color: "#292D2A" }} align="right">
                             {neighbor.distance.toFixed(3)}
                           </TableCell>
-                          <TableCell sx={{ fontSize: "0.75rem", color: "#686B64" }} align="center">
+                          <TableCell sx={{ fontSize: "0.875rem", color: "#686B64" }} align="center">
                             #{neighbor.edge_rank}
                           </TableCell>
                           <TableCell>
@@ -935,7 +935,7 @@ export function CorrelationMstExplainer({
                               label={neighbor.isCrossSector ? "Cross-Sector Conduit" : "Intra-Sector Peer"}
                               sx={{
                                 borderRadius: 0,
-                                fontSize: "0.7rem",
+                                fontSize: "0.875rem",
                                 fontWeight: 600,
                                 bgcolor: neighbor.isCrossSector ? "#F6D9CC" : "#DCE9DE",
                                 color: neighbor.isCrossSector ? "#B8321A" : "#046A38",
@@ -970,7 +970,7 @@ export function CorrelationMstExplainer({
               <Stack spacing={1} sx={{ pl: 1, mb: 1.5 }}>
                 {macro.macroDrivers.map((driver, idx) => (
                   <Stack key={idx} direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
-                    <Typography sx={{ color: "#046A38", fontWeight: 700, fontSize: "0.85rem", lineHeight: 1.5 }}>
+                    <Typography sx={{ color: "#046A38", fontWeight: 700, fontSize: "0.875rem", lineHeight: 1.5 }}>
                       •
                     </Typography>
                     <Typography variant="body2" sx={{ color: "#292D2A", lineHeight: 1.55 }}>
@@ -1034,7 +1034,7 @@ export function CorrelationMstExplainer({
                       fontWeight: 700,
                       bgcolor: isSameSector ? "#DCE9DE" : "#F6D9CC",
                       color: isSameSector ? "#046A38" : "#B8321A",
-                      fontSize: "0.75rem",
+                      fontSize: "0.875rem",
                     }}
                   />
                 </Stack>
@@ -1053,7 +1053,7 @@ export function CorrelationMstExplainer({
                     textTransform: "none",
                     color: "#292D2A",
                     borderColor: "rgba(41,45,42,0.25)",
-                    fontSize: "0.76rem",
+                    fontSize: "0.875rem",
                     flexShrink: 0,
                     "&:hover": { borderColor: "#292D2A", bgcolor: "rgba(41,45,42,0.04)" },
                   }}
@@ -1145,7 +1145,7 @@ export function CorrelationMstExplainer({
                         textTransform: "none",
                         color: "#046A38",
                         borderColor: "#046A38",
-                        fontSize: "0.78rem",
+                        fontSize: "0.875rem",
                         "&:hover": { bgcolor: "rgba(4,106,56,0.06)", borderColor: "#034d28" },
                       }}
                     >
@@ -1160,7 +1160,7 @@ export function CorrelationMstExplainer({
                         textTransform: "none",
                         color: "#046A38",
                         borderColor: "#046A38",
-                        fontSize: "0.78rem",
+                        fontSize: "0.875rem",
                         "&:hover": { bgcolor: "rgba(4,106,56,0.06)", borderColor: "#034d28" },
                       }}
                     >
@@ -1219,10 +1219,10 @@ export function CorrelationMstExplainer({
           {/* Real Empirical Market Hubs (Computed dynamically from MST API) */}
           {topHubs.length > 0 && (
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1, textTransform: "uppercase", fontSize: "0.76rem" }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1, textTransform: "uppercase", fontSize: "0.875rem" }}>
                 Top Empirical Market Hubs (Highest Spanning Tree Degree)
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64", mb: 1.5, fontSize: "0.82rem" }}>
+              <Typography variant="body2" sx={{ color: "#686B64", mb: 1.5, fontSize: "0.875rem" }}>
                 These stocks act as structural backbone anchors in the empirical tree, connecting multiple branches and transmitting systemic market shocks:
               </Typography>
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
@@ -1235,7 +1235,7 @@ export function CorrelationMstExplainer({
                     sx={{
                       borderRadius: 0,
                       textTransform: "none",
-                      fontSize: "0.78rem",
+                      fontSize: "0.875rem",
                       fontWeight: 600,
                       color: "#292D2A",
                       borderColor: "rgba(41,45,42,0.22)",
@@ -1253,10 +1253,10 @@ export function CorrelationMstExplainer({
           {/* Real Top Correlation Links (Computed dynamically from MST API) */}
           {topCorrelations.length > 0 && (
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1, textTransform: "uppercase", fontSize: "0.76rem" }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1, textTransform: "uppercase", fontSize: "0.875rem" }}>
                 Strongest Co-Movement Links in the Market
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64", mb: 1.5, fontSize: "0.82rem" }}>
+              <Typography variant="body2" sx={{ color: "#686B64", mb: 1.5, fontSize: "0.875rem" }}>
                 These pairs exhibit the lowest statistical distance in the entire NIFTY 200 universe (highest return synchronization):
               </Typography>
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
@@ -1269,7 +1269,7 @@ export function CorrelationMstExplainer({
                     sx={{
                       borderRadius: 0,
                       textTransform: "none",
-                      fontSize: "0.78rem",
+                      fontSize: "0.875rem",
                       fontWeight: 600,
                       color: "#046A38",
                       borderColor: "rgba(4,106,56,0.30)",
@@ -1286,7 +1286,7 @@ export function CorrelationMstExplainer({
 
           {/* Sector Macroeconomic Driver Encyclopedia */}
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1, textTransform: "uppercase", fontSize: "0.76rem" }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1, textTransform: "uppercase", fontSize: "0.875rem" }}>
               Macroeconomic Sensitivity Profiles by Sector
             </Typography>
             <Stack spacing={1}>
@@ -1326,7 +1326,7 @@ export function CorrelationMstExplainer({
                           sx={{
                             borderRadius: 0,
                             fontWeight: 600,
-                            fontSize: "0.72rem",
+                            fontSize: "0.875rem",
                             bgcolor: "#E3D7C4",
                             color: "#292D2A",
                           }}

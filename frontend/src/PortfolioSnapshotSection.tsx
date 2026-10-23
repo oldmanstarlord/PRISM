@@ -257,14 +257,14 @@ export default function PortfolioSnapshotSection({
   ) => {
     if (horizonMismatch) {
       return (
-        <Typography component="span" sx={{ color: "#8A5A00", fontStyle: "italic", fontSize: "0.78rem" }}>
+        <Typography component="span" sx={{ color: "#8A5A00", fontStyle: "italic", fontSize: "0.875rem" }}>
           Not comparable (Horizon mismatch: {snapshotA?.calculationMeta.horizon}D vs {snapshotB?.calculationMeta.horizon}D)
         </Typography>
       );
     }
     if (valA === null || valA === undefined || valB === null || valB === undefined || isNaN(valA) || isNaN(valB)) {
       return (
-        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.78rem" }}>
+        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.875rem" }}>
           Not comparable (Missing data)
         </Typography>
       );
@@ -278,7 +278,7 @@ export default function PortfolioSnapshotSection({
         sx={{
           fontWeight: 700,
           color: isZero ? "#686B64" : isBetter ? "#046A38" : "#B8321A",
-          fontSize: "0.82rem",
+          fontSize: "0.875rem",
           fontFamily: "JetBrains Mono",
         }}
       >
@@ -290,7 +290,7 @@ export default function PortfolioSnapshotSection({
   const renderMetric = (val: number | null | undefined, suffix = "") => {
     if (val === null || val === undefined || isNaN(val)) {
       return (
-        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.8rem" }}>
+        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.875rem" }}>
           Unavailable
         </Typography>
       );
@@ -344,10 +344,10 @@ export default function PortfolioSnapshotSection({
               <Chip
                 size="small"
                 label={`${snapshots.length} ${snapshots.length === 1 ? "snapshot" : "snapshots"}`}
-                sx={{ bgcolor: "#E3D7C4", color: "#292D2A", fontWeight: 700, borderRadius: 0, height: 20, fontSize: "0.68rem" }}
+                sx={{ bgcolor: "#E3D7C4", color: "#292D2A", fontWeight: 700, borderRadius: 0, height: 20, fontSize: "0.875rem" }}
               />
             </Stack>
-            <Typography variant="caption" sx={{ color: "#686B64", mt: 0.25, display: "block", fontSize: "0.74rem" }}>
+            <Typography variant="caption" sx={{ color: "#686B64", mt: 0.25, display: "block", fontSize: "0.875rem" }}>
               Capture immutable point-in-time portfolio allocations, risk metrics, and MST structures for historical comparison.
             </Typography>
           </Box>
@@ -366,7 +366,7 @@ export default function PortfolioSnapshotSection({
               boxShadow: "0 2px 6px rgba(41,45,42,0.10)",
               px: 1.5,
               py: 0.4,
-              fontSize: "0.76rem",
+              fontSize: "0.875rem",
             }}
           >
             + Save Snapshot Now
@@ -383,7 +383,7 @@ export default function PortfolioSnapshotSection({
           <Button
             variant="contained"
             onClick={handleOpenSave}
-            sx={{ textTransform: "none", fontSize: "0.85rem", bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
+            sx={{ textTransform: "none", fontSize: "0.875rem", bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
           >
             Capture First Snapshot
           </Button>
@@ -463,9 +463,9 @@ export default function PortfolioSnapshotSection({
                         <TableCell>{snapshotB.calculationMeta.horizon} Days</TableCell>
                         <TableCell>
                           {snapshotA.calculationMeta.horizon === snapshotB.calculationMeta.horizon ? (
-                            <Chip size="small" label="Identical Horizon" sx={{ bgcolor: "#DCE9DE", color: "#046A38", height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }} />
+                            <Chip size="small" label="Identical Horizon" sx={{ bgcolor: "#DCE9DE", color: "#046A38", height: 20, fontSize: "0.875rem", borderRadius: 0, fontWeight: 600 }} />
                           ) : (
-                            <Chip size="small" label="Differing Horizon" sx={{ bgcolor: "#F6D9CC", color: "#B8321A", height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }} />
+                            <Chip size="small" label="Differing Horizon" sx={{ bgcolor: "#F6D9CC", color: "#B8321A", height: 20, fontSize: "0.875rem", borderRadius: 0, fontWeight: 600 }} />
                           )}
                         </TableCell>
                       </TableRow>
@@ -577,7 +577,7 @@ export default function PortfolioSnapshotSection({
                               size="small"
                               label={`${sym}: ${wtA.toFixed(1)}% → ${wtB.toFixed(1)}% (${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%)`}
                               sx={{
-                                fontSize: "0.75rem",
+                                fontSize: "0.875rem",
                                 fontWeight: 600,
                                 borderRadius: 0,
                                 bgcolor: isZero ? "#E3D7C4" : diff > 0 ? "#DCE9DE" : "#F6D9CC",
@@ -600,10 +600,10 @@ export default function PortfolioSnapshotSection({
                     <Chip
                       size="small"
                       label="Analytical Attribution"
-                      sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.68rem", fontWeight: 700, borderRadius: 0 }}
+                      sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.875rem", fontWeight: 700, borderRadius: 0 }}
                     />
                   </Stack>
-                  <Typography variant="body2" sx={{ color: "#686B64", mb: 2, fontSize: "0.84rem" }}>
+                  <Typography variant="body2" sx={{ color: "#686B64", mb: 2, fontSize: "0.875rem" }}>
                     Decomposing observed differences between <strong>{snapshotA.name}</strong> and <strong>{snapshotB.name}</strong> using verifiable holdings, market prices, coverage metrics, and model versioning. PRISM reports <em>"insufficient evidence"</em> when underlying data points are missing.
                   </Typography>
 
@@ -709,7 +709,7 @@ export default function PortfolioSnapshotSection({
                                   {new Date(dec.createdAt).toLocaleDateString("en-IN")}
                                 </Typography>
                               </Stack>
-                              <Typography variant="body2" sx={{ fontSize: "0.80rem", color: "#292D2A", mt: 0.25 }}>
+                              <Typography variant="body2" sx={{ fontSize: "0.875rem", color: "#292D2A", mt: 0.25 }}>
                                 {dec.rationale}
                               </Typography>
                             </Box>
@@ -779,7 +779,7 @@ export default function PortfolioSnapshotSection({
               <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 1 }}>
                 Parameters Being Captured:
               </Typography>
-              <Stack spacing={0.5} sx={{ fontSize: "0.8rem", color: "#292D2A" }}>
+              <Stack spacing={0.5} sx={{ fontSize: "0.875rem", color: "#292D2A" }}>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                   <span style={{ color: "#686B64" }}>Total Capital:</span>
                   <span style={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>₹{totalInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>

@@ -1,3 +1,4 @@
+import { ReviewDetails, ReviewHeading } from "./GuidedReview";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Autocomplete, Box, Button, Chip, CircularProgress, Paper, Stack, TextField, Typography } from "@mui/material";
 import cytoscape, { type Core } from "cytoscape";
@@ -7,26 +8,8 @@ import AppShell from "./AppShell";
 import { fetchJson } from "./api";
 import { CorrelationMstExplainer } from "./PrismExplainer";
 import { getDecisionsCountMap, getNotesCountMap } from "./journalStorage";
+import { industryColors, mstElements, mstLayout } from "./mstLayout";
 import type { MstResponse } from "./types";
-
-const clusterColors = [
-  "#1F6F78", // deep teal
-  "#6B3F69", // plum
-  "#3F5B7A", // slate blue
-  "#A0522D", // clay
-  "#6B7A2A", // olive
-  "#8A5A00", // dark ochre
-  "#144e54",
-  "#4a2d48",
-  "#2a3d53",
-  "#733b20",
-];
-
-function industryColors(industries: string[]) {
-  return Object.fromEntries(
-    [...new Set(industries)].sort().map((industry, index) => [industry, clusterColors[index % clusterColors.length]])
-  );
-}
 
 export default function MstPage() {
   const container = useRef<HTMLDivElement | null>(null);
@@ -78,15 +61,9 @@ export default function MstPage() {
 
   useEffect(() => {
     if (!data || !container.current) return;
-    const colorByIndustry = industryColors(data.nodes.map((node) => node.industry));
-    const degree = Object.fromEntries(data.nodes.map((node) => [node.id, 0]));
-    for (const edge of data.edges) { degree[edge.source] += 1; degree[edge.target] += 1; }
     graph.current = cytoscape({
       container: container.current,
-      elements: [
-        ...data.nodes.map((node) => ({ data: { ...node, degree: degree[node.id], color: colorByIndustry[node.industry] } })),
-        ...data.edges.map((edge) => ({ data: { id: `${edge.source}-${edge.target}`, ...edge } })),
-      ],
+      elements: mstElements(data),
       style: [
         {
           selector: "node",
@@ -105,7 +82,7 @@ export default function MstPage() {
             "text-valign": "bottom",
             "text-margin-y": 6,
             color: "#292D2A",
-            "text-background-color": "#fffdf8",
+            "text-background-color": "#F9EBD7",
             "text-background-opacity": 0.95,
             "text-background-padding": "3px",
           },
@@ -131,7 +108,7 @@ export default function MstPage() {
         { selector: "node.focused", style: { "min-zoomed-font-size": 0, "font-size": 15 } },
         { selector: ".faded", style: { opacity: 0.09 } },
       ],
-      layout: { name: "cose", animate: false, randomize: false, nodeRepulsion: () => 7000, idealEdgeLength: () => 85, nodeOverlap: 20, numIter: 1500, padding: 55, componentSpacing: 100 },
+      layout: mstLayout,
       minZoom: 0.04,
       maxZoom: 3,
       wheelSensitivity: 0.2,
@@ -189,40 +166,15 @@ export default function MstPage() {
   return (
     <AppShell subtitle="Market Correlation Minimum Spanning Tree">
       <Stack spacing={2.5}>
-        <Box>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 700, color: "#292D2A" }}>
-            Correlation minimum spanning tree
-          </Typography>
-          <Typography color="text.secondary">
-            The sparsest tree connecting eligible NIFTY 200 stocks by return co-movement.
-          </Typography>
-        </Box>
+        <ReviewHeading title="Explore market connections" description="Find a company to see how its returns move with the rest of the market." />
         {!data && !error && (
           <Box sx={{ display: "grid", placeItems: "center", py: 10 }}>
             <CircularProgress />
           </Box>
         )}
-        {error && <Alert severity="warning">{error}. Apply the Layer 2 migration and run the MST calculation job.</Alert>}
+        {error && <Alert severity="warning">The market network is unavailable. {error}</Alert>}
         {data && (
           <>
-            <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2 }}>
-              <Paper sx={{ p: 2.5, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                <Typography variant="overline" color="text.secondary">Window</Typography>
-                <Typography variant="h6" sx={{ color: "#292D2A", fontWeight: 700 }}>{data.run.window_start} to {data.run.window_end}</Typography>
-              </Paper>
-              <Paper sx={{ p: 2.5, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                <Typography variant="overline" color="text.secondary">Validated topology</Typography>
-                <Typography variant="h6" sx={{ color: "#292D2A", fontWeight: 700 }}>{data.run.included_symbol_count} nodes / {data.run.edge_count} edges</Typography>
-                <Typography color="text.secondary" variant="body2">
-                  Connected: {data.run.is_connected ? "yes" : "no"} / Acyclic: {data.run.is_acyclic ? "yes" : "no"}
-                </Typography>
-              </Paper>
-              <Paper sx={{ p: 2.5, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                <Typography variant="overline" color="text.secondary">Exclusions</Typography>
-                <Typography variant="h6" sx={{ color: "#292D2A", fontWeight: 700 }}>{data.run.exclusions.length}</Typography>
-                <Typography color="text.secondary" variant="body2">No missing values were imputed</Typography>
-              </Paper>
-            </Stack>
             {selected && (
               <Alert
                 severity="info"
@@ -250,7 +202,7 @@ export default function MstPage() {
                           sx={{
                             borderRadius: 0,
                             border: "none",
-                            fontSize: "0.72rem",
+                            fontSize: "0.875rem",
                             bgcolor: (notesCountMap[selected.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
                             color: (notesCountMap[selected.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
                           }}
@@ -261,7 +213,7 @@ export default function MstPage() {
                           sx={{
                             borderRadius: 0,
                             border: "none",
-                            fontSize: "0.72rem",
+                            fontSize: "0.875rem",
                             bgcolor: (decisionsCountMap[selected.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
                             color: (decisionsCountMap[selected.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
                           }}
@@ -279,7 +231,7 @@ export default function MstPage() {
                         borderRadius: 0,
                         border: "none",
                         textTransform: "none",
-                        fontSize: "0.78rem",
+                        fontSize: "0.875rem",
                         bgcolor: "#046A38",
                         color: "#F9EBD7",
                         boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
@@ -287,17 +239,17 @@ export default function MstPage() {
                         flexShrink: 0,
                       }}
                     >
-                      Open {selected.symbol} Details →
+                      Compare {selected.symbol}
                     </Button>
                   )}
                 </Stack>
               </Alert>
             )}
-            <Paper sx={{ overflow: "hidden", borderRadius: 3, border: "1px solid #deded3", position: "relative", boxShadow: "0 8px 28px rgba(41,45,42,0.08)" }}>
-              <Stack direction={{ xs: "column", sm: "row" }} sx={{ p: 2, gap: 2, alignItems: { sm: "center" }, justifyContent: "space-between", bgcolor: "#fffdf8", borderBottom: "1px solid #e5e5db" }}>
+            <Paper sx={{ overflow: "hidden", borderRadius: 0, border: "1px solid #E3D7C4", position: "relative", boxShadow: "0 8px 28px rgba(41,45,42,0.08)" }}>
+              <Stack direction={{ xs: "column", sm: "row" }} sx={{ p: 2, gap: 2, alignItems: { sm: "center" }, justifyContent: "space-between", bgcolor: "#F9EBD7", borderBottom: "1px solid #E3D7C4" }}>
                 <Box>
                   <Typography sx={{ fontWeight: 700 }}>Explore the market network</Typography>
-                  <Typography variant="body2" color="text.secondary">Search a stock to focus its connections. Scroll to zoom; drag to pan.</Typography>
+                  <Typography variant="body2" color="text.secondary">Search a stock to focus its connections. Use the zoom controls or drag to pan.</Typography>
                 </Box>
                 <Autocomplete
                   options={[...data.nodes].sort((a, b) => a.symbol.localeCompare(b.symbol))}
@@ -309,7 +261,7 @@ export default function MstPage() {
                 />
               </Stack>
               <Box sx={{ position: "relative" }}>
-              <Stack direction="row" sx={{ position: "absolute", top: 16, right: 16, zIndex: 10, bgcolor: "#fffdf8", border: "1px solid #deded3", borderRadius: 2, boxShadow: "0 2px 8px #292d2a12", alignItems: "center" }}>
+              <Stack direction="row" sx={{ position: "absolute", top: 16, right: 16, zIndex: 10, bgcolor: "#F9EBD7", border: "1px solid #E3D7C4", borderRadius: 0, boxShadow: "0 2px 8px #292d2a12", alignItems: "center" }}>
               <Button aria-label="Zoom out" onClick={() => zoomGraph(1 / 1.3)} sx={{ minWidth: 40, fontSize: 22 }}>−</Button>
               <Typography variant="caption" sx={{ minWidth: 40, textAlign: "center" }}>{Math.round(zoom * 100)}%</Typography>
               <Button aria-label="Zoom in" onClick={() => zoomGraph(1.3)} sx={{ minWidth: 40, fontSize: 22 }}>+</Button>
@@ -318,12 +270,12 @@ export default function MstPage() {
                 onClick={resetGraph}
                 className="no-print"
                 sx={{
-                  bgcolor: "#fffdf8",
+                  bgcolor: "#F9EBD7",
                   color: "#292D2A",
                   borderRadius: 0,
                   border: "none",
                   textTransform: "none",
-                  fontSize: "0.78rem",
+                  fontSize: "0.875rem",
                   fontWeight: 600,
                   "&:hover": { bgcolor: "#d5c7b2" },
                 }}
@@ -337,13 +289,13 @@ export default function MstPage() {
                 sx={{
                   width: "100%",
                   height: { xs: 520, md: 680, lg: 760 },
-                  bgcolor: "#fbfcf8",
-                  backgroundImage: "radial-gradient(#dfe4dc 1px, transparent 1px)",
+                  bgcolor: "#F9EBD7",
+                  backgroundImage: "radial-gradient(#E3D7C4 1px, transparent 1px)",
                   backgroundSize: "24px 24px",
                 }}
               />
               </Box>
-              <Box sx={{ p: 2, bgcolor: "#fffdf8", borderTop: "1px solid #e5e5db" }}>
+              <Box sx={{ p: 2, bgcolor: "#F9EBD7", borderTop: "1px solid #E3D7C4" }}>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Color indicates industry · Larger nodes have more connections · Labels appear as you zoom in</Typography>
                 <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap", maxHeight: 120, overflowY: "auto" }}>
                   {Object.entries(industryColors(data.nodes.map((node) => node.industry))).map(([industry, color]) => (
@@ -352,7 +304,27 @@ export default function MstPage() {
                 </Stack>
               </Box>
             </Paper>
+            <ReviewDetails title="Network methodology and data">
+            <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2 }}>
+              <Paper sx={{ p: 2.5, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
+                <Typography variant="overline" color="text.secondary">Window</Typography>
+                <Typography variant="h6" sx={{ color: "#292D2A", fontWeight: 700 }}>{data.run.window_start} to {data.run.window_end}</Typography>
+              </Paper>
+              <Paper sx={{ p: 2.5, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
+                <Typography variant="overline" color="text.secondary">Validated topology</Typography>
+                <Typography variant="h6" sx={{ color: "#292D2A", fontWeight: 700 }}>{data.run.included_symbol_count} nodes / {data.run.edge_count} edges</Typography>
+                <Typography color="text.secondary" variant="body2">
+                  Connected: {data.run.is_connected ? "yes" : "no"} / Acyclic: {data.run.is_acyclic ? "yes" : "no"}
+                </Typography>
+              </Paper>
+              <Paper sx={{ p: 2.5, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
+                <Typography variant="overline" color="text.secondary">Exclusions</Typography>
+                <Typography variant="h6" sx={{ color: "#292D2A", fontWeight: 700 }}>{data.run.exclusions.length}</Typography>
+                <Typography color="text.secondary" variant="body2">No missing values were imputed</Typography>
+              </Paper>
+            </Stack>
             <CorrelationMstExplainer />
+            </ReviewDetails>
             <Alert severity="warning" sx={{ borderRadius: 0, border: "none", boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}>
               An MST deliberately keeps only {data.run.edge_count} of the possible pair relationships. A missing edge does not mean two stocks are uncorrelated, and an edge does not imply that one stock affects another.
             </Alert>

@@ -197,7 +197,7 @@ export function StructuralMonitoringDashboard({
               <Typography variant="h6" sx={{ fontWeight: 800, color: "#292D2A", fontFamily: "JetBrains Mono" }}>
                 ₹{mktVal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
               </Typography>
-              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
+              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.875rem" }}>
                 Mark-to-market total
               </Typography>
             </Box>
@@ -212,7 +212,7 @@ export function StructuralMonitoringDashboard({
                   ? "Unavailable"
                   : `₹${invCost.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
               </Typography>
-              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
+              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.875rem" }}>
                 Cost basis (WAC)
               </Typography>
             </Box>
@@ -239,7 +239,7 @@ export function StructuralMonitoringDashboard({
                 sx={{
                   color: returnPct == null || returnPct >= 0 ? "#046A38" : "#E34222",
                   fontWeight: 700,
-                  fontSize: "0.72rem",
+                  fontSize: "0.875rem",
                   display: "block",
                 }}
               >
@@ -257,7 +257,7 @@ export function StructuralMonitoringDashboard({
               <Typography variant="h6" sx={{ fontWeight: 800, color: "#292D2A", fontFamily: "JetBrains Mono" }}>
                 {annualVol == null ? "Unavailable" : `${annualVol.toFixed(1)}%`}
               </Typography>
-              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
+              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.875rem" }}>
                 252d empirical risk (σ)
               </Typography>
             </Box>
@@ -277,7 +277,7 @@ export function StructuralMonitoringDashboard({
               >
                 {maxDd != null ? `-${Math.abs(maxDd).toFixed(1)}%` : "—"}
               </Typography>
-              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.68rem" }}>
+              <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.875rem" }}>
                 Peak-to-trough drop
               </Typography>
             </Box>
@@ -370,7 +370,7 @@ export function StructuralMonitoringDashboard({
                 label={monitoring.top_sector_status}
                 sx={{
                   fontWeight: 600,
-                  fontSize: "0.72rem",
+                  fontSize: "0.875rem",
                   borderRadius: 0,
                   bgcolor:
                     monitoring.top_sector_status === "Balanced"
@@ -522,7 +522,7 @@ export function HistoricalRiskTrackingSection({
                           label="LATEST"
                           sx={{
                             ml: 1,
-                            fontSize: "0.65rem",
+                            fontSize: "0.875rem",
                             height: 18,
                             borderRadius: 0,
                             bgcolor: "#DCE9DE",
@@ -576,7 +576,7 @@ export function HistoricalRiskTrackingSection({
                         label={pt.coverage_status.toUpperCase()}
                         sx={{
                           borderRadius: 0,
-                          fontSize: "0.68rem",
+                          fontSize: "0.875rem",
                           bgcolor: "#F9EBD7",
                           color: "#292D2A",
                           fontWeight: 600,
@@ -733,7 +733,7 @@ export function MstHoldingsInspector({
                             label={edge.confidence.toUpperCase()}
                             sx={{
                               borderRadius: 0,
-                              fontSize: "0.68rem",
+                              fontSize: "0.875rem",
                               bgcolor: "#F9EBD7",
                               color: "#292D2A",
                               fontWeight: 600,
@@ -741,7 +741,7 @@ export function MstHoldingsInspector({
                           />
                         </TableCell>
                         <TableCell sx={{ borderBottom: "none" }}>
-                          <Typography variant="body2" sx={{ fontSize: "0.82rem", color: "#686B64" }}>
+                          <Typography variant="body2" sx={{ fontSize: "0.875rem", color: "#686B64" }}>
                             {isStrong
                               ? "High co-movement reduces diversification; joint price swings expected."
                               : "Moderate/low correlation provides good diversification cushioning."}
@@ -773,11 +773,11 @@ export function MstHoldingsInspector({
         <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
           Methodological Scope & Limitations of the Minimum Spanning Tree
         </Typography>
-        <Typography variant="body2" sx={{ mt: 0.5, fontSize: "0.85rem", color: "#686B64" }}>
+        <Typography variant="body2" sx={{ mt: 0.5, fontSize: "0.875rem", color: "#686B64" }}>
           The Minimum Spanning Tree (MST) reduces complex market co-movements into an acyclic topological
           backbone by minimizing Mantegna distances:
         </Typography>
-        <Box component="ul" sx={{ pl: 2.5, my: 0.5, fontSize: "0.82rem", color: "#292D2A" }}>
+        <Box component="ul" sx={{ pl: 2.5, my: 0.5, fontSize: "0.875rem", color: "#292D2A" }}>
           <li style={{ marginBottom: "6px" }}>
             <strong>Information Filtering:</strong> The tree intentionally discards cyclic secondary links
             to isolate the strongest paths. Non-displayed links may still carry economic correlation.
@@ -843,13 +843,13 @@ export function FutureNewsSignalsSection({
                 sx={{
                   borderRadius: 0,
                   fontWeight: 700,
-                  fontSize: "0.70rem",
+                  fontSize: "0.875rem",
                   bgcolor: isConfigured ? "#DCE9DE" : "#F6D9CC",
                   color: isConfigured ? "#046A38" : "#B8321A",
                 }}
               />
             </Stack>
-            <Typography variant="body2" sx={{ mt: 0.5, color: "#686B64", fontSize: "0.85rem" }}>
+            <Typography variant="body2" sx={{ mt: 0.5, color: "#686B64", fontSize: "0.875rem" }}>
               Provider: {newsSummary.provider_name || "National Equities Syndicated Wire"} · As of {newsSummary.as_of}
             </Typography>
           </Box>
@@ -864,7 +864,7 @@ export function FutureNewsSignalsSection({
             }}
           />
         </Stack>
-        <Typography variant="body2" sx={{ mt: 1.5, fontSize: "0.80rem", color: "#686B64" }}>
+        <Typography variant="body2" sx={{ mt: 1.5, fontSize: "0.875rem", color: "#686B64" }}>
           {newsSummary.provider_disclaimer || newsSummary.methodology_disclaimer}
         </Typography>
       </Paper>
@@ -884,7 +884,7 @@ export function FutureNewsSignalsSection({
           <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#B8321A" }}>
             Provider Credentials Unconfigured
           </Typography>
-          <Typography variant="body2" sx={{ mt: 0.5, color: "#292D2A", fontSize: "0.82rem" }}>
+          <Typography variant="body2" sx={{ mt: 0.5, color: "#292D2A", fontSize: "0.875rem" }}>
             Set <code>PRISM_NEWS_API_KEY</code> or configure a syndicated RSS feed in your environment variables to ingest live financial feeds. PRISM is diagnostic and strictly adheres to terms: zero scraping, no paywall bypass, and never fabricates news articles.
           </Typography>
         </Paper>
@@ -939,7 +939,7 @@ export function FutureNewsSignalsSection({
               <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
                 Holdings News Exposure & Sentiment
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem" }}>
+              <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.875rem" }}>
                 Aggregated verified news signals per portfolio holding. News risk multipliers are heuristic and strictly isolated from market risk.
               </Typography>
             </Box>
@@ -995,7 +995,7 @@ export function FutureNewsSignalsSection({
                         sx={{
                           borderRadius: 0,
                           fontWeight: 700,
-                          fontSize: "0.68rem",
+                          fontSize: "0.875rem",
                           bgcolor:
                             sig.sentiment_label === "positive"
                               ? "#DCE9DE"
@@ -1019,7 +1019,7 @@ export function FutureNewsSignalsSection({
                     </TableCell>
                     <TableCell sx={{ borderBottom: "none" }}>
                       {sig.significant_events.length > 0 ? (
-                        <Typography variant="body2" sx={{ fontSize: "0.80rem", color: "#8A5A00", fontWeight: 600 }}>
+                        <Typography variant="body2" sx={{ fontSize: "0.875rem", color: "#8A5A00", fontWeight: 600 }}>
                           {sig.significant_events.join(", ")}
                         </Typography>
                       ) : (
@@ -1035,7 +1035,7 @@ export function FutureNewsSignalsSection({
                           label={`${sig.news_risk_multiplier.toFixed(2)}x (Heuristic)`}
                           sx={{
                             borderRadius: 0,
-                            fontSize: "0.72rem",
+                            fontSize: "0.875rem",
                             bgcolor: "#E3D7C4",
                             color: "#292D2A",
                             fontWeight: 600,
@@ -1067,7 +1067,7 @@ export function FutureNewsSignalsSection({
               <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
                 Verified News Feed & Provenance
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem" }}>
+              <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.875rem" }}>
                 Every card links directly to the canonical source URL. Zero fabricated headlines.
               </Typography>
             </Box>
@@ -1103,7 +1103,7 @@ export function FutureNewsSignalsSection({
                         <Chip
                           size="small"
                           label={art.publisher}
-                          sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.68rem", bgcolor: "#F9EBD7", color: "#292D2A" }}
+                          sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.875rem", bgcolor: "#F9EBD7", color: "#292D2A" }}
                         />
                         <Typography variant="caption" sx={{ color: "#686B64", fontFamily: "JetBrains Mono, monospace" }}>
                           {art.published_at.replace("T", " ").replace("Z", " UTC")}
@@ -1112,7 +1112,7 @@ export function FutureNewsSignalsSection({
                           <Chip
                             size="small"
                             label="NEAR-DUPLICATE WIRE REPRINT"
-                            sx={{ borderRadius: 0, fontSize: "0.65rem", bgcolor: "#F6D9CC", color: "#B8321A" }}
+                            sx={{ borderRadius: 0, fontSize: "0.875rem", bgcolor: "#F6D9CC", color: "#B8321A" }}
                           />
                         )}
                       </Stack>
@@ -1125,7 +1125,7 @@ export function FutureNewsSignalsSection({
                             sx={{
                               borderRadius: 0,
                               fontWeight: 700,
-                              fontSize: "0.68rem",
+                              fontSize: "0.875rem",
                               bgcolor: isPos ? "#DCE9DE" : isNeg ? "#F6D9CC" : isUnc ? "#F9EBD7" : "#E3D7C4",
                               color: isPos ? "#046A38" : isNeg ? "#B8321A" : isUnc ? "#8A5A00" : "#292D2A",
                             }}
@@ -1135,7 +1135,7 @@ export function FutureNewsSignalsSection({
                           <Chip
                             size="small"
                             label={sig.event_category.toUpperCase()}
-                            sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.68rem", bgcolor: "#F9EBD7", color: "#8A5A00" }}
+                            sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.875rem", bgcolor: "#F9EBD7", color: "#8A5A00" }}
                           />
                         )}
                       </Stack>
@@ -1153,7 +1153,7 @@ export function FutureNewsSignalsSection({
                     </Typography>
 
                     {art.snippet && (
-                      <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem", mb: 1 }}>
+                      <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.875rem", mb: 1 }}>
                         {art.snippet}
                       </Typography>
                     )}
@@ -1186,7 +1186,7 @@ export function FutureNewsSignalsSection({
                           label={isPos ? "BULLISH CATALYST" : isNeg ? "DOWNSIDE VOLATILITY" : "NEUTRAL / MONITOR"}
                           sx={{
                             height: 20,
-                            fontSize: "0.62rem",
+                            fontSize: "0.875rem",
                             fontWeight: 700,
                             borderRadius: 0,
                             bgcolor: isPos ? "#DCE9DE" : isNeg ? "#F6D9CC" : "#E3D7C4",
@@ -1200,7 +1200,7 @@ export function FutureNewsSignalsSection({
                           <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
                             What The News Is:
                           </Typography>
-                          <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
+                          <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.875rem", lineHeight: 1.5 }}>
                             {art.what_the_news_is || (art.explanation ? art.explanation.split(" · ")[0] : art.headline)}
                           </Typography>
                         </Box>
@@ -1209,7 +1209,7 @@ export function FutureNewsSignalsSection({
                           <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
                             Market & Sector Impact:
                           </Typography>
-                          <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
+                          <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.875rem", lineHeight: 1.5 }}>
                             {art.market_and_sector_impact || (isPos ? "Expected to stimulate near-term upward valuation expansion across the sector." : isNeg ? "Induces downward pricing pressure and elevated volatility across peer holdings." : "Prompts a cautious wait-and-see reaction across the sector with limited systemic spillover.")}
                           </Typography>
                         </Box>
@@ -1218,7 +1218,7 @@ export function FutureNewsSignalsSection({
                           <Typography variant="caption" sx={{ fontWeight: 750, color: "#046A38", display: "inline-block", mr: 0.75 }}>
                             Actionable Advice (What You Should Do):
                           </Typography>
-                          <Typography variant="body2" sx={{ display: "inline", color: "#046A38", fontWeight: 600, fontSize: "0.83rem", lineHeight: 1.5 }}>
+                          <Typography variant="body2" sx={{ display: "inline", color: "#046A38", fontWeight: 600, fontSize: "0.875rem", lineHeight: 1.5 }}>
                             {art.actionable_advice || (isPos ? "Maintain existing allocation to participate in momentum; maintain trailing stop-losses." : isNeg ? "Avoid panic-selling; review downside stop-losses and trim if sector ceiling is breached." : "Maintain disciplined hold; monitor upcoming quarterly operational execution without knee-jerk adjustments.")}
                           </Typography>
                         </Box>
@@ -1238,7 +1238,7 @@ export function FutureNewsSignalsSection({
                         rel="noopener noreferrer"
                         sx={{
                           textTransform: "none",
-                          fontSize: "0.75rem",
+                          fontSize: "0.875rem",
                           fontWeight: 700,
                           color: "#046A38",
                           p: 0,
@@ -1272,7 +1272,7 @@ export function FutureNewsSignalsSection({
                       sx={{
                         borderRadius: 0,
                         fontWeight: 700,
-                        fontSize: "0.68rem",
+                        fontSize: "0.875rem",
                         bgcolor: art.sentiment_label === "positive" ? "#DCE9DE" : art.sentiment_label === "negative" ? "#F6D9CC" : "#F9EBD7",
                         color: art.sentiment_label === "positive" ? "#046A38" : art.sentiment_label === "negative" ? "#B8321A" : "#292D2A",
                       }}
@@ -1287,7 +1287,7 @@ export function FutureNewsSignalsSection({
                       art.headline
                     )}
                   </Typography>
-                  <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.82rem", mt: 0.5, mb: 1 }}>
+                  <Typography variant="body2" sx={{ color: "#686B64", fontSize: "0.875rem", mt: 0.5, mb: 1 }}>
                     {art.summary}
                   </Typography>
 
@@ -1319,7 +1319,7 @@ export function FutureNewsSignalsSection({
                         label={art.sentiment_label === "positive" ? "BULLISH CATALYST" : art.sentiment_label === "negative" ? "DOWNSIDE VOLATILITY" : "NEUTRAL / MONITOR"}
                         sx={{
                           height: 20,
-                          fontSize: "0.62rem",
+                          fontSize: "0.875rem",
                           fontWeight: 700,
                           borderRadius: 0,
                           bgcolor: art.sentiment_label === "positive" ? "#DCE9DE" : art.sentiment_label === "negative" ? "#F6D9CC" : "#E3D7C4",
@@ -1333,7 +1333,7 @@ export function FutureNewsSignalsSection({
                         <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
                           What The News Is:
                         </Typography>
-                        <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
+                        <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.875rem", lineHeight: 1.5 }}>
                           {art.what_the_news_is || art.summary || art.headline}
                         </Typography>
                       </Box>
@@ -1342,7 +1342,7 @@ export function FutureNewsSignalsSection({
                         <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "inline-block", mr: 0.75 }}>
                           Market & Sector Impact:
                         </Typography>
-                        <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.83rem", lineHeight: 1.5 }}>
+                        <Typography variant="body2" sx={{ display: "inline", color: "#292D2A", fontSize: "0.875rem", lineHeight: 1.5 }}>
                           {art.market_and_sector_impact || (art.sentiment_label === "positive" ? "Provides positive sentiment across sector peers, supporting valuation momentum." : art.sentiment_label === "negative" ? "Induces downward pricing pressure across sector peers, elevating near-term volatility." : "Prompts a rangebound wait-and-see posture across sector competitors.")}
                         </Typography>
                       </Box>
@@ -1351,7 +1351,7 @@ export function FutureNewsSignalsSection({
                         <Typography variant="caption" sx={{ fontWeight: 750, color: "#046A38", display: "inline-block", mr: 0.75 }}>
                           Actionable Advice (What You Should Do):
                         </Typography>
-                        <Typography variant="body2" sx={{ display: "inline", color: "#046A38", fontWeight: 600, fontSize: "0.83rem", lineHeight: 1.5 }}>
+                        <Typography variant="body2" sx={{ display: "inline", color: "#046A38", fontWeight: 600, fontSize: "0.875rem", lineHeight: 1.5 }}>
                           {art.actionable_advice || (art.sentiment_label === "positive" ? "Hold positions to capture trend upside; maintain disciplined trailing stops." : art.sentiment_label === "negative" ? "Exercise caution; avoid panic selling and review position size against your risk ceiling." : "Hold steady without reactive adjustments; monitor upcoming disclosures.")}
                         </Typography>
                       </Box>

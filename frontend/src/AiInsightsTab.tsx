@@ -138,7 +138,7 @@ function StatusChip({ status }: { status: OutputStatus }) {
     <Chip
       label={status.replaceAll("_", " ").toUpperCase()}
       size="small"
-      sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.68rem", bgcolor: colors.background, color: colors.color }}
+      sx={{ borderRadius: 0, fontWeight: 700, fontSize: "0.875rem", bgcolor: colors.background, color: colors.color }}
     />
   );
 }
@@ -148,7 +148,7 @@ function PanelHeader({ title, open, toggle }: { title: string; open: boolean; to
     <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: open ? 2 : 0 }}>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 800, color: COLORS.deepCharcoal }}>{title}</Typography>
-        <Chip label="Persisted model output" size="small" sx={{ borderRadius: 0, bgcolor: COLORS.sandBeige, fontSize: "0.68rem" }} />
+        <Chip label="Persisted model output" size="small" sx={{ borderRadius: 0, bgcolor: COLORS.sandBeige, fontSize: "0.875rem" }} />
       </Stack>
       <IconButton size="small" onClick={toggle} sx={{ color: COLORS.deepCharcoal }}>{open ? "▲" : "▼"}</IconButton>
     </Stack>

@@ -222,7 +222,7 @@ export default function StockResearchNotes({
               bgcolor: notes.length > 0 ? "#DCE9DE" : "#E3D7C4",
               color: notes.length > 0 ? "#046A38" : "#292D2A",
               fontWeight: 700,
-              fontSize: "0.75rem",
+              fontSize: "0.875rem",
               borderRadius: 0,
             }}
           />
@@ -240,7 +240,7 @@ export default function StockResearchNotes({
             sx={{
               bgcolor: "#046A38",
               color: "#F9EBD7",
-              fontSize: "0.8rem",
+              fontSize: "0.875rem",
               py: 0.5,
               px: 1.5,
               borderRadius: 0,
@@ -250,7 +250,7 @@ export default function StockResearchNotes({
           >
             + New Note
           </Button>
-          <IconButton size="small" sx={{ color: "#686B64", borderRadius: 0 }}>
+          <IconButton aria-label={expanded ? "Hide research notes" : "Show research notes"} aria-expanded={expanded} size="small" sx={{ color: "#686B64", borderRadius: 0 }}>
             {expanded ? "▲" : "▼"}
           </IconButton>
         </Stack>
@@ -270,7 +270,7 @@ export default function StockResearchNotes({
                 placeholder={`Search notes for ${normSymbol}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
+                sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.875rem" } }}
               />
             )}
 
@@ -285,7 +285,7 @@ export default function StockResearchNotes({
                   clickable
                   onClick={() => setSelectedTag(null)}
                   sx={{
-                    fontSize: "0.72rem",
+                    fontSize: "0.875rem",
                     borderRadius: 0,
                     fontWeight: 600,
                     bgcolor: selectedTag === null ? "#046A38" : "#E3D7C4",
@@ -300,7 +300,7 @@ export default function StockResearchNotes({
                     clickable
                     onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
                     sx={{
-                      fontSize: "0.72rem",
+                      fontSize: "0.875rem",
                       borderRadius: 0,
                       fontWeight: 600,
                       bgcolor: selectedTag === tag ? "#046A38" : "#E3D7C4",
@@ -337,7 +337,7 @@ export default function StockResearchNotes({
                   size="small"
                   variant="contained"
                   onClick={handleOpenCreate}
-                  sx={{ fontSize: "0.8rem", mt: 0.5, bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
+                  sx={{ fontSize: "0.875rem", mt: 0.5, bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
                 >
                   Write First Thesis Note
                 </Button>
@@ -373,7 +373,7 @@ export default function StockResearchNotes({
                             size="small"
                             label={tag}
                             sx={{
-                              fontSize: "0.72rem",
+                              fontSize: "0.875rem",
                               height: 22,
                               borderRadius: 0,
                               bgcolor: "#DCE9DE",
@@ -392,7 +392,7 @@ export default function StockResearchNotes({
                     {/* Actions: Edit & Delete */}
                     <Stack direction="row" spacing={0.5}>
                       <Tooltip title="Edit note">
-                        <IconButton size="small" onClick={() => handleOpenEdit(note)} sx={{ borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}>
+                        <IconButton size="small" onClick={() => handleOpenEdit(note)} sx={{ borderRadius: 0, fontSize: "0.875rem", fontWeight: 600 }}>
                           Edit
                         </IconButton>
                       </Tooltip>
@@ -400,7 +400,7 @@ export default function StockResearchNotes({
                         <IconButton
                           size="small"
                           onClick={() => setDeleteConfirmId(note.id)}
-                          sx={{ color: "#B8321A", borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}
+                          sx={{ color: "#B8321A", borderRadius: 0, fontSize: "0.875rem", fontWeight: 600 }}
                         >
                           Delete
                         </IconButton>
@@ -427,7 +427,7 @@ export default function StockResearchNotes({
                     direction="row"
                     spacing={2}
                     sx={{
-                      fontSize: "0.75rem",
+                      fontSize: "0.875rem",
                       color: "#686B64",
                       pt: 0.5,
                     }}
@@ -509,7 +509,7 @@ export default function StockResearchNotes({
                   clickable
                   onClick={() => handleToggleTag(tag)}
                   sx={{
-                    fontSize: "0.78rem",
+                    fontSize: "0.875rem",
                     borderRadius: 0,
                     fontWeight: 600,
                     bgcolor: selected ? "#046A38" : "#E3D7C4",
@@ -533,14 +533,14 @@ export default function StockResearchNotes({
                   handleAddCustomTag();
                 }
               }}
-              sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
+              sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.875rem" } }}
             />
             <Button
               size="small"
               variant="contained"
               onClick={handleAddCustomTag}
               disabled={!customTagInput.trim()}
-              sx={{ textTransform: "none", fontSize: "0.8rem", bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
+              sx={{ textTransform: "none", fontSize: "0.875rem", bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
             >
               Add Tag
             </Button>
@@ -560,7 +560,7 @@ export default function StockResearchNotes({
                     size="small"
                     onDelete={() => handleToggleTag(tag)}
                     sx={{
-                      fontSize: "0.75rem",
+                      fontSize: "0.875rem",
                       height: 24,
                       borderRadius: 0,
                       bgcolor: "#DCE9DE",

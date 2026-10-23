@@ -134,7 +134,7 @@ export function RiskReviewInboxPanel({
                 color: "#F9EBD7",
                 fontWeight: 700,
                 borderRadius: 0,
-                fontSize: "0.72rem",
+                fontSize: "0.875rem",
                 height: 20,
               }}
             />
@@ -222,7 +222,7 @@ export function RiskReviewInboxPanel({
                         label={alert.status.toUpperCase()}
                         sx={{
                           borderRadius: 0,
-                          fontSize: "0.68rem",
+                          fontSize: "0.875rem",
                           fontWeight: 700,
                           bgcolor:
                             alert.status === "active"
@@ -262,7 +262,7 @@ export function RiskReviewInboxPanel({
                             color: "#F9EBD7",
                             textTransform: "none",
                             fontWeight: 600,
-                            fontSize: "0.75rem",
+                            fontSize: "0.875rem",
                             px: 1.5,
                             boxShadow: "0 2px 5px rgba(4,106,56,0.20)",
                             "&:hover": { bgcolor: "#03532c" },
@@ -279,7 +279,7 @@ export function RiskReviewInboxPanel({
                             color: "#292D2A",
                             textTransform: "none",
                             fontWeight: 600,
-                            fontSize: "0.75rem",
+                            fontSize: "0.875rem",
                             px: 1.5,
                             "&:hover": { bgcolor: "#d8cbbe" },
                           }}
@@ -297,7 +297,7 @@ export function RiskReviewInboxPanel({
                           color: "#292D2A",
                           textTransform: "none",
                           fontWeight: 600,
-                          fontSize: "0.75rem",
+                          fontSize: "0.875rem",
                           boxShadow: "0 1px 3px rgba(41,45,42,0.10)",
                           "&:hover": { bgcolor: "#E3D7C4" },
                         }}
@@ -308,7 +308,7 @@ export function RiskReviewInboxPanel({
                   </Stack>
                 </Stack>
 
-                <Typography variant="body2" sx={{ mt: 1.5, color: "#292D2A", fontSize: "0.85rem", lineHeight: 1.55 }}>
+                <Typography variant="body2" sx={{ mt: 1.5, color: "#292D2A", fontSize: "0.875rem", lineHeight: 1.55 }}>
                   {alert.explanation}
                 </Typography>
 
@@ -327,7 +327,7 @@ export function RiskReviewInboxPanel({
                           bgcolor: "#F9EBD7",
                           color: "#292D2A",
                           fontWeight: 600,
-                          fontSize: "0.72rem",
+                          fontSize: "0.875rem",
                         }}
                       />
                     ))}
@@ -339,7 +339,7 @@ export function RiskReviewInboxPanel({
                     <Typography variant="caption" sx={{ color: "#046A38", fontWeight: 700, display: "block" }}>
                       Reviewer Sign-off Note:
                     </Typography>
-                    <Typography variant="body2" sx={{ color: "#292D2A", fontStyle: "italic", fontSize: "0.82rem" }}>
+                    <Typography variant="body2" sx={{ color: "#292D2A", fontStyle: "italic", fontSize: "0.875rem" }}>
                       "{alert.reviewNotes}"
                     </Typography>
                   </Box>
