@@ -126,7 +126,13 @@ def incremental_start(session: Session, security_id: UUID, requested_start: date
     return max(requested_start, min(recent_dates))
 
 
-def adjusted_history_changed(session: Session, security_id: UUID, prices: list[DailyPrice]) -> bool:
+def adjusted_history_changed(
+    session: Session,
+    security_id: UUID,
+    prices: list[DailyPrice],
+    *,
+    provisional_date: date | None = None,
+) -> bool:
     """Compare the re-fetched overlap with the latest stored adjusted revision."""
     if not prices:
         return False
@@ -145,6 +151,7 @@ def adjusted_history_changed(session: Session, security_id: UUID, prices: list[D
         latest.setdefault(row.trade_date, row.adjusted_close)
     return any(
         item.trade_date in latest
+        and item.trade_date != provisional_date
         and _six_places(item.adjusted_close) != _six_places(latest[item.trade_date])
         for item in prices
     )
@@ -386,6 +393,7 @@ def ingest_nifty200_prices(
     client: YahooFinanceClient | None = None,
     max_workers: int = 8,
     symbols: set[str] | None = None,
+    provisional_date: date | None = None,
 ) -> IngestionSummary:
     """Download and persist prices through *end*, committing each symbol independently."""
     if start > end:
@@ -443,7 +451,12 @@ def ingest_nifty200_prices(
             try:
                 frame, downloaded = future.result()
                 frame.to_csv(run_directory / f"{instrument.yahoo_symbol}.csv")
-                full_refetch = adjusted_history_changed(session, instrument.security_id, downloaded)
+                full_refetch = adjusted_history_changed(
+                    session,
+                    instrument.security_id,
+                    downloaded,
+                    provisional_date=provisional_date,
+                )
                 requested_from = incremental_start(session, instrument.security_id, start)
                 if full_refetch and requested_from > start:
                     frame, downloaded = provider.history(
@@ -453,6 +466,10 @@ def ingest_nifty200_prices(
                     summary.full_refetches += 1
                 if not downloaded:
                     raise ValueError("provider_returned_no_daily_prices")
+                if provisional_date and not any(
+                    price.trade_date == provisional_date for price in downloaded
+                ):
+                    raise ValueError("provider_has_no_current_session_prices")
                 quality = validate_prices(downloaded)
                 counts = _persist_with_retry(
                     session,

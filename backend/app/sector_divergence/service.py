@@ -221,10 +221,14 @@ def persist_calculation(
     data_cutoff: datetime,
     computed_at: datetime | None = None,
     commit: bool = True,
+    provisional: bool = False,
 ) -> PersistedCalculation:
     """Calculate and atomically persist a run, returning an existing identical run if present."""
     inputs = load_inputs(session, signal_date, lookback_start, data_cutoff)
     configuration = calculation_configuration()
+    if provisional:
+        configuration["observation_basis"] = "current_session_provisional"
+        configuration["refresh_minutes"] = 30
     configuration_hash = _canonical_hash(configuration)
     fingerprint = input_fingerprint(inputs)
     existing = session.scalar(
@@ -376,4 +380,5 @@ def run_summary(run: SectorDivergenceRun) -> dict[str, Any]:
         "issue_count": run.issue_count,
         "exclusion_count": run.exclusion_count,
         "completed_at": run.completed_at,
+        "observation_basis": run.configuration.get("observation_basis", "daily_close"),
     }

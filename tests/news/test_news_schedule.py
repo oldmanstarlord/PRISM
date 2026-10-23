@@ -12,6 +12,7 @@ async def test_news_schedule_starts_immediately_and_daily_in_ist(monkeypatch):
     service = Mock()
     service.status.return_value = {"can_refresh": True}
     monkeypatch.setattr(main.settings, "news_auto_refresh", True)
+    monkeypatch.setattr(main.settings, "sector_auto_refresh", False)
     monkeypatch.setattr(main, "get_news_service", lambda: service)
     monkeypatch.setattr("apscheduler.schedulers.background.BackgroundScheduler", factory)
     async with main.lifespan(main.app):

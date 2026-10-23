@@ -19,7 +19,14 @@ from backend.app.core.config import Settings
 from backend.app.db.models import Security, SecurityAlias
 from backend.app.news.entity_matcher import AMBIGUOUS_TICKER_COLLISIONS, NIFTY_CORE_ENTITIES
 from backend.app.news.provider import FirecrawlProvider, ProviderError
-from backend.app.news.publication_window import MARKET_TIMEZONE, NEWS_TIMEZONE, is_current_day
+from backend.app.news.publication_window import (
+    MARKET_TIMEZONE,
+    NEWS_TIMEZONE,
+    NEWS_WINDOW_DAYS,
+    is_current_day,
+    is_in_news_window,
+)
+from backend.app.news.relevance import select_active_articles
 from backend.app.news.sentiment import MODEL_VERSION, ModelUnavailable, SentimentAnalyzer
 from backend.app.news.store import NewsStore, RefreshBlocked
 
@@ -128,6 +135,9 @@ class NewsService:
             "provider": "Firecrawl",
             "news_date": now.astimezone(MARKET_TIMEZONE).date().isoformat(),
             "timezone": NEWS_TIMEZONE,
+            "window_days": NEWS_WINDOW_DAYS,
+            "window_start": (now - timedelta(days=NEWS_WINDOW_DAYS)).isoformat(),
+            "window_end": now.isoformat(),
             "configured": configured,
             "model": MODEL_VERSION,
             "model_ready": ready,
@@ -147,24 +157,17 @@ class NewsService:
             and ready
             and not running
             and (next_refresh is None or next_refresh <= now)
-            and used + (1 if self.config.news_rss_urls else 3)
+            and used + (1 if self.config.news_rss_urls else 5)
             <= self.config.news_daily_credit_budget,
         }
 
     def feed(self, symbol: str | None = None) -> dict[str, Any]:
         now = datetime.now(UTC)
-        articles = self.store.articles()
-        # Never turn a recently retrieved old story into fresh news.
-        articles = [
-            a
-            for a in articles
-            if not a.get("duplicate_of")
-            and is_current_day(a.get("published_at"), now)
-        ]
+        articles = select_active_articles(self.store.articles(days=None), now)
         if symbol:
             articles = [a for a in articles if symbol.upper() in a["companies"]]
         articles.sort(key=lambda a: a.get("published_at") or a["retrieved_at"], reverse=True)
-        return {"status": self.status(), "articles": articles[:100]}
+        return {"status": self.status(), "articles": articles}
 
     def prepare(self) -> str:
         if (
@@ -196,12 +199,13 @@ class NewsService:
                 warnings.append(
                     "Company catalogue is empty; import the universe for stock matching"
                 )
-            existing = self.store.articles()
+            existing = self.store.articles(days=None)
             with httpx.Client() as client:
                 provider = FirecrawlProvider(self.config, self.store, client)
                 candidates, discovery_warnings = provider.discover()
                 warnings.extend(discovery_warnings)
                 attempted = 0
+                invalid_publications = 0
                 for item in candidates:
                     if self.store.recent(item["url"], MODEL_VERSION):
                         continue
@@ -211,7 +215,8 @@ class NewsService:
                     try:
                         article = provider.scrape(item)
                         published = article.get("published_at")
-                        if not is_current_day(published):
+                        if not is_in_news_window(published):
+                            invalid_publications += 1
                             continue
                         article["content_hash"] = fingerprint(article["text"])
                         previous = next(
@@ -252,14 +257,23 @@ class NewsService:
                         warnings.append(str(exc))
                 if not candidates:
                     warnings.append("No articles found from the configured publishers")
-                elif attempted and not added and warnings:
+                if invalid_publications:
+                    warnings.append(
+                        f"Skipped {invalid_publications} pages without a verified publication "
+                        "in the last 7 days"
+                    )
+                if attempted and not added and warnings:
                     error = "No new articles could be analyzed; see collection warnings"
         except (ProviderError, RefreshBlocked, ModelUnavailable) as exc:
             error = str(exc)
         except Exception:
             logger.exception("News collection failed")
-            error = "News processing failed; today's cached articles are still available"
+            error = "News processing failed; cached news from the last 7 days is still available"
         finally:
+            try:
+                self.store.prune()
+            except Exception:
+                logger.exception("News archive cleanup failed")
             self.store.finish(token, error, list(dict.fromkeys(warnings)), added)
 
     def collect_in_worker(self, token: str) -> None:

@@ -96,6 +96,10 @@ class NewsArticleCard(BaseModel):
     what_the_news_is: str = Field(default="")
     market_and_sector_impact: str = Field(default="")
     actionable_advice: str = Field(default="")
+    is_retained_context: bool = False
+    relevance_reason: str | None = None
+    relevance_until: str | None = None
+    related_article_url: str | None = None
 
 
 class HoldingNewsSummary(BaseModel):
@@ -106,6 +110,7 @@ class HoldingNewsSummary(BaseModel):
     weight_pct: float = Field(default=0.0, ge=0.0, le=100.0)
     article_count_24h: int = Field(ge=0, default=0)
     article_count_7d: int = Field(ge=0, default=0)
+    retained_context_count: int = Field(ge=0, default=0)
     dominant_sentiment: SentimentLabel = "neutral"
     mean_sentiment_score: float = Field(default=0.0, ge=-1.0, le=1.0)
     sentiment_drift_7d: float = 0.0

@@ -14,6 +14,7 @@ from backend.app.core.config import settings
 from backend.app.core.security import SecurityMiddleware
 from backend.app.news.collection_router import get_news_service
 from backend.app.news.publication_window import NEWS_TIMEZONE
+from backend.app.sector_divergence.refresh import refresh_if_due
 
 logger = logging.getLogger("prism.error")
 
@@ -21,7 +22,7 @@ logger = logging.getLogger("prism.error")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Any:
     scheduler = None
-    if settings.news_auto_refresh:
+    if settings.news_auto_refresh or settings.sector_auto_refresh:
         from apscheduler.schedulers.background import (
             BackgroundScheduler,  # type: ignore[import-untyped]
         )
@@ -35,17 +36,32 @@ async def lifespan(app: FastAPI) -> Any:
                 logger.warning("Scheduled news refresh was skipped")
 
         scheduler = BackgroundScheduler(timezone=NEWS_TIMEZONE)
-        scheduler.add_job(
-            collect_news,
-            "interval",
-            minutes=settings.news_refresh_minutes,
-            max_instances=1,
-            coalesce=True,
-            next_run_time=datetime.now(UTC),
-        )
-        scheduler.add_job(
-            collect_news, "cron", hour=0, minute=0, max_instances=1, coalesce=True,
-        )
+        if settings.news_auto_refresh:
+            scheduler.add_job(
+                collect_news,
+                "interval",
+                minutes=settings.news_refresh_minutes,
+                max_instances=1,
+                coalesce=True,
+                next_run_time=datetime.now(UTC),
+            )
+            scheduler.add_job(
+                collect_news,
+                "cron",
+                hour=0,
+                minute=0,
+                max_instances=1,
+                coalesce=True,
+            )
+        if settings.sector_auto_refresh:
+            scheduler.add_job(
+                refresh_if_due,
+                "interval",
+                minutes=1,
+                max_instances=1,
+                coalesce=True,
+                next_run_time=datetime.now(UTC),
+            )
         scheduler.start()
     yield
     if scheduler is not None:

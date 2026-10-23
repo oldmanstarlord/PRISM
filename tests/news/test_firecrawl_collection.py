@@ -97,7 +97,7 @@ def test_provider_errors_are_actionable_and_redacted(config, status, message):
         with pytest.raises(ProviderError, match=message) as error:
             FirecrawlProvider(config, store, client).discover()
         assert "secret" not in str(error.value)
-    assert store.used_today() == 2
+    assert store.used_today() == 4
 
 
 def test_scrape_rejects_paywall_and_does_not_analyze_missing_text(config):
@@ -187,7 +187,7 @@ def test_collection_runs_once_caches_inference_and_deduplicates(config, monkeypa
     assert feed["articles"][0]["companies"]["TCS"]["model"] == MODEL_VERSION
     assert analyzer.analyze.call_count == 2  # Article and company passage, never syndicated copy.
     assert service.store.recent("https://example.com/b", MODEL_VERSION)
-    assert feed["status"]["credits_reserved_today"] == 4
+    assert feed["status"]["credits_reserved_today"] == 6
     assert len(calls) == 3
     # A new process still serves cached scores without calling Firecrawl or FinBERT.
     monkeypatch.undo()
@@ -271,7 +271,8 @@ def test_feed_never_promotes_old_or_undated_articles_retrieved_today(config, mon
             "published_at": published, "companies": {}, "sentiment": score(),
         })
     feed = service.feed()
-    assert {a["title"] for a in feed["articles"]} == {"0", "4"}
+    assert {a["title"] for a in feed["articles"]} == {"0", "1", "4"}
+    assert feed["status"]["window_days"] == 7
     assert feed["status"]["news_date"] == "2026-10-22"
     assert feed["status"]["timezone"] == "Asia/Kolkata"
 
@@ -285,7 +286,7 @@ def test_collection_skips_old_missing_and_future_publication_dates(config, monke
     monkeypatch.setattr(FirecrawlProvider, "discover", lambda self: ([
         {"url": f"https://example.com/{kind}"} for kind in ["old", "missing", "future"]
     ], []))
-    dates = {"old": (datetime.now(UTC) - timedelta(days=2)).isoformat(),
+    dates = {"old": (datetime.now(UTC) - timedelta(days=8)).isoformat(),
              "missing": None, "future": (datetime.now(UTC) + timedelta(days=1)).isoformat()}
     monkeypatch.setattr(FirecrawlProvider, "scrape", lambda self, item: {
         **item, "published_at": dates[item["url"].rsplit("/", 1)[-1]],

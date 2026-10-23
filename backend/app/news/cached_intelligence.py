@@ -30,7 +30,7 @@ def cached_cards(holdings: list[dict[str, Any]]) -> list[NewsArticleCard]:
                 model_name="FinBERT (local)",
                 model_version=score["model"],
                 processing_time_ms=0,
-                event_category="uncertain",
+                event_category=article.get("event_category", "uncertain"),
                 event_confidence=0,
             )
             for symbol, score in article["companies"].items()
@@ -57,6 +57,10 @@ def cached_cards(holdings: list[dict[str, Any]]) -> list[NewsArticleCard]:
                     100, sum(float(held[s].get("weight") or 0) * 100 for s in affected)
                 ),
                 what_the_news_is=article["excerpt"],
+                is_retained_context=article.get("is_retained_context", False),
+                relevance_reason=article.get("relevance_reason"),
+                relevance_until=article.get("relevance_until"),
+                related_article_url=article.get("related_article_url"),
                 explanation="Local FinBERT sentiment on company-specific passages. "
                 "Unknown publication dates are excluded from dated aggregates.",
             )
@@ -75,12 +79,13 @@ def cached_portfolio_intelligence(holdings: list[dict[str, Any]]) -> PortfolioNe
         provider_name="Firecrawl + local FinBERT",
         provider_status="configured" if state["configured"] else "not_configured",
         provider_disclaimer="Cached public publisher articles. Sentiment describes text, "
-        "not future stock returns. Refresh in News Intelligence.",
+        "not future stock returns. Analysis uses publications from the last 7 days. "
+        "Older related-event context is labelled separately and excluded from 7-day averages.",
         total_articles_tracked=len(cards),
         deduplicated_article_count=len(cards),
         ambiguous_match_count=0,
         portfolio_sentiment_score=score,
         portfolio_sentiment_label=label,
         holding_summaries=summaries,
-        verified_articles=cards[:25],
+        verified_articles=cards,
     )

@@ -26,7 +26,7 @@ import { useNavigate } from "react-router-dom";
 
 import AppShell from "./AppShell";
 import { fetchJson } from "./api";
-import type { Horizon, RankingsResponse } from "./types";
+import type { Horizon, RankingsResponse, SectorRefreshStatus } from "./types";
 
 const bandColor = { normal: "default", moderate: "warning", strong: "error", extreme: "error" } as const;
 
@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [data, setData] = useState<RankingsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshStatus, setRefreshStatus] = useState<SectorRefreshStatus | null>(null);
 
 
   // Search & Filter & Sort state
@@ -56,7 +57,7 @@ export default function Dashboard() {
       `/sector-divergence/latest/rankings?horizon=${horizon}&limit=200`,
       signal ?? new AbortController().signal,
     )
-      .then(setData)
+      .then(result => { setData(result); setError(null); })
       .catch((reason: unknown) => {
         if (reason instanceof DOMException && reason.name === "AbortError") return;
         setError(reason instanceof Error ? reason.message : "Unable to load results");
@@ -65,15 +66,18 @@ export default function Dashboard() {
         setLoading(false);
         setIsRefreshing(false);
       });
+    fetchJson<SectorRefreshStatus>("/sector-divergence/refresh-status", signal)
+      .then(setRefreshStatus)
+      .catch(() => { /* Rankings remain usable if scheduling status is unavailable. */ });
   };
 
   useEffect(() => {
     const controller = new AbortController();
     loadRankings(controller.signal);
-    // Auto-refresh rankings every 30 seconds for live updates
+    // Pick up published snapshots; the backend recalculates at market half-hours.
     const timer = setInterval(() => {
-      loadRankings();
-    }, 30_000);
+      loadRankings(controller.signal);
+    }, 60_000);
     return () => {
       controller.abort();
       clearInterval(timer);
@@ -176,6 +180,13 @@ export default function Dashboard() {
             <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.78rem" }}>
               Select a company to inspect its exact peer comparison.
             </Typography>
+            {refreshStatus && <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {!refreshStatus.enabled ? "Automatic recalculation is disabled. "
+                : refreshStatus.running ? "Updating price inputs and sector signals. "
+                : refreshStatus.market_open ? "Market open · recalculates every 30 minutes. "
+                : "Market closed · signals paused. "}
+              {refreshStatus.enabled && refreshStatus.next_refresh_at && `Next update: ${new Date(refreshStatus.next_refresh_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST.`}
+            </Typography>}
           </Box>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
             <FormControl size="small" sx={{ minWidth: 190 }}>
@@ -218,6 +229,8 @@ export default function Dashboard() {
         </Stack>
 
         {error && <Alert severity="warning">Results are not available ({error}).</Alert>}
+        {refreshStatus?.error && <Alert severity="warning">{refreshStatus.error}</Alert>}
+        {refreshStatus?.calendar_warning && <Alert severity="info">{refreshStatus.calendar_warning}</Alert>}
 
         {/* ─── Condition-Responsive Methodology & Insights Explainer ─── */}
         <Paper
@@ -580,7 +593,11 @@ export default function Dashboard() {
         </TableContainer>
 
         <Alert severity="info" icon={false}>
-          Daily opening-and-closing price analysis using persisted history and live provider data through {data?.run.signal_date}. Divergence is descriptive, not a forecast or investment recommendation.
+          {data?.run.observation_basis === "current_session_provisional"
+            ? "Current-session prices are provisional. Signals recalculate every 30 minutes during NSE trading hours."
+            : "Daily opening-and-closing price analysis using persisted history."}
+          {data?.run.data_cutoff && ` Data as of ${new Date(data.run.data_cutoff).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST.`}
+          {" "}Divergence is descriptive, not a forecast or investment recommendation.
         </Alert>
         <Typography variant="caption" color="text.secondary">
           PRISM does not provide investment advice.

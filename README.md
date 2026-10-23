@@ -74,13 +74,33 @@ deployment.
   exposed as unavailable states; they are not replaced with plausible values.
 - News is a qualitative diagnostic overlay and never changes covariance, volatility, beta, VaR,
   or Expected Shortfall.
-- News feeds show only verified publication timestamps from the current calendar day in
-  `Asia/Kolkata` (IST), including portfolio news. Undated, future and previous-day stories are
-  hidden even if recently fetched. The browser also expires cards at midnight IST.
+- News discovery, feeds, portfolio sentiment and decision-engine news scores use a rolling
+  seven-day publication window (168 hours). Undated, timezone-free and future stories are
+  excluded even if recently fetched. Dates are displayed in IST; midnight does not clear the feed.
+- Older material-event stories stay as labelled context when a report in the current window
+  matches the company, event category and at least two headline topic words. This transparent
+  relevance heuristic is reassessed on every read; a company mention alone is insufficient.
+  Context stays outside seven-day sentiment averages and counts. If supporting coverage ages
+  out, the story leaves the active feed. A 30-day review archive is kept; still-supported context
+  survives archive cleanup even beyond 30 days. Duplicate reprints never inflate sentiment.
 - `PRISM_NEWS_AUTO_REFRESH=true` enables collection on API startup, hourly by default, and at
   midnight IST. The API must remain running; refresh cooldowns, shared-cache locks and the
-  configured daily Firecrawl credit budget still apply. Missing current-day coverage stays empty.
+  configured daily Firecrawl credit budget still apply. Missing seven-day coverage stays empty.
   Collection runs in a separate, time-bounded process so native NLP failures cannot stop the API.
+- `PRISM_SECTOR_AUTO_REFRESH=true` refreshes price inputs and recalculates sector divergence
+  every 30 minutes, anchored to the NSE equity open: 09:15, 09:45, ... 15:15 IST.
+  The scheduler pauses at 15:30 and resumes at the next trading session. It checks the
+  session clock once a minute, including on startup; dashboard polling reads the published
+  result rather than recalculating it. The API must remain running.
+- Exchange `trading_calendar` rows override the bundled official 2026 holiday calendar and
+  define special-session times. Other years require verified calendar rows. The regular
+  schedule follows [NSE equity timings](https://www.nseindia.com/static/market-data/market-timings)
+  and [2026 holiday circular](https://nsearchives.nseindia.com/content/circulars/CMTR71775.pdf).
+  Provisional current-session daily bars update the 1/5/20-day calculations; they are labelled
+  separately from final closing prices. These remain trading-day horizons, not 30-minute bars.
+  PostgreSQL advisory locking and completed-slot records prevent duplicate worker publications.
+  Missing current-session coverage or failed calculations preserve the previous published result
+  and expose a refresh error. Transient failures retry after five minutes during the session.
 - ML outputs are labelled model estimates and retain the baseline-fallback governance rule.
 
 ## Verification

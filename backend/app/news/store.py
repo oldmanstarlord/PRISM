@@ -106,15 +106,16 @@ class NewsStore:
             ).fetchone()
             return int(row[0]) if row else 0
 
-    def articles(self, days: int = 7) -> list[dict[str, Any]]:
-        cutoff = (datetime.now(UTC) - timedelta(days=days)).isoformat()
+    def articles(self, days: int | None = 7) -> list[dict[str, Any]]:
         with closing(self.connect()) as db:
+            query = "SELECT payload FROM articles"
+            params: tuple[str, ...] = ()
+            if days is not None:
+                query += " WHERE checked_at >= ?"
+                params = ((datetime.now(UTC) - timedelta(days=days)).isoformat(),)
             return [
                 json.loads(row[0])
-                for row in db.execute(
-                    "SELECT payload FROM articles WHERE checked_at >= ? ORDER BY checked_at DESC",
-                    (cutoff,),
-                )
+                for row in db.execute(query + " ORDER BY checked_at DESC", params)
             ]
 
     def recent(self, url: str, model: str) -> bool:
@@ -136,6 +137,19 @@ class NewsStore:
                     json.dumps(article),
                 ),
             )
-            # Keep bounded history; budget/state survive content expiry.
-            cutoff = (datetime.now(UTC) - timedelta(days=30)).isoformat()
-            db.execute("DELETE FROM articles WHERE checked_at < ?", (cutoff,))
+
+    def prune(self) -> None:
+        from backend.app.news.relevance import select_active_articles
+
+        # Keep a 30-day review archive, and retain older context while current
+        # evidence supports it. Read-time filtering still expires it on schedule.
+        articles = self.articles(days=None)
+        active_urls = {a["url"] for a in select_active_articles(articles)}
+        cutoff = datetime.now(UTC) - timedelta(days=30)
+        expired = [
+            (a["url"],)
+            for a in articles
+            if a["url"] not in active_urls and datetime.fromisoformat(a["retrieved_at"]) < cutoff
+        ]
+        with closing(self.connect()) as db, db:
+            db.executemany("DELETE FROM articles WHERE url=?", expired)

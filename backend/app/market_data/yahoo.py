@@ -89,6 +89,7 @@ class YahooFinanceClient:
             repair=True,
             keepna=True,
             raise_errors=True,
+            timeout=15,
         )
         return frame, normalize_history(frame)
 

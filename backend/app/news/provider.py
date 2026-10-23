@@ -10,7 +10,7 @@ import httpx
 from lxml import etree
 
 from backend.app.core.config import Settings
-from backend.app.news.publication_window import is_current_day
+from backend.app.news.publication_window import is_in_news_window
 from backend.app.news.store import NewsStore
 
 
@@ -139,28 +139,48 @@ class FirecrawlProvider:
                 "search",
                 {
                     "query": self.config.news_query,
-                    "sources": [{"type": "news"}],
+                    "sources": [{"type": "news"}, {"type": "web"}],
                     "limit": 10,
                     "includeDomains": self.config.news_sources,
-                    "tbs": "qdr:d",
+                    "tbs": "sbd:1,qdr:w",
                 },
-                credits=2,
+                credits=4,  # At most ten results per source (news and web).
             )
             items = data.get("news", [])
             if not isinstance(items, list):
                 raise ProviderError("Firecrawl returned an invalid news result list")
+            web = data.get("web", [])
+            if isinstance(web, list):
+                items = [*items, *web]
         candidates, seen = [], set()
         for item in items:
             if not isinstance(item, dict):
                 continue
             published = publication_date(item.get("date"))
             # Missing discovery dates can still be verified from publisher metadata.
-            if published and not is_current_day(published):
+            if published and not is_in_news_window(published):
                 continue
             url = canonical_url(str(item.get("url", "")), self.config.news_sources)
+            # Quote screens and results indexes are not publisher articles. They
+            # used to exhaust the scrape limit before dated reporting was reached.
+            if url and (
+                re.search(r"/(markets/quote|stockpricequote|stocks/companyid|market/nse-)", url)
+                or re.search(r"/markets/(stocks/earnings|earnings/latest-results)$", url)
+            ):
+                continue
             if url and url not in seen:
                 candidates.append({**item, "url": url})
                 seen.add(url)
+
+        def priority(item: dict[str, Any]) -> tuple[str, bool]:
+            # URL dates are ordering hints only; publisher metadata is still
+            # required before a story can enter the seven-day analysis.
+            date = re.search(r"20\d{2}-\d{2}-\d{2}", item["url"])
+            verified = publication_date(item.get("date"))
+            hint = verified[:10] if verified else date.group() if date else ""
+            return hint, bool(re.search(r"/(articleshow|news|article)/", item["url"]))
+
+        candidates.sort(key=priority, reverse=True)
         return candidates, warnings
 
     def scrape(self, item: dict[str, Any]) -> dict[str, Any]:

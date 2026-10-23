@@ -213,6 +213,13 @@ def _latest_mst_run(session: Session) -> MstRun:
     return run
 
 
+@router.get("/sector-divergence/refresh-status", tags=["sector divergence"])
+def sector_divergence_refresh_status() -> dict[str, Any]:
+    from backend.app.sector_divergence.refresh import refresh_status
+
+    return refresh_status()
+
+
 @router.get("/sector-divergence/latest", tags=["sector divergence"])
 def latest_sector_divergence(session: DatabaseSession) -> dict[str, Any]:
     """Return metadata for the latest completed Layer 1 run."""
@@ -357,7 +364,9 @@ def latest_sector_divergence_company(symbol: str, session: DatabaseSession) -> d
             ],
         },
         "limitations": [
-            "Daily adjusted closing prices; not live intraday data.",
+            ("Current-session prices are provisional and refreshed every 30 minutes."
+             if run.configuration.get("observation_basis") == "current_session_provisional"
+             else "Daily adjusted closing prices; not live intraday data."),
             "The peer line is a statistical benchmark, not a tradeable industry index.",
             "Divergence is descriptive and does not predict reversal or continuation.",
         ],

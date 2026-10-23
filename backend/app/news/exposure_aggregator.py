@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from backend.app.news.publication_window import published_datetime
 from backend.app.news.schemas import (
     EventCategory,
     HoldingNewsSummary,
@@ -51,6 +52,7 @@ class ExposureAggregator:
 
             cnt_24h = 0
             cnt_7d = 0
+            context_count = 0
             sentiment_scores: list[float] = []
             recent_scores: list[float] = []
             older_scores: list[float] = []
@@ -58,13 +60,14 @@ class ExposureAggregator:
             has_ambiguous = False
 
             for a in sym_articles:
-                try:
-                    pub_dt = datetime.fromisoformat(a.published_at)
-                    if pub_dt.tzinfo is None:
-                        pub_dt = pub_dt.replace(tzinfo=UTC)
-                except Exception:
+                pub_dt = published_datetime(a.published_at)
+                if pub_dt is None:
                     continue  # Unknown publication dates are not fresh news.
 
+                if pub_dt < cutoff_7d and a.is_retained_context:
+                    until = published_datetime(a.relevance_until)
+                    if until and until > now:
+                        context_count += 1
                 if pub_dt < cutoff_7d or pub_dt > now:
                     continue
 
@@ -117,6 +120,7 @@ class ExposureAggregator:
                 weight_pct=weight_pct,
                 article_count_24h=cnt_24h,
                 article_count_7d=cnt_7d,
+                retained_context_count=context_count,
                 dominant_sentiment=dominant_sent,
                 mean_sentiment_score=mean_sentiment,
                 sentiment_drift_7d=sentiment_drift,

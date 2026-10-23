@@ -9,6 +9,18 @@ export interface RunSummary {
   score_count: number;
   issue_count: number;
   exclusion_count: number;
+  observation_basis?: "daily_close" | "current_session_provisional";
+}
+
+export interface SectorRefreshStatus {
+  enabled: boolean;
+  market_open: boolean;
+  running: boolean;
+  refresh_minutes: number;
+  next_refresh_at: string | null;
+  last_success_at: string | null;
+  error: string | null;
+  calendar_warning?: string;
 }
 
 export interface Score {
@@ -557,6 +569,10 @@ export interface NewsSignalItem {
 }
 
 export interface NewsArticleCard {
+  is_retained_context?: boolean;
+  relevance_reason?: string | null;
+  relevance_until?: string | null;
+  related_article_url?: string | null;
   id: string;
   source_id: string;
   url: string;
@@ -580,6 +596,7 @@ export interface NewsArticleCard {
 }
 
 export interface HoldingNewsSummary {
+  retained_context_count?: number;
   symbol: string;
   company_name?: string | null;
   weight_pct: number;

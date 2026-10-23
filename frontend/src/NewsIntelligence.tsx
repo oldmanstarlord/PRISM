@@ -24,12 +24,14 @@ export interface NewsFeed {
     error: string | null; warnings: string[]; sources: string[];
     credits_reserved_today: number; daily_credit_budget: number;
     refresh_minutes: number; auto_refresh: boolean; can_refresh: boolean;
-    news_date?: string; timezone?: string;
+    news_date?: string; timezone?: string; window_days?: number;
   };
   articles: {
     url: string; title: string; publisher: string; published_at: string | null;
     retrieved_at: string; excerpt: string; sentiment: Sentiment;
     companies: Record<string, Sentiment>;
+    is_retained_context?: boolean; relevance_reason?: string | null;
+    relevance_until?: string | null; related_article_url?: string | null;
   }[];
 }
 
@@ -37,14 +39,12 @@ function timestamp(value: string | null) {
   return value ? `${new Date(value).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST` : "Not available";
 }
 
-function newsDate(value: Date) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(value);
-}
+const NEWS_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-function publishedToday(value: string | null, now: Date) {
+function publishedInWindow(value: string | null, now: Date) {
   if (!value || !/(Z|[+-]\d{2}:\d{2})$/i.test(value)) return false;
   const published = new Date(value);
-  return Number.isFinite(published.getTime()) && published <= now && newsDate(published) === newsDate(now);
+  return Number.isFinite(published.getTime()) && published <= now && published.getTime() >= now.getTime() - NEWS_WINDOW_MS;
 }
 
 const color = { positive: "success", negative: "error", neutral: "default", uncertain: "warning" } as const;
@@ -59,7 +59,7 @@ export function NewsIntelligencePanel() {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    // Expire yesterday's cards even if the tab remains open across midnight or is offline.
+    // Expire cards by publication time even when this tab is offline.
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -101,9 +101,17 @@ export function NewsIntelligencePanel() {
   }
 
   const state = feed?.status;
-  const todayArticles = (feed?.articles ?? []).filter(article => publishedToday(article.published_at, now));
-  const symbols = [...new Set(todayArticles.flatMap(article => Object.keys(article.companies)))].sort();
-  const articles = todayArticles.filter(article => {
+  const recentArticles = (feed?.articles ?? []).filter(article => publishedInWindow(article.published_at, now));
+  const activeArticles = (feed?.articles ?? []).filter(article => {
+    if (publishedInWindow(article.published_at, now)) return true;
+    const published = article.published_at ? new Date(article.published_at) : null;
+    const until = article.relevance_until ? new Date(article.relevance_until) : null;
+    return article.is_retained_context && published && published <= now && until && until > now
+      && recentArticles.some(recent => recent.url === article.related_article_url);
+  });
+  const contextCount = activeArticles.length - recentArticles.length;
+  const symbols = [...new Set(activeArticles.flatMap(article => Object.keys(article.companies)))].sort();
+  const articles = activeArticles.filter(article => {
     const result = symbol === "all" ? article.sentiment : article.companies[symbol];
     return result && (sentiment === "all" || result.label === sentiment);
   });
@@ -114,7 +122,8 @@ export function NewsIntelligencePanel() {
         <Typography variant="overline" color="text.secondary">FINANCIAL NEWS · LOCAL SENTIMENT</Typography>
         <Typography component="h1" variant="h4" sx={{ fontWeight: 700 }}>News Intelligence</Typography>
         <Typography color="text.secondary" sx={{ mt: 1 }}>
-          Today's company and market news. Only articles published today in India are shown.
+          Analysis of the last 7 days of company and market news, updated automatically.
+          Older stories stay as context while a recent related report supports their relevance.
         </Typography>
       </Box>
       <Button variant="contained" disabled={!state?.can_refresh || busy} onClick={() => { void refresh(); }}
@@ -130,11 +139,12 @@ export function NewsIntelligencePanel() {
           color={state.configured ? "success" : "warning"} variant="outlined" />
         <Chip label={state.model_ready ? "FinBERT downloaded · local" : "FinBERT setup needed"}
           color={state.model_ready ? "success" : "warning"} variant="outlined" />
-        <Chip label={`${todayArticles.length} article${todayArticles.length === 1 ? "" : "s"} today · IST`} variant="outlined" />
+        <Chip label={`${recentArticles.length} article${recentArticles.length === 1 ? "" : "s"} · last 7 days`} variant="outlined" />
+        {contextCount > 0 && <Chip label={`${contextCount} older relevant ${contextCount === 1 ? "story" : "stories"}`} variant="outlined" />}
         <Chip label={state.auto_refresh ? `Auto refresh: ${state.refresh_minutes} min` : "Manual collection"} variant="outlined" />
       </Stack>
       {!state.configured && <Alert severity="info">
-        Connect a Firecrawl API key on the backend to collect live news. Only today's cached articles are shown.
+        Connect a Firecrawl API key on the backend to collect live news. Available 7-day news and relevant context remain visible.
       </Alert>}
       {!state.model_ready && <Alert severity="warning">Download the local FinBERT model before collecting news.</Alert>}
       {state.running && <Box><LinearProgress /><Typography sx={{ mt: 1 }} variant="body2">
@@ -143,7 +153,7 @@ export function NewsIntelligencePanel() {
       {state.error && <Alert severity="warning">Last collection: {state.error}</Alert>}
       {state.warnings.map(warning => <Alert key={warning} severity="warning">{warning}</Alert>)}
       {state.stale && state.last_success_at && <Alert severity="info">
-        A fresh collection is due. Older articles remain hidden while today's news is collected.
+        A fresh collection is due. Available news from the last 7 days remains visible while new articles are collected.
       </Alert>}
       <Paper variant="outlined" sx={{ p: 2.5 }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
@@ -169,13 +179,17 @@ export function NewsIntelligencePanel() {
           </Select></FormControl>
       </Stack>
       {!articles.length && <Paper variant="outlined" sx={{ p: 5, textAlign: "center" }}>
-        <Typography variant="h6">{todayArticles.length ? "No articles match these filters" : "No news published today yet"}</Typography>
-        <Typography color="text.secondary">{todayArticles.length ? "Try another company or sentiment." : "No verified articles for today are available yet. New articles will appear after collection; previous days are not shown."}</Typography>
+        <Typography variant="h6">{activeArticles.length ? "No articles match these filters" : "No news available for the last 7 days"}</Typography>
+        <Typography color="text.secondary">{activeArticles.length ? "Try another company or sentiment." : "New articles will appear after collection. Check the collection status above."}</Typography>
       </Paper>}
       {articles.map(article => {
         const result = symbol === "all" ? article.sentiment : article.companies[symbol];
         return <Paper component="article" key={article.url} variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
           <Stack spacing={1.5}>
+            {article.is_retained_context && !publishedInWindow(article.published_at, now) && <Alert severity="info">
+              <strong>Older relevant context.</strong> {article.relevance_reason} This story is excluded from 7-day sentiment averages.
+              {article.related_article_url && <> <a href={article.related_article_url} target="_blank" rel="noopener noreferrer">View recent related report</a>.</>}
+            </Alert>}
             <Typography variant="caption" color="text.secondary">
               {article.publisher} · {article.published_at ? `Published ${timestamp(article.published_at)}` : "Publication time unavailable"}
             </Typography>
