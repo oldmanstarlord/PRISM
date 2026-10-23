@@ -9,9 +9,12 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("CompanyDetail", () => {
   it("explains the direction and renders the exact peer comparison", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => ({
       ok: true,
-      json: async () => ({
+      json: async () => url.includes("/gnn/") ? {
+        run: { status: "unavailable", production_eligible: false },
+        symbol: "TEST", latest: null, history: [],
+      } : ({
         run: { signal_date: "2026-10-01" },
         company: { symbol: "TEST", name: "Test Ltd.", industry: "Banks" },
         scores: [{
@@ -30,7 +33,7 @@ describe("CompanyDetail", () => {
         },
         limitations: [],
       }),
-    }));
+    })));
     render(
       <MemoryRouter initialEntries={["/companies/TEST"]}>
         <Routes><Route path="/companies/:symbol" element={<CompanyDetail />} /></Routes>
@@ -42,5 +45,6 @@ describe("CompanyDetail", () => {
     expect(screen.getByText(/20-day actual performance/i)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /TEST indexed performance/i })).toBeInTheDocument();
     expect(screen.getByText(/TEST was excluded from its own comparison/i)).toBeInTheDocument();
+    expect(await screen.findByText("No GNN history is available for TEST.")).toBeVisible();
   });
 });

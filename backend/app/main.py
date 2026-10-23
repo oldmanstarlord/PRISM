@@ -23,9 +23,7 @@ logger = logging.getLogger("prism.error")
 async def lifespan(app: FastAPI) -> Any:
     scheduler = None
     if settings.news_auto_refresh or settings.sector_auto_refresh:
-        from apscheduler.schedulers.background import (
-            BackgroundScheduler,  # type: ignore[import-untyped]
-        )
+        from apscheduler.schedulers import background  # type: ignore[import-untyped]
 
         def collect_news() -> None:
             try:
@@ -35,7 +33,7 @@ async def lifespan(app: FastAPI) -> Any:
             except Exception:
                 logger.warning("Scheduled news refresh was skipped")
 
-        scheduler = BackgroundScheduler(timezone=NEWS_TIMEZONE)
+        scheduler = background.BackgroundScheduler(timezone=NEWS_TIMEZONE)
         if settings.news_auto_refresh:
             scheduler.add_job(
                 collect_news,

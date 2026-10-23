@@ -25,11 +25,15 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
     supabase_url: str | None = None
     supabase_publishable_key: str | None = None
+    local_auth_enabled: bool = False
     firecrawl_api_key: SecretStr | None = None
     news_cache_path: Path = _PROJECT_ROOT / "data/processed/news.sqlite3"
     news_sources: list[str] = [
-        "economictimes.indiatimes.com", "moneycontrol.com", "livemint.com",
-        "business-standard.com", "reuters.com",
+        "economictimes.indiatimes.com",
+        "moneycontrol.com",
+        "livemint.com",
+        "business-standard.com",
+        "reuters.com",
     ]
     news_query: str = "India NSE stock market company earnings financial news"
     news_rss_urls: list[str] = []
@@ -95,6 +99,8 @@ class Settings(BaseSettings):
                 "PRISM_TRUSTED_HOSTS must contain explicit hosts; wildcard is forbidden"
             )
         if self.environment.lower() == "production":
+            if self.local_auth_enabled:
+                raise ValueError("Local authentication bypass cannot be enabled in production")
             if not self.supabase_url or not self.supabase_publishable_key:
                 raise ValueError("Production requires Supabase authentication configuration")
             if any("localhost" in origin or "127.0.0.1" in origin for origin in self.cors_origins):

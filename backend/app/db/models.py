@@ -69,6 +69,30 @@ class SecurityAlias(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class SecurityIndustryHistory(Base):
+    """Point-in-time sector classification used by leakage-sensitive research."""
+
+    __tablename__ = "security_industry_history"
+    __table_args__ = (
+        UniqueConstraint(
+            "security_id", "valid_from", name="uq_security_industry_history_period"
+        ),
+        CheckConstraint("valid_to IS NULL OR valid_to >= valid_from", name="ck_industry_dates"),
+        Index("ix_security_industry_history_security_dates", "security_id", "valid_from"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    security_id: Mapped[UUID] = mapped_column(
+        ForeignKey("security.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    industry: Mapped[str] = mapped_column(String(160), nullable=False)
+    sector: Mapped[str | None] = mapped_column(String(120))
+    valid_from: Mapped[date] = mapped_column(Date, nullable=False)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    source: Mapped[str] = mapped_column(String(120), nullable=False)
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class Universe(TimestampMixin, Base):
     __tablename__ = "universe"
 
@@ -622,7 +646,12 @@ class PortfolioTransaction(Base):
         CheckConstraint("price IS NULL OR price > 0", name="ck_transaction_price"),
         Index("ix_portfolio_transaction_portfolio_date", "portfolio_id", "trade_date"),
         Index("ix_portfolio_transaction_owner", "owner_id"),
-        Index("ix_portfolio_transaction_idempotency", "portfolio_id", "idempotency_key", unique=True),
+        Index(
+            "ix_portfolio_transaction_idempotency",
+            "portfolio_id",
+            "idempotency_key",
+            unique=True,
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
@@ -855,6 +884,66 @@ class ModelPrediction(Base):
     model_version: Mapped[str | None] = mapped_column(String(80))
     horizon_sessions: Mapped[int | None] = mapped_column(Integer)
     quality_status: Mapped[str | None] = mapped_column(String(20))
+
+
+class GnnStockDrift(Base):
+    __tablename__ = "gnn_stock_drift"
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id", "analysis_date", "symbol", name="uq_gnn_stock_drift_run_date_symbol"
+        ),
+        CheckConstraint(
+            "drift_percentile >= 0 AND drift_percentile <= 1",
+            name="ck_gnn_drift_percentile",
+        ),
+        CheckConstraint(
+            "alert_level IN ('normal', 'elevated', 'high')", name="ck_gnn_alert_level"
+        ),
+        Index("ix_gnn_stock_drift_date_level", "analysis_date", "alert_level"),
+        Index("ix_gnn_stock_drift_symbol_date", "symbol", "analysis_date"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("model_run.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    analysis_date: Mapped[date] = mapped_column(Date, nullable=False)
+    symbol: Mapped[str] = mapped_column(String(40), nullable=False)
+    industry: Mapped[str] = mapped_column(String(160), nullable=False)
+    embedding_drift: Mapped[Decimal] = mapped_column(Numeric(16, 8), nullable=False)
+    drift_percentile: Mapped[Decimal] = mapped_column(Numeric(8, 6), nullable=False)
+    alert_level: Mapped[str] = mapped_column(String(20), nullable=False)
+    primary_driver: Mapped[str | None] = mapped_column(String(80))
+    driver_scope: Mapped[str | None] = mapped_column(String(30))
+    driver_scores: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    explanation: Mapped[dict[str, object]] = mapped_column(
+        JSONB, default=dict, server_default="{}", nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class GnnMarketDrift(Base):
+    __tablename__ = "gnn_market_drift"
+    __table_args__ = (
+        UniqueConstraint("run_id", "analysis_date", name="uq_gnn_market_drift_run_date"),
+        Index("ix_gnn_market_drift_date", "analysis_date"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("model_run.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    analysis_date: Mapped[date] = mapped_column(Date, nullable=False)
+    mean_drift: Mapped[Decimal] = mapped_column(Numeric(16, 8), nullable=False)
+    share_above_train_95pct: Mapped[Decimal] = mapped_column(Numeric(8, 6), nullable=False)
+    active_stocks: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class NewsArticle(TimestampMixin, Base):

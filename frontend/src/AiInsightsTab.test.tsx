@@ -184,10 +184,12 @@ describe("AiInsightsTab", () => {
   it("renders diagnostic panels, model estimate badges, and disclaimer when loaded", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
+      vi.fn().mockImplementation(async (url: string) => ({
         ok: true,
-        json: async () => mockAiResponse,
-      })
+        json: async () => url.includes("/gnn/")
+          ? { run: { status: "unavailable", production_eligible: false }, results: [], history: [] }
+          : mockAiResponse,
+      }))
     );
 
     render(
@@ -212,5 +214,6 @@ describe("AiInsightsTab", () => {
     // Metric check
     expect(screen.getByText("16.20%")).toBeInTheDocument();
     expect(screen.getAllByText(/Calm \/ Normal/i).length).toBeGreaterThan(0);
+    expect(await screen.findByText("No persisted structural-drift analysis is available.")).toBeVisible();
   });
 });

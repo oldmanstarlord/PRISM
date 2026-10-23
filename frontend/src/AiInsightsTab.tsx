@@ -21,6 +21,7 @@ import { Link } from "react-router-dom";
 import { postJson } from "./api";
 import type { PortfolioHolding } from "./PortfolioManager";
 import { COLORS, SHADOWS } from "./theme";
+import { GnnPortfolioDriftPanel } from "./GnnStructuralDriftPanel";
 
 type OutputStatus =
   | "ready"
@@ -233,6 +234,7 @@ export function AiInsightsTab({ holdings, totalInvestedValue }: AiInsightsTabPro
           </Button>
         </Stack>
       </Paper>
+      <GnnPortfolioDriftPanel symbols={holdings.map((holding) => holding.symbol)} />
 
       {loading && <Alert severity="info">Loading persisted model runs and predictions. This request does not train models.</Alert>}
       {error && <Alert severity="warning"><strong>Output unavailable:</strong> {error}</Alert>}

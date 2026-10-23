@@ -72,6 +72,20 @@ def test_production_rejects_wildcard_and_local_cors() -> None:
         Settings(
             database_url="postgresql://u:p@db.example.com/prism",
             environment="production",
+            local_auth_enabled=False,
+            cors_origins=["https://prism.example.com"],
+            trusted_hosts=["prism.example.com"],
+        )
+
+
+def test_production_rejects_local_auth_bypass() -> None:
+    with pytest.raises(ValueError, match="Local authentication bypass"):
+        Settings(
+            database_url="postgresql://u:p@db.example.com/prism",
+            environment="production",
+            local_auth_enabled=True,
+            supabase_url="https://example.supabase.co",
+            supabase_publishable_key="public-key",
             cors_origins=["https://prism.example.com"],
             trusted_hosts=["prism.example.com"],
         )
