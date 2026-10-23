@@ -1,3 +1,5 @@
+# mypy: disable-error-code=import-untyped
+
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -21,10 +23,10 @@ logger = logging.getLogger("prism.error")
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> Any:
     scheduler = None
-    if settings.news_auto_refresh:
-        from apscheduler.schedulers.background import (
-            BackgroundScheduler,  # type: ignore[import-untyped]
-        )
+    if settings.news_auto_refresh or settings.gnn_auto_refresh:
+        from apscheduler.schedulers.background import BackgroundScheduler
+
+        scheduler = BackgroundScheduler(timezone=NEWS_TIMEZONE)
 
         def collect_news() -> None:
             try:
@@ -34,18 +36,47 @@ async def lifespan(app: FastAPI) -> Any:
             except Exception:
                 logger.warning("Scheduled news refresh was skipped")
 
-        scheduler = BackgroundScheduler(timezone=NEWS_TIMEZONE)
-        scheduler.add_job(
-            collect_news,
-            "interval",
-            minutes=settings.news_refresh_minutes,
-            max_instances=1,
-            coalesce=True,
-            next_run_time=datetime.now(UTC),
-        )
-        scheduler.add_job(
-            collect_news, "cron", hour=0, minute=0, max_instances=1, coalesce=True,
-        )
+        if settings.news_auto_refresh:
+            scheduler.add_job(
+                collect_news,
+                "interval",
+                minutes=settings.news_refresh_minutes,
+                max_instances=1,
+                coalesce=True,
+                next_run_time=datetime.now(UTC),
+            )
+            scheduler.add_job(
+                collect_news,
+                "cron",
+                hour=0,
+                minute=0,
+                max_instances=1,
+                coalesce=True,
+            )
+        if settings.gnn_auto_refresh:
+            from jobs.run_weekly_gnn import run as run_weekly_gnn
+
+            def refresh_gnn() -> None:
+                try:
+                    assert settings.gnn_run_path is not None
+                    assert settings.gnn_calibration_path is not None
+                    run_weekly_gnn(
+                        settings.gnn_history_start,
+                        settings.gnn_run_path,
+                        settings.gnn_calibration_path,
+                    )
+                except Exception:
+                    logger.exception("Scheduled GNN refresh failed")
+
+            scheduler.add_job(
+                refresh_gnn,
+                "cron",
+                day_of_week="sat",
+                hour=8,
+                minute=0,
+                max_instances=1,
+                coalesce=True,
+            )
         scheduler.start()
     yield
     if scheduler is not None:

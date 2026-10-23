@@ -27,6 +27,7 @@ import ComparisonChart from "./ComparisonChart";
 import { SectorDivergenceExplainer } from "./PrismExplainer";
 import StockDecisionJournal from "./StockDecisionJournal";
 import StockResearchNotes from "./StockResearchNotes";
+import { GnnCompanyDriftPanel } from "./GnnStructuralDriftPanel";
 import type { CompanyResponse, Horizon, LiveQuote, RankingsResponse } from "./types";
 
 function residualDirection(value: number) { return value >= 0 ? "positive" : "negative"; }
@@ -419,6 +420,8 @@ export default function CompanyDetail() {
                   </Paper>
                 ))}
               </Stack>
+
+              <GnnCompanyDriftPanel symbol={data.company.symbol} />
 
               {/* ─── Actual Performance vs Leave-One-Out Benchmark ─── */}
               <Paper sx={{ p: { xs: 2, md: 3 } }}>

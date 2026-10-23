@@ -120,6 +120,22 @@ After every material update:
 
 ## Change log
 
+### 2026-10-22 - Temporal heterogeneous GNN validation and guarded integration
+
+- Added point-in-time industry-history storage/import, leakage and coverage audits, chronological evaluation, four transparent baselines, multi-seed experiments and trained relation ablations.
+- Added immutable drift persistence, authenticated status/portfolio/company/market APIs, a validation-gated weekly inference scheduler, and structural-change panels in AI Insights and Company Detail.
+- Added drift percentiles and observed feature/relationship drivers with explicit non-causal, non-forecast wording.
+- The existing retrospective run is correctly rejected: held-out adverse-change ROC AUC is 0.514 versus 0.579 for the best non-graph baseline. It is not selected or published as production-ready.
+- Verification: GNN tests 3 passed; scoped Ruff and mypy passed; frontend production build passed. The repository-wide pytest run requires importlib mode because duplicate test module names collide, and the attempted run did not complete. Existing unrelated frontend lint errors and sandbox temporary-file failures remain outside this change.
+
+### 2026-10-22 - Market MST readability
+
+- Tightened the market tree layout and replaced tiny rectangular nodes with larger outlined circles.
+- Added stock search with neighbourhood focus, zoom controls, fit-all navigation and an industry legend.
+- Labels appear at readable zoom levels; selecting a stock emphasizes its connections. Background clicks clear selection without resetting the viewport.
+- Fixed selected-node styling that incorrectly reduced node width to four pixels.
+- Verification: frontend TypeScript compilation and production build passed; visual browser acceptance remains to be checked with the live market tree.
+
 ### 2026-10-06 - Historical fundamental score regression and blends
 
 - Added reproducible Yahoo/NSE historical acquisition, delayed quarterly reconstruction, continuous-score regression searches and median/weighted model blends for the exact 200-stock universe.

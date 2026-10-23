@@ -12,6 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from backend.app.core.config import settings
 
 bearer_scheme = HTTPBearer(auto_error=False)
+LOCAL_DEVELOPMENT_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,11 @@ def require_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> AuthenticatedUser:
     if credentials is None or credentials.scheme.lower() != "bearer":
+        if settings.local_auth_enabled and settings.environment.lower() == "development":
+            return AuthenticatedUser(
+                id=LOCAL_DEVELOPMENT_USER_ID,
+                email="local-development@prism.invalid",
+            )
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",

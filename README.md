@@ -9,6 +9,11 @@ The current release evidence is in [docs/phase-7-report.md](docs/phase-7-report.
 and assumptions are in [docs/METHODOLOGY.md](docs/METHODOLOGY.md), and the implementation history
 is in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
+The temporal heterogeneous GNN research and validation pipeline is documented in
+[docs/TEMPORAL_HETERO_GNN.md](docs/TEMPORAL_HETERO_GNN.md). Its authenticated API and UI
+remain unavailable or visibly research-only until point-in-time, baseline, stability and
+relation-ablation gates pass.
+
 ## Stack and supported runtimes
 
 - Python 3.12, managed from `pyproject.toml` and `uv.lock` with `uv`.
@@ -61,6 +66,10 @@ origins, and missing Supabase authentication settings. The API enforces security
 default request limit, a 60-second default timeout, and process-local rate limiting on expensive
 analytics/news/ML paths. ML and holding-specific news routes require a valid Supabase bearer token.
 Portfolio, transaction, reconciliation, audit, and risk-history queries are owner-scoped.
+
+For local development without Supabase, set `PRISM_LOCAL_AUTH_ENABLED=true`. Requests without a
+bearer token then use one fixed local-development identity. This bypass is rejected when
+`PRISM_ENVIRONMENT=production` and must not be used for a shared deployment.
 
 Override limits only through documented `PRISM_*` environment variables in `.env.example`.
 Process-local rate limiting is not a substitute for a shared gateway limiter in a multi-worker

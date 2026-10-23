@@ -1,3 +1,4 @@
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote, unquote
@@ -25,11 +26,15 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:5173"]
     supabase_url: str | None = None
     supabase_publishable_key: str | None = None
+    local_auth_enabled: bool = False
     firecrawl_api_key: SecretStr | None = None
     news_cache_path: Path = _PROJECT_ROOT / "data/processed/news.sqlite3"
     news_sources: list[str] = [
-        "economictimes.indiatimes.com", "moneycontrol.com", "livemint.com",
-        "business-standard.com", "reuters.com",
+        "economictimes.indiatimes.com",
+        "moneycontrol.com",
+        "livemint.com",
+        "business-standard.com",
+        "reuters.com",
     ]
     news_query: str = "India NSE stock market company earnings financial news"
     news_rss_urls: list[str] = []
@@ -37,6 +42,10 @@ class Settings(BaseSettings):
     news_daily_credit_budget: int = Field(default=50, ge=0, le=10000)
     news_refresh_minutes: int = Field(default=60, ge=5, le=1440)
     news_auto_refresh: bool = True
+    gnn_auto_refresh: bool = False
+    gnn_history_start: date = date(2020, 1, 1)
+    gnn_run_path: Path | None = None
+    gnn_calibration_path: Path | None = None
     trusted_hosts: list[str] = ["localhost", "127.0.0.1", "testserver"]
     max_request_bytes: int = Field(default=1_048_576, ge=1_024, le=10_485_760)
     request_timeout_seconds: float = Field(default=60.0, ge=1.0, le=300.0)
@@ -94,10 +103,18 @@ class Settings(BaseSettings):
                 "PRISM_TRUSTED_HOSTS must contain explicit hosts; wildcard is forbidden"
             )
         if self.environment.lower() == "production":
+            if self.local_auth_enabled:
+                raise ValueError("Local authentication bypass cannot be enabled in production")
             if not self.supabase_url or not self.supabase_publishable_key:
                 raise ValueError("Production requires Supabase authentication configuration")
             if any("localhost" in origin or "127.0.0.1" in origin for origin in self.cors_origins):
                 raise ValueError("Production CORS origins cannot target localhost")
+        if self.gnn_auto_refresh and (
+            self.gnn_run_path is None or self.gnn_calibration_path is None
+        ):
+            raise ValueError(
+                "GNN auto refresh requires PRISM_GNN_RUN_PATH and PRISM_GNN_CALIBRATION_PATH"
+            )
         return self
 
 
