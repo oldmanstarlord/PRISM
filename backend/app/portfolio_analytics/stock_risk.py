@@ -172,6 +172,7 @@ def get_benchmark_returns(session: Session | None = None) -> pd.Series:
                     dates = [r.trade_date for r in rows]
                     closes = pd.Series([float(r.adjusted_close) for r in rows], index=dates)
                     returns = np.log(closes / closes.shift(1)).dropna()
+                    returns = returns[~returns.index.duplicated(keep="last")]
                     _benchmark_returns_cache = (now, returns)
                     return returns
         except Exception as exc:
@@ -187,6 +188,7 @@ def get_benchmark_returns(session: Session | None = None) -> pd.Series:
             closes = df["Close"].dropna()
             returns = np.log(closes / closes.shift(1)).dropna()
             returns.index = pd.to_datetime(returns.index).tz_localize(None).date
+            returns = returns[~returns.index.duplicated(keep="last")]
             _benchmark_returns_cache = (now, returns)
             return returns
     except Exception:
@@ -314,6 +316,10 @@ def calculate_single_window_metrics(
     window_label: str,
 ) -> WindowRiskMetrics:
     """Calculate exact volatility, downside volatility, drawdown, alpha and beta."""
+    stock_returns = stock_returns[~stock_returns.index.duplicated(keep="last")].sort_index()
+    benchmark_returns = benchmark_returns[
+        ~benchmark_returns.index.duplicated(keep="last")
+    ].sort_index()
     aligned = pd.concat([stock_returns, benchmark_returns], axis=1, join="inner").dropna()
     aligned.columns = ["stock", "benchmark"]
     aligned = aligned.tail(window_days)

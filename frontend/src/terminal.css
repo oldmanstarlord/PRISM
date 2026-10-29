@@ -13,6 +13,18 @@
   --up: #3ddc5a;
   --down: #ff4d3d;
   --input-bg: #0b1a33;
+  --sector-1: #ff9f1a;
+  --sector-2: #3fd0ff;
+  --sector-3: #e6e6e6;
+  --sector-4: #ffe24a;
+  --sector-5: #4ea3ff;
+  --sector-6: #f6bd60;
+  --sector-7: #b8b8ff;
+  --sector-8: #ff8fab;
+  --sector-9: #72ddf7;
+  --sector-10: #cdb4db;
+  --sector-11: #ffd6a5;
+  --sector-12: #a9def9;
   --font-data: "IBM Plex Mono", Consolas, Menlo, monospace;
   --font-label: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
   --text-tag: 11px;
@@ -661,9 +673,44 @@ a {
   align-content: start;
   min-width: 0;
 }
+.portfolio-page-header {
+  padding: var(--space-3) 0 var(--space-4);
+}
+.portfolio-action-band {
+  margin: var(--space-4) 0 calc(var(--space-4) * 2);
+}
+.portfolio-action-band details {
+  padding-block: var(--space-3);
+}
+.portfolio-action-band details > div {
+  padding-top: var(--space-3);
+}
+.portfolio-review-nav {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: var(--border-width) solid var(--line);
+}
+.portfolio-review-nav ol {
+  gap: var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2) 0 var(--space-4);
+}
+.portfolio-review-nav ol .MuiButton-root {
+  min-height: 30px;
+  padding-inline: var(--space-4);
+}
+.portfolio-view-tabs {
+  gap: var(--space-3) !important;
+  padding-bottom: var(--space-4);
+}
+.portfolio-view-tabs .MuiButton-root {
+  min-height: 28px;
+  padding-inline: calc(var(--space-4) + var(--space-2));
+}
 .network-toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
   padding: var(--space-2) 0;
 }
@@ -672,12 +719,106 @@ a {
 }
 .network-canvas-wrap {
   position: relative;
+  overflow: hidden;
+  border-top: var(--border-width) solid var(--line);
+}
+.network-edge-limit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--gray);
+  font: var(--text-tag)/var(--leading) var(--font-data);
+}
+.network-edge-limit input {
+  width: 110px;
+  accent-color: var(--amber);
 }
 .network-canvas {
   width: 100%;
   height: calc(100dvh - var(--network-offset));
   min-height: var(--network-min-height);
   background: var(--bg);
+}
+.network-map-key {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  display: grid;
+  grid-template-columns: auto;
+  gap: 0 var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--line);
+  background: var(--bg);
+  color: var(--gray);
+  font: var(--text-tag)/var(--leading) var(--font-data);
+  pointer-events: none;
+}
+.network-sector-legend {
+  position: absolute;
+  z-index: 3;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: min(250px, calc(100% - 12px));
+  max-height: calc(100% - 70px);
+  overflow: auto;
+  border: var(--border-width) solid var(--line);
+  background: var(--bg);
+}
+.network-legend-heading {
+  padding: var(--space-1) var(--space-3);
+  border-bottom: var(--border-width) solid var(--line);
+  color: var(--gray);
+  font: var(--text-tag)/var(--leading) var(--font-data);
+}
+.network-legend-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--row-height);
+  border: 0;
+  border-bottom: var(--border-width) solid var(--line);
+  padding: 0 var(--space-3);
+  background: var(--bg);
+  color: var(--white);
+  font: var(--text-data)/var(--leading) var(--font-data);
+  text-align: left;
+  cursor: pointer;
+}
+.network-legend-item:hover {
+  background: var(--bg-hover);
+}
+.network-legend-item[data-hidden] {
+  color: var(--gray);
+  text-decoration: line-through;
+}
+.network-legend-item .numeric {
+  text-align: right;
+}
+.network-legend-swatch {
+  width: 8px;
+  height: 8px;
+  border: var(--border-width) solid var(--bg);
+}
+.network-legend-item[data-hidden] .network-legend-swatch {
+  background: var(--line) !important;
+}
+.network-tooltip {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  min-width: 180px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--amber);
+  background: var(--bg);
+  color: var(--gray);
+  font: var(--text-data)/var(--leading) var(--font-data);
+  pointer-events: none;
+}
+.network-tooltip strong {
+  color: var(--white);
+  font-weight: var(--weight-title);
 }
 .network-empty {
   position: absolute;
