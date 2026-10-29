@@ -97,6 +97,19 @@ def test_single_window_metrics_calculation():
     assert isinstance(metrics.alpha, float)
 
 
+def test_single_window_metrics_deduplicates_observation_dates():
+    dates = [date(2026, 1, 1) + timedelta(days=i) for i in range(30)]
+    stock_dates = [*dates, dates[-1]]
+    benchmark_dates = [*dates, dates[-1]]
+    stock_ret = pd.Series([0.001] * 30 + [0.002], index=stock_dates)
+    benchmark_ret = pd.Series([0.0005] * 30 + [0.001], index=benchmark_dates)
+
+    metrics = calculate_single_window_metrics(stock_ret, benchmark_ret, 21, "1M")
+
+    assert metrics.observations == 21
+    assert metrics.stock_return > 0
+
+
 def test_calculate_stock_risk_explainable_scoring():
     dates = [date(2026, 1, 1) + timedelta(days=i) for i in range(150)]
     # Simulate a steady stock with 15% annual volatility

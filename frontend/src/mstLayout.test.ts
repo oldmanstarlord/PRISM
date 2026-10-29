@@ -1,7 +1,7 @@
 // @vitest-environment node
 import cytoscape from "cytoscape";
 import { describe, expect, it, vi } from "vitest";
-import { mstElements, mstLayout } from "./mstLayout";
+import { layoutMst, mstElements, mstLayout, mstTopology } from "./mstLayout";
 import type { MstResponse } from "./types";
 
 type GraphData = Pick<MstResponse, "nodes" | "edges">;
@@ -35,11 +35,9 @@ function layout(data: GraphData) {
     } }],
     layout: { name: "preset" },
   });
-  // Reproduce the actual CoSE run, including its collision handling. A missing
-  // initial position makes this assertion fail despite randomize:false.
   const random = vi.spyOn(Math, "random");
   try {
-    cy.layout({ ...mstLayout }).run();
+    cy.layout({ ...mstLayout() }).run();
     expect(random).not.toHaveBeenCalled();
     const positions = cy.nodes().map((node) => ({ id: node.id(), ...node.position() }));
     const edges = cy.edges().map((edge) => edge.data());
@@ -73,10 +71,42 @@ describe("market network layout", () => {
     expect(data).toEqual(original);
     expect(result.positions.map(({ id }) => id).sort()).toEqual(data.nodes.map(({ id }) => id).sort());
     expect(result.edges).toHaveLength(data.edges.length);
-    for (const edge of data.edges) expect(result.edges).toContainEqual({ id: `${edge.source}-${edge.target}`, ...edge });
+    for (const edge of data.edges) {
+      expect(result.edges).toContainEqual(
+        expect.objectContaining({ id: `${edge.source}-${edge.target}`, ...edge }),
+      );
+    }
   });
 
   it("accepts an empty graph", () => {
     expect(mstElements({ nodes: [], edges: [] })).toEqual([]);
+  });
+
+  it("uses the most connected stock as the topology anchor", () => {
+    const data = fixture(12, "star");
+    const topology = mstTopology(data);
+    const elements = mstElements(data);
+    const root = elements.find((element) => element.data?.id === "node-0");
+
+    expect(topology).toMatchObject({
+      rootSymbol: "STOCK000",
+      maxDegree: 11,
+      componentCount: 1,
+    });
+    expect(root?.data).toMatchObject({ id: "node-0", degree: 11, radius: 22 });
+  });
+
+  it("settles circles and labels without overlap or a horizontal dump line", () => {
+    const result = layoutMst(fixture(120, "forest"), { width: 1120, height: 680 });
+    const nodes = result.elements.filter((element) => !element.data?.source);
+    const positions = nodes.map((element) => element.position!);
+    const distinctRows = new Set(positions.map(({ y }) => Math.round(y / 2))).size;
+
+    expect(result.labelOverlapCount).toBe(0);
+    expect(result.minimumNodeDistance).toBeGreaterThanOrEqual(39.9);
+    expect(distinctRows).toBeGreaterThan(nodes.length / 2);
+    expect(nodes.every((node) => node.data?.symbol)).toBe(true);
+    expect(nodes.every((node) => Number(node.data?.radius) >= 6)).toBe(true);
+    expect(nodes.every((node) => Number(node.data?.radius) <= 22)).toBe(true);
   });
 });

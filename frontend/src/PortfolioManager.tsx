@@ -1102,6 +1102,21 @@ export default function PortfolioManager() {
     setError(null);
     const controller = new AbortController();
     try {
+      const failures: string[] = [];
+      async function retainPartialResult<T>(
+        label: string,
+        request: Promise<T>,
+      ): Promise<T | null> {
+        try {
+          return await request;
+        } catch (reason) {
+          const message =
+            reason instanceof Error ? reason.message : "unknown backend error";
+          failures.push(`${label}: ${message}`);
+          return null;
+        }
+      }
+
       const compPayload = {
         holdings: holdings.map((h) => ({
           symbol: h.symbol,
@@ -1117,27 +1132,39 @@ export default function PortfolioManager() {
 
       const [resPreview, resComp, resMonitoring, resNews] = await Promise.all([
         holdingWeightsForAnalytics.length > 0
-          ? postJson<PortfolioAnalysisResponse>(
-              "/portfolio-analysis/preview",
-              { holdings: holdingWeightsForAnalytics, window: 250, stress: stress ?? null },
-              controller.signal,
-            ).catch(() => null)
+          ? retainPartialResult(
+              "portfolio preview",
+              postJson<PortfolioAnalysisResponse>(
+                "/portfolio-analysis/preview",
+                { holdings: holdingWeightsForAnalytics, window: 250, stress: stress ?? null },
+                controller.signal,
+              ),
+            )
           : Promise.resolve(null),
-        postJson<ComprehensiveRiskResponse>(
-          "/portfolio-analysis/comprehensive-risk",
-          compPayload,
-          controller.signal,
-        ).catch(() => null),
-        postJson<StructuralMonitoringSnapshot>(
-          "/portfolio-analysis/structural-monitoring",
-          compPayload,
-          controller.signal,
-        ).catch(() => null),
-        postJson<PortfolioNewsSummary>(
-          "/portfolio-analysis/news-signals",
-          compPayload,
-          controller.signal,
-        ).catch(() => null),
+        retainPartialResult(
+          "comprehensive risk",
+          postJson<ComprehensiveRiskResponse>(
+            "/portfolio-analysis/comprehensive-risk",
+            compPayload,
+            controller.signal,
+          ),
+        ),
+        retainPartialResult(
+          "structural monitoring",
+          postJson<StructuralMonitoringSnapshot>(
+            "/portfolio-analysis/structural-monitoring",
+            compPayload,
+            controller.signal,
+          ),
+        ),
+        retainPartialResult(
+          "news signals",
+          postJson<PortfolioNewsSummary>(
+            "/portfolio-analysis/news-signals",
+            compPayload,
+            controller.signal,
+          ),
+        ),
       ]);
 
       if (resPreview) setAnalysis(resPreview);
@@ -1187,12 +1214,15 @@ export default function PortfolioManager() {
       }
       if (resMonitoring) setStructuralMonitoring(resMonitoring);
       if (resNews) setNewsSummary(resNews);
+      if (failures.length) {
+        setError(`Analysis incomplete — ${failures.join(" | ")}`);
+      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Unable to analyze portfolio");
     } finally {
       setAnalysisLoading(false);
     }
-  }, [holdings, holdingWeightsForAnalytics]);
+  }, [holdings, holdingWeightsForAnalytics, serverPortfolioId]);
 
   // Automatically compute structural monitoring and risk metrics if holdings exist
   useEffect(() => {
@@ -1426,7 +1456,7 @@ export default function PortfolioManager() {
         <Stack
           direction={{ xs: "column", sm: "row" }}
           sx={{ justifyContent: "space-between", gap: "var(--space-2)", alignItems: { sm: "center" } }}
-          className="no-print"
+          className="no-print portfolio-page-header"
         >
           <Box>
             <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: "var(--space-1)" }}>
@@ -1495,6 +1525,7 @@ export default function PortfolioManager() {
           </Stack>
         </Stack>
 
+        <Box className="portfolio-action-band">
         <ReviewDetails title="More portfolio actions"><Stack direction="row" sx={{ gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
             {import.meta.env.DEV && <ReviewDetails title="Demo data">
             <Tooltip title="DEMO fixture: load a synthetic 18-stock portfolio for local interface testing only">
@@ -1563,12 +1594,13 @@ export default function PortfolioManager() {
             >
               {analysisLoading ? <CircularProgress size={20} sx={{ color: "var(--white)" }} /> : "Refresh analysis"}
             </Button>        </Stack></ReviewDetails>
+        </Box>
 
         {error && <Alert severity="error">{error}</Alert>}
 
-        <Box className="no-print">
+        <Box className="no-print portfolio-review-nav">
           <GuidedSteps label="Portfolio review" steps={portfolioGroups.map(group => ({ label: group.label }))} activeStep={activeGroup} onChange={index => selectView(portfolioGroups[index].tabs[0].id)} />
-          <Stack component="nav" aria-label={`${portfolioGroups[activeGroup].label} views`} direction="row" sx={{ gap: "var(--space-1)", flexWrap: "wrap" }}>
+          <Stack className="portfolio-view-tabs" component="nav" aria-label={`${portfolioGroups[activeGroup].label} views`} direction="row" sx={{ gap: "var(--space-1)", flexWrap: "wrap" }}>
             {portfolioGroups[activeGroup].tabs.map(tab => <Button key={tab.id} onClick={() => selectView(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} sx={{ px: "var(--space-2)", color: activeTab === tab.id ? "var(--bg)" : "text.primary", bgcolor: activeTab === tab.id ? "primary.main" : "transparent", "&:hover": { bgcolor: activeTab === tab.id ? "primary.dark" : "var(--line)" } }}>{tab.label}</Button>)}
           </Stack>
         </Box>

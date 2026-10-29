@@ -12,16 +12,74 @@ import AppShell from "./AppShell";
 import { fetchJson } from "./api";
 import { CorrelationMstExplainer } from "./PrismExplainer";
 import { getDecisionsCountMap, getNotesCountMap } from "./journalStorage";
-import { industryColors, mstElements } from "./mstLayout";
+import {
+  industryColors,
+  layoutMst,
+  mstLayout,
+  type MstLayoutResult,
+} from "./mstLayout";
 import type { MstResponse } from "./types";
+
+interface SecurityInfo {
+  symbol: string;
+  company_name: string;
+}
+
+function clearGraphFocus(instance: Core) {
+  instance.elements().removeClass("faded focused").unselect();
+}
+
+function focusNeighborhood(instance: Core, nodeId: string) {
+  const node = instance.getElementById(nodeId);
+  if (!node.length) return;
+  instance.elements().removeClass("focused").addClass("faded");
+  node.closedNeighborhood().removeClass("faded").addClass("focused");
+}
+
+function edgePassesLimit(edge: cytoscape.EdgeSingular, limit: number) {
+  return (
+    Number(edge.data("sourceRank")) <= limit &&
+    Number(edge.data("targetRank")) <= limit
+  );
+}
+
+function applyGraphFilters(
+  instance: Core,
+  hiddenSectors: string[],
+  topEdges: number,
+) {
+  const hidden = new Set(hiddenSectors);
+  instance.nodes().forEach((node) => {
+    node.toggleClass("sector-hidden", hidden.has(String(node.data("industry"))));
+  });
+  instance.edges().forEach((edge) => {
+    edge.toggleClass("edge-filtered", !edgePassesLimit(edge, topEdges));
+    edge.toggleClass(
+      "sector-hidden",
+      edge.connectedNodes().some((node) => hidden.has(String(node.data("industry")))),
+    );
+  });
+}
 
 export default function MstPage() {
   const container = useRef<HTMLDivElement | null>(null);
   const graph = useRef<Core | null>(null);
+  const selectedNodeId = useRef<string | null>(null);
   const [data, setData] = useState<MstResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [topEdges, setTopEdges] = useState(5);
+  const [hiddenSectors, setHiddenSectors] = useState<string[]>([]);
+  const [layoutInfo, setLayoutInfo] = useState<MstLayoutResult | null>(null);
+  const [companyNames, setCompanyNames] = useState<Record<string, string>>({});
+  const [hovered, setHovered] = useState<{
+    x: number;
+    y: number;
+    symbol: string;
+    industry: string;
+    degree: number;
+  } | null>(null);
   const [selected, setSelected] = useState<{
     title: string;
     detail: string;
@@ -42,14 +100,52 @@ export default function MstPage() {
     void getDecisionsCountMap()
       .then(setDecisionsCountMap)
       .catch(() => {});
+    const controller = new AbortController();
+    void fetchJson<SecurityInfo[]>("/securities", controller.signal)
+      .then((securities) =>
+        setCompanyNames(
+          Object.fromEntries(
+            securities.map((security) => [security.symbol, security.company_name]),
+          ),
+        ),
+      )
+      .catch(() => {});
+    return () => controller.abort();
   }, []);
+
+  function fitGraph(instance: Core) {
+    const visibleNodes = instance
+      .nodes()
+      .not(".sector-hidden")
+      .nodes();
+    if (!visibleNodes.length) return;
+    instance.fit(visibleNodes, 40);
+    let minimum = Number.POSITIVE_INFINITY;
+    const positions = visibleNodes.map((node) => node.renderedPosition());
+    for (let left = 0; left < positions.length; left += 1) {
+      for (let right = left + 1; right < positions.length; right += 1) {
+        minimum = Math.min(
+          minimum,
+          Math.hypot(
+            positions[left].x - positions[right].x,
+            positions[left].y - positions[right].y,
+          ),
+        );
+      }
+    }
+    if (Number.isFinite(minimum) && minimum < 40) {
+      instance.zoom(instance.zoom() * (40 / Math.max(1, minimum)));
+      instance.center(visibleNodes);
+    }
+  }
 
   function resetGraph() {
     if (!graph.current) return;
-    graph.current.elements().removeClass("faded focused");
-    graph.current.elements().unselect();
-    graph.current.fit(undefined, 55);
+    selectedNodeId.current = null;
+    clearGraphFocus(graph.current);
+    fitGraph(graph.current);
     setSelected(null);
+    setHovered(null);
   }
 
   function zoomGraph(factor: number) {
@@ -89,98 +185,120 @@ export default function MstPage() {
   }, [revision]);
   useEffect(() => {
     if (!data || !container.current || !data.nodes.length) return;
+    const laidOut = layoutMst(data, {
+      width: container.current.clientWidth,
+      height: container.current.clientHeight,
+    });
+    setLayoutInfo(laidOut);
+    console.info(
+      `[PRISM network] label overlaps: ${laidOut.labelOverlapCount}; minimum node distance: ${laidOut.minimumNodeDistance.toFixed(1)}px; force ticks: ${laidOut.forceTicks}`,
+    );
     const instance = cytoscape({
       container: container.current,
-      elements: mstElements(data),
-      layout: {
-        name: "cose",
-        animate: false,
-        randomize: false,
-        nodeRepulsion: () => 18000,
-        idealEdgeLength: () => 120,
-        nodeOverlap: 30,
-        componentSpacing: 60,
-        gravity: 0.1,
-        padding: 24,
-      },
-      minZoom: 0.04,
+      elements: laidOut.elements,
+      layout: mstLayout(),
+      minZoom: 0.1,
       maxZoom: 3,
-
       boxSelectionEnabled: false,
+      autoungrabify: false,
       style: resolveTerminalStyles([
         {
           selector: "node",
           style: {
-            shape: "rectangle",
-            label: "",
+            shape: "ellipse",
+            label: "data(symbol)",
             "background-color": "data(color)",
-            width: "mapData(degree, 0, 12, 14, 36)",
-            height: "mapData(degree, 0, 12, 14, 36)",
+            width: "mapData(radius, 6, 22, 12, 44)",
+            height: "mapData(radius, 6, 22, 12, 44)",
             "border-width": 1,
             "border-color": "var(--bg)",
             color: "var(--white)",
             "font-family": "var(--font-data)",
-            "font-size": "var(--text-label)",
-            "min-zoomed-font-size": 10,
-            "text-valign": "bottom",
-            "text-margin-y": 8,
-            "text-background-color": "var(--bg)",
-            "text-background-opacity": 1,
-            "text-background-padding": "var(--space-1)",
+            "font-size": 11,
+            "font-weight": 600,
+            "min-zoomed-font-size": 0,
+            "text-halign": "data(labelHalign)",
+            "text-valign": "data(labelValign)",
+            "text-margin-x": "data(labelMarginX)",
+            "text-margin-y": "data(labelMarginY)",
+            "text-outline-color": "var(--bg)",
+            "text-outline-width": 3,
+            "text-outline-opacity": 1,
           },
         },
         {
           selector: "edge",
           style: {
-            width: 1,
-            "line-color": "var(--cyan)",
-            opacity: 1,
+            width: "mapData(strength, 0, 1, 1.8, 3)",
+            "line-color": "var(--white)",
+            opacity: "data(edgeOpacity)",
             "curve-style": "straight",
           },
         },
         {
-          selector: "node[degree >= 4]",
-          style: {
-            label: "data(symbol)",
-            "font-size": "var(--text-label)",
-            "font-weight": 600,
-          },
-        },
-        {
           selector: "node.focused",
-          style: { label: "data(symbol)", "font-size": "var(--text-label)" },
+          style: {
+            opacity: 1,
+          },
         },
         {
           selector: "edge.focused",
-          style: { "line-color": "var(--amber)", width: 1, opacity: 1 },
+          style: { "line-color": "var(--amber)", width: 3.5, opacity: 1 },
         },
         {
           selector: "node:selected",
-          style: {
-            "background-color": "var(--amber)",
-            "border-color": "var(--yellow)",
-            "border-width": 1,
-          },
+          style: { "border-color": "var(--amber)", "border-width": 2 },
         },
         {
           selector: "node.faded",
-          style: { "background-color": "var(--gray)", color: "var(--gray)" },
+          style: { opacity: 0.08 },
         },
-        { selector: "edge.faded", style: { "line-color": "var(--line)" } },
-      ]),
+        {
+          selector: "edge.faded",
+          style: { opacity: 0.08 },
+        },
+        {
+          selector: ".sector-hidden, edge.edge-filtered",
+          style: { display: "none" },
+        },
+      ]) as cytoscape.StylesheetJson,
     });
     graph.current = instance;
+    fitGraph(instance);
     const updateZoom = () => {
       setZoom(instance.zoom());
       instance.nodes().style("font-size", 11 / instance.zoom());
+      instance.nodes().style("text-outline-width", 3 / instance.zoom());
     };
     updateZoom();
     instance.on("zoom", updateZoom);
+    instance.on("mouseover", "node", (event) => {
+      const node = event.target;
+      const value = node.data();
+      focusNeighborhood(instance, node.id());
+      const position = node.renderedPosition();
+      setHovered({
+        x: position.x,
+        y: position.y,
+        symbol: String(value.symbol),
+        industry: String(value.industry),
+        degree: Number(value.degree),
+      });
+    });
+    instance.on("mouseout", "node", () => {
+      setHovered(null);
+      if (selectedNodeId.current) {
+        focusNeighborhood(instance, selectedNodeId.current);
+      } else {
+        clearGraphFocus(instance);
+      }
+    });
     instance.on("tap", "node", (event) => {
       const node = event.target;
       const value = node.data();
-      instance.elements().unselect().removeClass("focused").addClass("faded");
-      node.closedNeighborhood().removeClass("faded").addClass("focused");
+      selectedNodeId.current = node.id();
+      focusNeighborhood(instance, node.id());
+      instance.elements().unselect();
       node.select();
       setSelected({
         title: value.symbol,
@@ -192,6 +310,7 @@ export default function MstPage() {
     instance.on("tap", "edge", (event) => {
       const edge = event.target;
       const value = edge.data();
+      selectedNodeId.current = null;
       instance.elements().unselect().removeClass("focused").addClass("faded");
       edge.connectedNodes().add(edge).removeClass("faded").addClass("focused");
       edge.select();
@@ -203,7 +322,8 @@ export default function MstPage() {
     });
     instance.on("tap", (event) => {
       if (event.target === instance) {
-        instance.elements().removeClass("faded focused").unselect();
+        selectedNodeId.current = null;
+        clearGraphFocus(instance);
         setSelected(null);
       }
     });
@@ -215,7 +335,13 @@ export default function MstPage() {
       graph.current = null;
     };
   }, [data]);
+  useEffect(() => {
+    if (!graph.current) return;
+    applyGraphFilters(graph.current, hiddenSectors, topEdges);
+    fitGraph(graph.current);
+  }, [hiddenSectors, topEdges]);
   const colors = industryColors(data?.nodes.map((node) => node.industry) ?? []);
+  const topology = layoutInfo?.topology ?? null;
   const sectors = Object.entries(colors)
     .map(([name, color]) => ({
       name,
@@ -290,7 +416,7 @@ export default function MstPage() {
                   [+]
                 </button>
                 <button className="terminal-button" onClick={resetGraph}>
-                  FIT
+                  RESET VIEW
                 </button>
               </>
             }
@@ -311,8 +437,19 @@ export default function MstPage() {
                 )}
                 className="network-search"
               />
+              <label className="network-edge-limit">
+                <span>TOP {topEdges} EDGES / NODE</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={topEdges}
+                  onChange={(event) => setTopEdges(Number(event.target.value))}
+                />
+              </label>
               <span className="terminal-panel-meta">
-                SIZE: DEGREE / COLOUR: INDUSTRY
+                FORCE: {layoutInfo?.forceTicks ?? "—"} / LABEL OVERLAPS:{" "}
+                {layoutInfo?.labelOverlapCount ?? "—"}
               </span>
             </div>
             <div className="network-canvas-wrap">
@@ -321,6 +458,62 @@ export default function MstPage() {
                 aria-label="correlation minimum spanning tree"
                 className="network-canvas"
               />
+              {data && data.nodes.length > 0 && (
+                <>
+                  <div className="network-sector-legend" aria-label="Sector legend">
+                    <div className="network-legend-heading">
+                      SECTORS / CLICK TO TOGGLE
+                    </div>
+                    {sectors.map((sector) => {
+                      const isHidden = hiddenSectors.includes(sector.name);
+                      return (
+                        <button
+                          key={sector.name}
+                          type="button"
+                          className="network-legend-item"
+                          data-hidden={isHidden || undefined}
+                          onClick={() =>
+                            setHiddenSectors((current) =>
+                              current.includes(sector.name)
+                                ? current.filter((name) => name !== sector.name)
+                                : [...current, sector.name],
+                            )
+                          }
+                        >
+                          <span
+                            className="network-legend-swatch"
+                            style={{ backgroundColor: sector.color }}
+                          />
+                          <span>{sector.name}</span>
+                          <span className="numeric">{sector.count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="network-map-key" aria-hidden="true">
+                    <span>● NODE AREA / CONNECTIONS</span>
+                    <span>— EDGE / CORRELATION STRENGTH</span>
+                    <span>
+                      {topology?.componentCount ?? 0}
+                      {topology?.componentCount === 1 ? " TREE" : " TREES"} / MIN{" "}
+                      {Math.round(layoutInfo?.minimumNodeDistance ?? 0)}PX
+                    </span>
+                  </div>
+                </>
+              )}
+              {hovered && (
+                <div
+                  className="network-tooltip"
+                  style={{ left: hovered.x + 12, top: hovered.y + 12 }}
+                >
+                  <strong>{companyNames[hovered.symbol] ?? hovered.symbol}</strong>
+                  <span>{hovered.symbol}</span>
+                  <span>{hovered.industry}</span>
+                  <span>
+                    {hovered.degree} CONNECTION{hovered.degree === 1 ? "" : "S"}
+                  </span>
+                </div>
+              )}
               {(!data || !data.nodes.length) && (
                 <div className="network-empty">
                   <span>
