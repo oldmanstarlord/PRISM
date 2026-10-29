@@ -1,4 +1,7 @@
 # PRISM
+PRISM is an explainable portfolio-risk and market-intelligence platform for the NIFTY 200 universe.
+
+The authoritative requirements are in [PRISM_SRS.md](PRISM_SRS.md). Current implementation state and every material project update are recorded in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 PRISM is a diagnostic portfolio-risk and market-intelligence application for the NIFTY 200
 universe. It measures and explains historical risk, concentration, co-movement, stress scenarios,
@@ -113,28 +116,47 @@ production database.
 ## Repository layout
 
 ```text
-backend/app/       API, configuration, database, analytics, news, and ML services
-frontend/          React application, unit tests, and Playwright browser tests
-jobs/              ingestion, calculations, training, verification, and recovery jobs
-migrations/        ordered Alembic revisions
-tests/             backend unit, security, quantitative, and opt-in database tests
-docs/              methodology, phase reports, release evidence, and viva pack
-data/              ignored raw/processed/model artifacts plus labelled evaluation inputs
+backend/app/api/   FastAPI routes
+backend/app/core/  Application configuration
+backend/app/db/    Database connection and models
+backend/app/market_data/  Daily prices, corporate actions and quality checks
+frontend/          React and TypeScript dashboard
+jobs/              Runnable ingestion and maintenance jobs
+tests/             Tests grouped by the component they cover
+data/              Ignored local raw, processed and model artifacts
 ```
 
-## Backend launcher and pip installs
+## Local development
 
-Start the API with `./backend/run.sh` (or `./run.sh` from `backend/`). The launcher
-uses the locked project Python environment even when Conda base is active.
-Configuration loads the project-root `.env` regardless of the launch directory.
+1. Copy `.env.example` to `.env` and change secrets when appropriate.
+2. Create a Supabase project and place its session-pooler PostgreSQL URL in `.env` as `PRISM_DATABASE_URL`.
+3. Add the Supabase project URL and publishable key as `PRISM_SUPABASE_URL` and
+   `PRISM_SUPABASE_PUBLISHABLE_KEY`. Copy `frontend/.env.example` to `frontend/.env`
+   and set the matching public Vite values. Never expose a secret or service-role key.
+4. Run `uv sync --locked --all-groups`.
+5. Apply database migrations with `uv run alembic upgrade head`.
+6. Seed foundation records with `uv run python -m jobs.seed_universe`.
+7. Import the current NIFTY 200 membership with `uv run python -m jobs.import_nifty200`.
+8. Import or incrementally update daily prices with `uv run python -m jobs.ingest_prices`.
+   Use `--symbols OIL ONGC` for a targeted retry or update.
+9. Calculate and persist the latest Layer 1 results with
+   `uv run python -m jobs.calculate_sector_divergence`.
+   Optional reproducibility controls are `--signal-date`, `--lookback-start` and
+   timezone-aware `--data-cutoff`.
+10. Calculate and persist the latest Layer 2 correlation MST with
+   `uv run python -m jobs.calculate_mst`.
+   Optional reproducibility controls are `--window-end`, `--lookback-start` and
+   timezone-aware `--data-cutoff`.
+11. Start the API with `uv run uvicorn backend.app.main:app --reload`.
+12. In `frontend`, run `pnpm install --frozen-lockfile` and `pnpm dev`. The dashboard reads the API from
+    `VITE_API_URL`, defaulting to `http://localhost:8000/api/v1`.
 
-For a pip-only setup, use Python 3.12 and `python -m pip install -r requirements.txt`
-from the root, or `backend/requirements.txt` from the backend directory. Regenerate
-the runtime export after dependency changes with:
+For routine operation, use `uv run python -m jobs.run_daily_pipeline` instead of invoking each
+stage separately. Setup, failure recovery and verification are documented in
+[OPERATIONS.md](OPERATIONS.md).
 
-```sh
-uv export --locked --no-dev --no-emit-project --no-hashes --no-annotate --output-file requirements.txt
-```
+Backend, frontend and jobs run as native local processes; PostgreSQL is managed by Supabase.
 
-The `vatsal` branch also includes the historical fundamental regression workflows
-documented in [FUNDAMENTALS.md](FUNDAMENTALS.md).
+Phases 0 and 1 are complete. The current product supports authenticated portfolio snapshots,
+session-only portfolio analytics, MST stability confidence, stress scenarios and owner-scoped
+audit history. See the status tracker and [portfolio contract](PHASE1_PORTFOLIO_CONTRACT.md).
