@@ -7,6 +7,7 @@ import AppShell from "./AppShell";
 import { fetchJson } from "./api";
 import { CorrelationMstExplainer } from "./PrismExplainer";
 import { getDecisionsCountMap, getNotesCountMap } from "./journalStorage";
+import { mstElements, mstLayout } from "./mstLayout";
 import type { MstResponse } from "./types";
 
 const clusterColors = [
@@ -79,14 +80,9 @@ export default function MstPage() {
   useEffect(() => {
     if (!data || !container.current) return;
     const colorByIndustry = industryColors(data.nodes.map((node) => node.industry));
-    const degree = Object.fromEntries(data.nodes.map((node) => [node.id, 0]));
-    for (const edge of data.edges) { degree[edge.source] += 1; degree[edge.target] += 1; }
     graph.current = cytoscape({
       container: container.current,
-      elements: [
-        ...data.nodes.map((node) => ({ data: { ...node, degree: degree[node.id], color: colorByIndustry[node.industry] } })),
-        ...data.edges.map((edge) => ({ data: { id: `${edge.source}-${edge.target}`, ...edge } })),
-      ],
+      elements: mstElements(data, colorByIndustry),
       style: [
         {
           selector: "node",
@@ -131,7 +127,7 @@ export default function MstPage() {
         { selector: "node.focused", style: { "min-zoomed-font-size": 0, "font-size": 15 } },
         { selector: ".faded", style: { opacity: 0.09 } },
       ],
-      layout: { name: "cose", animate: false, randomize: false, nodeRepulsion: () => 7000, idealEdgeLength: () => 85, nodeOverlap: 20, numIter: 1500, padding: 55, componentSpacing: 100 },
+      layout: { ...mstLayout },
       minZoom: 0.04,
       maxZoom: 3,
       wheelSensitivity: 0.2,
@@ -202,7 +198,7 @@ export default function MstPage() {
             <CircularProgress />
           </Box>
         )}
-        {error && <Alert severity="warning">{error}. Apply the Layer 2 migration and run the MST calculation job.</Alert>}
+        {error && <Alert severity="warning">{error}</Alert>}
         {data && (
           <>
             <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2 }}>

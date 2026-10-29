@@ -51,6 +51,14 @@ relation-ablation gates pass.
 
 8. Start the services:
 
+   From the project root on macOS/Linux, run `./run.sh` to start both the API and
+   frontend together. Keep this terminal open; Ctrl+C stops services started by
+   the launcher. If a healthy PRISM API is already running on port 8000, the
+   launcher reuses it and leaves it running when you stop the frontend.
+   Running only the frontend leaves data pages unable to reach the API.
+
+   Alternatively, run each command below in a separate terminal:
+
    ```powershell
    uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
    pnpm --dir frontend dev

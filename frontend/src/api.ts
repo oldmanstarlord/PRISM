@@ -2,6 +2,20 @@ import { supabase } from "./supabase";
 
 export const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
 
+async function apiFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        `Cannot reach the PRISM API at ${apiBase}. Start both services with ./run.sh from the project root. If the API is already running, check VITE_API_URL and the API's allowed origins.`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
+}
+
 async function sessionHeaders(headers?: HeadersInit): Promise<Headers> {
   const result = new Headers(headers);
   if (supabase) {
@@ -14,7 +28,7 @@ async function sessionHeaders(headers?: HeadersInit): Promise<Headers> {
 }
 
 export async function fetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${apiBase}${path}`, {
+  const response = await apiFetch(`${apiBase}${path}`, {
     signal,
     headers: await sessionHeaders(),
   });
@@ -27,7 +41,7 @@ export async function fetchJson<T>(path: string, signal?: AbortSignal): Promise<
 
 export async function postJson<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const headers = await sessionHeaders({ "Content-Type": "application/json" });
-  const response = await fetch(`${apiBase}${path}`, {
+  const response = await apiFetch(`${apiBase}${path}`, {
     method: "POST",
     headers,
     body: JSON.stringify(body),
@@ -59,7 +73,7 @@ export async function fetchAuthenticatedJson<T>(
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${token}`);
   if (init.body) headers.set("Content-Type", "application/json");
-  const response = await fetch(`${apiBase}${path}`, { ...init, headers });
+  const response = await apiFetch(`${apiBase}${path}`, { ...init, headers });
   if (!response.ok) {
     const payload: unknown = await response.json().catch(() => null);
     throw new Error(errorMessage(payload, response.status));
