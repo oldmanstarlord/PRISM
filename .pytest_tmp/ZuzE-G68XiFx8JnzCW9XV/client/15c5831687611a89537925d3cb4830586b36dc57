@@ -1,0 +1,130 @@
+__vite_ssr_exportName__("default", () => { try { return MarketOverview } catch {} });
+const __vite_ssr_import_0__ = await __vite_ssr_import__("/node_modules/.pnpm/react-router-dom@7.18.4_rea_c5162408bf5682b33cf3cd0d91ecf830/node_modules/react-router-dom/dist/index.js", {"importedNames":["Link"]});
+const __vite_ssr_import_1__ = await __vite_ssr_import__("/src/Terminal.tsx", {"importedNames":["TerminalPanel","SummaryStrip"]});
+const __vite_ssr_import_2__ = await __vite_ssr_import__("/node_modules/.pnpm/react@19.3.0/node_modules/react/jsx-dev-runtime.js", {"importedNames":["jsxDEV"]});
+
+
+var _jsxFileName = "E:/PRISM/frontend/src/MarketOverview.tsx";
+
+function MarketOverview({ data, horizon }) {
+	const rows = data?.results ?? [];
+	const ranked = [...rows].sort((a, b) => Math.abs(b.divergence_value) - Math.abs(a.divergence_value)).slice(0, 12);
+	const above = rows.filter((row) => row.divergence_value >= 0).length;
+	return /* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)((0,__vite_ssr_import_1__.TerminalPanel), {
+		title: "Peer divergence",
+		meta: data?.run.signal_date ?? "NO DATA",
+		children: [
+			/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)((0,__vite_ssr_import_1__.SummaryStrip), { items: [
+				{
+					label: "COMPANIES",
+					value: data ? rows.length : "—"
+				},
+				{
+					label: "ABOVE",
+					value: data ? above : "—"
+				},
+				{
+					label: "BELOW",
+					value: data ? rows.length - above : "—"
+				}
+			] }, void 0, false, {
+				fileName: _jsxFileName,
+				lineNumber: 17,
+				columnNumber: 2
+			}, this),
+			/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("table", {
+				"aria-label": "Largest peer differences",
+				children: [/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("thead", { children: /* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("tr", { children: [
+					/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("th", { children: "SYMBOL" }, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 19,
+						columnNumber: 58
+					}, this),
+					/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("th", { children: "INDUSTRY" }, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 19,
+						columnNumber: 73
+					}, this),
+					/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("th", {
+						className: "numeric",
+						children: "DIVERGENCE"
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 19,
+						columnNumber: 90
+					}, this),
+					/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("th", { children: "SIGNAL" }, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 19,
+						columnNumber: 129
+					}, this)
+				] }, void 0, true, {
+					fileName: _jsxFileName,
+					lineNumber: 19,
+					columnNumber: 54
+				}, this) }, void 0, false, {
+					fileName: _jsxFileName,
+					lineNumber: 19,
+					columnNumber: 47
+				}, this), /* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("tbody", { children: ranked.map((row) => /* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("tr", { children: [
+					/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("td", { children: /* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)((0,__vite_ssr_import_0__.Link), {
+						className: "ticker",
+						to: `/companies/${encodeURIComponent(row.symbol)}?horizon=${horizon}`,
+						children: row.symbol
+					}, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 19,
+						columnNumber: 206
+					}, this) }, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 19,
+						columnNumber: 202
+					}, this),
+					/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("td", { children: row.industry }, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 19,
+						columnNumber: 326
+					}, this),
+					/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("td", {
+						className: `numeric ${row.divergence_value >= 0 ? "up" : "down"}`,
+						children: [row.divergence_value >= 0 ? "+" : "", row.divergence_value.toFixed(2)]
+					}, void 0, true, {
+						fileName: _jsxFileName,
+						lineNumber: 19,
+						columnNumber: 349
+					}, this),
+					/* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("td", { children: row.interpretation }, void 0, false, {
+						fileName: _jsxFileName,
+						lineNumber: 19,
+						columnNumber: 484
+					}, this)
+				] }, row.symbol, true, {
+					fileName: _jsxFileName,
+					lineNumber: 19,
+					columnNumber: 181
+				}, this)) }, void 0, false, {
+					fileName: _jsxFileName,
+					lineNumber: 19,
+					columnNumber: 157
+				}, this)]
+			}, void 0, true, {
+				fileName: _jsxFileName,
+				lineNumber: 19,
+				columnNumber: 2
+			}, this),
+			!rows.length && /* @__PURE__ */ (0,__vite_ssr_import_2__.jsxDEV)("div", { children: "NO DATA" }, void 0, false, {
+				fileName: _jsxFileName,
+				lineNumber: 19,
+				columnNumber: 551
+			}, this)
+		]
+	}, void 0, true, {
+		fileName: _jsxFileName,
+		lineNumber: 15,
+		columnNumber: 9
+	}, this);
+}
+//# sourceMappingSource=vite-generated
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJtYXBwaW5ncyI6IkFBQUEsQ0FBQTtBQUFBO0FBSUE7Ozs7OztBQUVlLFNBQVMsZUFBZSxFQUFDLE1BQUssV0FBc0Q7Q0FFbEcsTUFBTSxPQUFLLE1BQU0sV0FBUyxDQUFDO0NBRTNCLE1BQU0sU0FBTyxDQUFDLEdBQUcsSUFBSSxDQUFDLENBQUMsTUFBTSxHQUFFLE1BQUksS0FBSyxJQUFJLEVBQUUsZ0JBQWdCLElBQUUsS0FBSyxJQUFJLEVBQUUsZ0JBQWdCLENBQUMsQ0FBQyxDQUFDLE1BQU0sR0FBRSxFQUFFO0NBRXhHLE1BQU0sUUFBTSxLQUFLLFFBQU8sUUFBSyxJQUFJLG9CQUFrQixDQUFDLENBQUMsQ0FBQztDQUV0RCxPQUFPLG9EQUFDLHNDQUFEO0VBQWUsT0FBTTtFQUFrQixNQUFNLE1BQU0sSUFBSSxlQUFhO1lBQXBFO0dBRVAsb0RBQUMscUNBQUQsRUFBYyxPQUFPO0lBQUM7S0FBQyxPQUFNO0tBQVksT0FBTSxPQUFLLEtBQUssU0FBTztJQUFHO0lBQUU7S0FBQyxPQUFNO0tBQVEsT0FBTSxPQUFLLFFBQU07SUFBRztJQUFFO0tBQUMsT0FBTTtLQUFRLE9BQU0sT0FBSyxLQUFLLFNBQU8sUUFBTTtJQUFHO0dBQUMsRUFBRzs7Ozs7R0FFN0osaURBQUMsU0FBRDtJQUFPLGNBQVc7Y0FBbEIsQ0FBNkMsaURBQUMsU0FBRCxZQUFPLGlEQUFDLE1BQUQ7S0FBSSxpREFBQyxNQUFELFlBQUksU0FBVTs7Ozs7S0FBQyxpREFBQyxNQUFELFlBQUksV0FBWTs7Ozs7S0FBQyxpREFBQyxNQUFEO01BQUksV0FBVTtnQkFBVTtLQUFjOzs7OztLQUFDLGlEQUFDLE1BQUQsWUFBSSxTQUFVOzs7OztJQUFLOzs7O2FBQVE7Ozs7Y0FBQyxpREFBQyxTQUFELFlBQVEsT0FBTyxLQUFJLFFBQUssaURBQUMsTUFBRDtLQUFxQixpREFBQyxNQUFELFlBQUksb0RBQUMsNkJBQUQ7TUFBTSxXQUFVO01BQVMsSUFBSSxjQUFjLG1CQUFtQixJQUFJLE1BQU0sRUFBRSxXQUFXO2dCQUFZLElBQUk7S0FBYTs7OztjQUFLOzs7OztLQUFDLGlEQUFDLE1BQUQsWUFBSyxJQUFJLFNBQWE7Ozs7O0tBQUMsaURBQUMsTUFBRDtNQUFJLFdBQVcsV0FBVyxJQUFJLG9CQUFrQixJQUFFLE9BQUs7Z0JBQXZELENBQWtFLElBQUksb0JBQWtCLElBQUUsTUFBSSxJQUFJLElBQUksaUJBQWlCLFFBQVEsQ0FBQyxDQUFNOzs7Ozs7S0FBQyxpREFBQyxNQUFELFlBQUssSUFBSSxlQUFtQjs7Ozs7SUFBSyxLQUF2VSxJQUFJOzs7O1dBQW1VLENBQUMsRUFBUzs7OztZQUFROzs7Ozs7R0FBRSxDQUFDLEtBQUssVUFBUSxpREFBQyxPQUFELFlBQUssVUFBWTs7Ozs7RUFFdmlCOzs7Ozs7QUFFaEIiLCJuYW1lcyI6W10sImlnbm9yZUxpc3QiOltdLCJzb3VyY2VzIjpbIk1hcmtldE92ZXJ2aWV3LnRzeCJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBMaW5rIH0gZnJvbSBcInJlYWN0LXJvdXRlci1kb21cIjtcclxyXG5pbXBvcnQgdHlwZSB7IFJhbmtpbmdzUmVzcG9uc2UgfSBmcm9tIFwiLi90eXBlc1wiO1xyXHJcbmltcG9ydCB7IFRlcm1pbmFsUGFuZWwsIFN1bW1hcnlTdHJpcCB9IGZyb20gXCIuL1Rlcm1pbmFsXCI7XHJcclxuZXhwb3J0IGRlZmF1bHQgZnVuY3Rpb24gTWFya2V0T3ZlcnZpZXcoe2RhdGEsaG9yaXpvbn06e2RhdGE6UmFua2luZ3NSZXNwb25zZXxudWxsO2hvcml6b246bnVtYmVyfSkge1xyXHJcbiBjb25zdCByb3dzPWRhdGE/LnJlc3VsdHM/P1tdO1xyXHJcbiBjb25zdCByYW5rZWQ9Wy4uLnJvd3NdLnNvcnQoKGEsYik9Pk1hdGguYWJzKGIuZGl2ZXJnZW5jZV92YWx1ZSktTWF0aC5hYnMoYS5kaXZlcmdlbmNlX3ZhbHVlKSkuc2xpY2UoMCwxMik7XHJcclxuIGNvbnN0IGFib3ZlPXJvd3MuZmlsdGVyKHJvdz0+cm93LmRpdmVyZ2VuY2VfdmFsdWU+PTApLmxlbmd0aDtcclxyXG4gcmV0dXJuIDxUZXJtaW5hbFBhbmVsIHRpdGxlPVwiUGVlciBkaXZlcmdlbmNlXCIgbWV0YT17ZGF0YT8ucnVuLnNpZ25hbF9kYXRlPz8nTk8gREFUQSd9PlxyXHJcbiA8U3VtbWFyeVN0cmlwIGl0ZW1zPXtbe2xhYmVsOidDT01QQU5JRVMnLHZhbHVlOmRhdGE/cm93cy5sZW5ndGg6J+KAlCd9LHtsYWJlbDonQUJPVkUnLHZhbHVlOmRhdGE/YWJvdmU6J+KAlCd9LHtsYWJlbDonQkVMT1cnLHZhbHVlOmRhdGE/cm93cy5sZW5ndGgtYWJvdmU6J+KAlCd9XX0vPlxyXHJcbiA8dGFibGUgYXJpYS1sYWJlbD1cIkxhcmdlc3QgcGVlciBkaWZmZXJlbmNlc1wiPjx0aGVhZD48dHI+PHRoPlNZTUJPTDwvdGg+PHRoPklORFVTVFJZPC90aD48dGggY2xhc3NOYW1lPVwibnVtZXJpY1wiPkRJVkVSR0VOQ0U8L3RoPjx0aD5TSUdOQUw8L3RoPjwvdHI+PC90aGVhZD48dGJvZHk+e3JhbmtlZC5tYXAocm93PT48dHIga2V5PXtyb3cuc3ltYm9sfT48dGQ+PExpbmsgY2xhc3NOYW1lPVwidGlja2VyXCIgdG89e2AvY29tcGFuaWVzLyR7ZW5jb2RlVVJJQ29tcG9uZW50KHJvdy5zeW1ib2wpfT9ob3Jpem9uPSR7aG9yaXpvbn1gfT57cm93LnN5bWJvbH08L0xpbms+PC90ZD48dGQ+e3Jvdy5pbmR1c3RyeX08L3RkPjx0ZCBjbGFzc05hbWU9e2BudW1lcmljICR7cm93LmRpdmVyZ2VuY2VfdmFsdWU+PTA/J3VwJzonZG93bid9YH0+e3Jvdy5kaXZlcmdlbmNlX3ZhbHVlPj0wPycrJzonJ317cm93LmRpdmVyZ2VuY2VfdmFsdWUudG9GaXhlZCgyKX08L3RkPjx0ZD57cm93LmludGVycHJldGF0aW9ufTwvdGQ+PC90cj4pfTwvdGJvZHk+PC90YWJsZT57IXJvd3MubGVuZ3RoJiY8ZGl2Pk5PIERBVEE8L2Rpdj59XHJcclxuIDwvVGVybWluYWxQYW5lbD47XHJcclxufVxyXHJcbiJdLCJmaWxlIjoiL3NyYy9NYXJrZXRPdmVydmlldy50c3gifQ==
+
+//# vitestCache=W3siZmlsZSI6IjEiLCJpZCI6IjEiLCJ1cmwiOiIyIiwiaW1wb3J0ZWRVcmxzIjoiMyIsIm1hcHBpbmdzIjpmYWxzZSwiZGVwcyI6IjQiLCJkeW5hbWljRGVwcyI6IjUiLCJzdGF0aWNNb2NrcyI6bnVsbH0sIkU6L1BSSVNNL2Zyb250ZW5kL3NyYy9NYXJrZXRPdmVydmlldy50c3giLCIvc3JjL01hcmtldE92ZXJ2aWV3LnRzeCIsW10sWyI2IiwiNyIsIjgiXSxbXSwiL25vZGVfbW9kdWxlcy8ucG5wbS9yZWFjdC1yb3V0ZXItZG9tQDcuMTguNF9yZWFfYzUxNjI0MDhiZjU2ODJiMzNjZjNjZDBkOTFlY2Y4MzAvbm9kZV9tb2R1bGVzL3JlYWN0LXJvdXRlci1kb20vZGlzdC9pbmRleC5qcyIsIi9zcmMvVGVybWluYWwudHN4IiwiL25vZGVfbW9kdWxlcy8ucG5wbS9yZWFjdEAxOS4zLjAvbm9kZV9tb2R1bGVzL3JlYWN0L2pzeC1kZXYtcnVudGltZS5qcyJd

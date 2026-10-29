@@ -10,7 +10,7 @@ describe("App", () => {
     render(<App />);
 
     expect(screen.getByRole("link", { name: "PRISM" })).toBeInTheDocument();
-    expect(screen.getByText(/does not provide investment advice/i)).toBeInTheDocument();
+    expect(screen.getByText(/NO INVESTMENT ADVICE/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /explore the market/i })).toBeInTheDocument();
   });
 });

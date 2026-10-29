@@ -135,7 +135,7 @@ export default function PortfolioDemoPage() {
             onError={(message) => setMessages({ errors: [message], warnings: [] })}
           />
           {loading && (
-            <Paper sx={{ p: 2 }}>
+            <Paper sx={{ p: "var(--space-2)" }}>
               <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
                 <CircularProgress size={24} />
                 <Typography>Calculating performance, covariance risk and MST paths…</Typography>
@@ -155,7 +155,7 @@ export default function PortfolioDemoPage() {
               <SummaryCards analysis={analysis} />
               <Stack spacing={1}>
                 {analysis.findings.map((finding) => (
-                  <Alert severity="success" key={finding} sx={{ borderRadius: 0, border: "none", bgcolor: "#DCE9DE", color: "#046A38" }}>{finding}</Alert>
+                  <Alert severity="success" key={finding} sx={{ borderRadius: "var(--radius)", border: "none", bgcolor: "var(--line)", color: "var(--up)" }}>{finding}</Alert>
                 ))}
               </Stack>
               <PerformanceChart points={analysis.performance.points} />
@@ -197,18 +197,18 @@ function InputPanel({
   onError: (message: string) => void;
 }) {
   return (
-    <Paper className="no-print" sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
+    <Paper className="no-print" sx={{ p: "var(--space-3)", borderRadius: "var(--radius)", border: "none", bgcolor: "var(--bg)", boxShadow: "none" }}>
       <Stack spacing={2}>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: "#292D2A" }}>Analyze a weighted portfolio</Typography>
-        <Typography sx={{ color: "#686B64" }}>
+        <Typography variant="h4" sx={{ fontWeight: 600, color: "var(--white)" }}>Analyze a weighted portfolio</Typography>
+        <Typography sx={{ color: "var(--gray)" }}>
           Upload <code>symbol,weight</code> with percentage weights totaling 100, or use the
           prepared sample.
         </Typography>
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-          <Button variant="contained" onClick={onSample} disabled={loading} sx={{ borderRadius: 0, bgcolor: "#046A38", color: "#F9EBD7" }}>
+          <Button variant="contained" onClick={onSample} disabled={loading} sx={{ borderRadius: "var(--radius)", bgcolor: "var(--up)", color: "var(--line)" }}>
             Run prepared sample
           </Button>
-          <Button component="label" disabled={loading} sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A", "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" } }}>
+          <Button component="label" disabled={loading} sx={{ borderRadius: "var(--radius)", border: "none", bgcolor: "var(--line)", color: "var(--white)", "&:hover": { bgcolor: "var(--up)", color: "var(--line)" } }}>
             Choose CSV
             <input
               hidden
@@ -225,11 +225,11 @@ function InputPanel({
               }}
             />
           </Button>
-          <Button onClick={onAnalyze} disabled={loading || !rows.length} sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A", "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" } }}>
+          <Button onClick={onAnalyze} disabled={loading || !rows.length} sx={{ borderRadius: "var(--radius)", border: "none", bgcolor: "var(--line)", color: "var(--white)", "&:hover": { bgcolor: "var(--up)", color: "var(--line)" } }}>
             Analyze loaded portfolio
           </Button>
         </Stack>
-        <Typography variant="body2" sx={{ color: "#686B64" }}>
+        <Typography variant="body2" sx={{ color: "var(--gray)" }}>
           {fileName} · {rows.length} rows · {rows.reduce(
             (sum, row) => sum + row.weightPercent, 0,
           ).toFixed(2)}%
@@ -251,17 +251,17 @@ function ReportHeader({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   }
 
   return (
-    <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", gap: 2 }}>
+    <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", gap: "var(--space-2)" }}>
       <Box>
-        <Typography variant="h4" sx={{ fontWeight: 700, color: "#292D2A" }}>Portfolio analysis</Typography>
-        <Typography sx={{ color: "#686B64" }}>
+        <Typography variant="h4" sx={{ fontWeight: 600, color: "var(--white)" }}>Portfolio analysis</Typography>
+        <Typography sx={{ color: "var(--gray)" }}>
           Data through {analysis.envelope.as_of} · {analysis.envelope.observations_used} daily
           returns
         </Typography>
       </Box>
       <Stack direction="row" spacing={1} className="no-print">
-        <Button onClick={downloadReport} sx={{ borderRadius: 0, border: "none", bgcolor: "#E3D7C4", color: "#292D2A", "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" } }}>Download report</Button>
-        <Button variant="contained" onClick={() => window.print()} sx={{ borderRadius: 0, bgcolor: "#046A38", color: "#F9EBD7" }}>Print / save PDF</Button>
+        <Button onClick={downloadReport} sx={{ borderRadius: "var(--radius)", border: "none", bgcolor: "var(--line)", color: "var(--white)", "&:hover": { bgcolor: "var(--up)", color: "var(--line)" } }}>Download report</Button>
+        <Button variant="contained" onClick={() => window.print()} sx={{ borderRadius: "var(--radius)", bgcolor: "var(--up)", color: "var(--line)" }}>Print / save PDF</Button>
       </Stack>
     </Stack>
   );
@@ -281,7 +281,7 @@ function SummaryCards({ analysis }: { analysis: PortfolioAnalysisResponse }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <Paper sx={{ p: 2.5, flex: "1 1 180px" }}>
+    <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px" }}>
       <Typography variant="overline" color="text.secondary">{label}</Typography>
       <Typography variant="h5">{value}</Typography>
     </Paper>
@@ -315,7 +315,7 @@ function PerformanceChart({ points }: { points: PortfolioPerformancePoint[] }) {
   const drawdownLine = points.map((point, index) => `${x(index)},${drawdownY(point.drawdown)}`).join(" ");
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: "var(--space-3)" }}>
       <Typography variant="h5">Historical portfolio performance</Typography>
       <Typography color="text.secondary" gutterBottom>
         Constant-weight daily-rebalanced index; starting value 100. Drawdown is measured from
@@ -331,18 +331,18 @@ function PerformanceChart({ points }: { points: PortfolioPerformancePoint[] }) {
         {[0, 0.5, 1].map((ratio) => {
           const value = max - ratio * (max - min);
           const y = top + ratio * (firstBottom - top);
-          return <g key={ratio}><line x1={left} x2={width - right} y1={y} y2={y} stroke="#dce3e8" /><text x={left - 8} y={y + 4} textAnchor="end" fontSize="12" fill="#596a75">{value.toFixed(0)}</text></g>;
+          return <g key={ratio}><line x1={left} x2={width - right} y1={y} y2={y} stroke="var(--white)" /><text x={left - 8} y={y + 4} textAnchor="end" fontSize="var(--text-tag)" fill="var(--gray)">{value.toFixed(0)}</text></g>;
         })}
-        <polyline points={indexLine} fill="none" stroke="#046A38" strokeWidth="3" />
-        <line x1={left} x2={width - right} y1={secondTop} y2={secondTop} stroke="#E3D7C4" />
-        <line x1={left} x2={width - right} y1={bottom} y2={bottom} stroke="#E3D7C4" />
-        <text x={left - 8} y={secondTop + 4} textAnchor="end" fontSize="12" fill="#686B64">0%</text>
-        <text x={left - 8} y={bottom + 4} textAnchor="end" fontSize="12" fill="#686B64">{formatPercent(minDrawdown, 0)}</text>
-        <polyline points={drawdownLine} fill="none" stroke="#E34222" strokeWidth="2.5" />
-        <text x={left} y={height - 10} fontSize="12" fill="#686B64">{points[0]?.trade_date}</text>
-        <text x={width - right} y={height - 10} textAnchor="end" fontSize="12" fill="#686B64">{points.at(-1)?.trade_date}</text>
-        <text x={left} y={top - 9} fontSize="12" fill="#046A38">Portfolio index</text>
-        <text x={left} y={secondTop - 9} fontSize="12" fill="#B8321A">Drawdown</text>
+        <polyline points={indexLine} fill="none" stroke="var(--up)" strokeWidth="var(--border-width)" />
+        <line x1={left} x2={width - right} y1={secondTop} y2={secondTop} stroke="var(--line)" />
+        <line x1={left} x2={width - right} y1={bottom} y2={bottom} stroke="var(--line)" />
+        <text x={left - 8} y={secondTop + 4} textAnchor="end" fontSize="var(--text-tag)" fill="var(--gray)">0%</text>
+        <text x={left - 8} y={bottom + 4} textAnchor="end" fontSize="var(--text-tag)" fill="var(--gray)">{formatPercent(minDrawdown, 0)}</text>
+        <polyline points={drawdownLine} fill="none" stroke="var(--down)" strokeWidth="var(--border-width)" />
+        <text x={left} y={height - 10} fontSize="var(--text-tag)" fill="var(--gray)">{points[0]?.trade_date}</text>
+        <text x={width - right} y={height - 10} textAnchor="end" fontSize="var(--text-tag)" fill="var(--gray)">{points.at(-1)?.trade_date}</text>
+        <text x={left} y={top - 9} fontSize="var(--text-tag)" fill="var(--up)">Portfolio index</text>
+        <text x={left} y={secondTop - 9} fontSize="var(--text-tag)" fill="var(--down)">Drawdown</text>
       </Box>
     </Paper>
   );
@@ -350,20 +350,20 @@ function PerformanceChart({ points }: { points: PortfolioPerformancePoint[] }) {
 
 function ExposurePanel({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   return (
-    <Paper sx={{ p: 3, flex: 1 }}>
+    <Paper sx={{ p: "var(--space-3)", flex: 1 }}>
       <Typography variant="h5" gutterBottom>Industry exposure</Typography>
       <Stack spacing={2}>
         {analysis.concentration.industry_weights.map((item) => (
           <Box key={item.industry}>
             <Stack direction="row" sx={{ justifyContent: "space-between" }}>
               <Typography variant="body2">{item.industry}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 700 }}>{formatPercent(item.weight)}</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatPercent(item.weight)}</Typography>
             </Stack>
-            <LinearProgress variant="determinate" value={item.weight * 100} sx={{ height: 8, borderRadius: 0, mt: 0.5 }} />
+            <LinearProgress variant="determinate" value={item.weight * 100} sx={{ height: 8, borderRadius: "var(--radius)", mt: "var(--space-1)" }} />
           </Box>
         ))}
       </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ mt: "var(--space-2)" }}>
         Industry HHI {analysis.concentration.industry_hhi.toFixed(3)} · effective industries {analysis.concentration.effective_industries.toFixed(1)}
       </Typography>
     </Paper>
@@ -372,7 +372,7 @@ function ExposurePanel({ analysis }: { analysis: PortfolioAnalysisResponse }) {
 
 function DiversificationPanel({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   return (
-    <Paper sx={{ p: 3, flex: 1 }}>
+    <Paper sx={{ p: "var(--space-3)", flex: 1 }}>
       <Typography variant="h5" gutterBottom>Diversification</Typography>
       <Stack spacing={2}>
         <Box><Typography variant="overline">Holdings</Typography><Typography variant="h4">{analysis.holdings.length}</Typography></Box>
@@ -388,7 +388,7 @@ function DiversificationPanel({ analysis }: { analysis: PortfolioAnalysisRespons
 function RiskContributionTable({ holdings }: { holdings: PortfolioHoldingAnalytics[] }) {
   const ordered = [...holdings].sort((left, right) => right.risk_contribution - left.risk_contribution);
   return (
-    <Paper sx={{ p: 3, overflowX: "auto" }}>
+    <Paper sx={{ p: "var(--space-3)", overflowX: "auto" }}>
       <Typography variant="h5">Risk contribution by holding</Typography>
       <Typography color="text.secondary" gutterBottom>
         Euler decomposition of annualized sample covariance; contributions sum to approximately 100%.
@@ -397,11 +397,11 @@ function RiskContributionTable({ holdings }: { holdings: PortfolioHoldingAnalyti
         <TableHead><TableRow><TableCell>Holding</TableCell><TableCell align="right">Weight</TableCell><TableCell align="right">Asset volatility</TableCell><TableCell align="right">Risk contribution</TableCell><TableCell sx={{ minWidth: 180 }}>Share</TableCell></TableRow></TableHead>
         <TableBody>{ordered.map((holding) => (
           <TableRow key={holding.symbol}>
-            <TableCell><MuiLink component={Link} to={`/companies/${holding.symbol}`} sx={{ fontWeight: 700 }}>{holding.symbol}</MuiLink></TableCell>
+            <TableCell><MuiLink component={Link} to={`/companies/${holding.symbol}`} sx={{ fontWeight: 600 }}>{holding.symbol}</MuiLink></TableCell>
             <TableCell align="right">{formatPercent(holding.weight)}</TableCell>
             <TableCell align="right">{formatPercent(holding.annualized_volatility)}</TableCell>
             <TableCell align="right">{formatPercent(holding.risk_contribution)}</TableCell>
-            <TableCell><LinearProgress color={holding.risk_contribution > 0.35 ? "warning" : "primary"} variant="determinate" value={Math.min(Math.max(holding.risk_contribution * 100, 0), 100)} sx={{ height: 8, borderRadius: 0 }} /></TableCell>
+            <TableCell><LinearProgress color={holding.risk_contribution > 0.35 ? "warning" : "primary"} variant="determinate" value={Math.min(Math.max(holding.risk_contribution * 100, 0), 100)} sx={{ height: 8, borderRadius: "var(--radius)" }} /></TableCell>
           </TableRow>
         ))}</TableBody>
       </Table>
@@ -411,7 +411,7 @@ function RiskContributionTable({ holdings }: { holdings: PortfolioHoldingAnalyti
 
 function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: "var(--space-3)" }}>
       <Typography variant="h5">MST concentration and indirect connections</Typography>
       <Typography color="text.secondary" gutterBottom>
         Clusters retain MST edges with correlation ≥ {analysis.mst.cluster_correlation_floor.toFixed(2)}.
@@ -419,18 +419,18 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
       </Typography>
       <Alert
         severity={analysis.mst.stability.confidence === "high" ? "success" : analysis.mst.stability.confidence === "moderate" ? "info" : "warning"}
-        sx={{ mt: 2 }}
+        sx={{ mt: "var(--space-2)" }}
       >
         MST stability: {analysis.mst.stability.confidence}. {analysis.mst.stability.reason}
       </Alert>
       <PortfolioMstGraph mst={analysis.mst} holdings={analysis.holdings} />
-      <Stack direction={{ xs: "column", md: "row" }} spacing={3} sx={{ mt: 2 }}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={3} sx={{ mt: "var(--space-2)" }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h6">Portfolio clusters</Typography>
           <Stack spacing={1}>{analysis.mst.clusters.map((cluster) => (
-            <Box key={cluster.cluster_id} sx={{ py: 1.25, px: 1.5, bgcolor: "#E3D7C4", mb: 1, boxShadow: "0 2px 4px rgba(41,45,42,0.06)" }}>
+            <Box key={cluster.cluster_id} sx={{ py: "var(--space-1)", px: "var(--space-2)", bgcolor: "var(--line)", mb: "var(--space-1)", boxShadow: "none" }}>
               <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                <Typography sx={{ fontWeight: 700 }}>{cluster.cluster_id}</Typography>
+                <Typography sx={{ fontWeight: 600 }}>{cluster.cluster_id}</Typography>
                 <Chip size="small" label={formatPercent(cluster.weight)} />
               </Stack>
               <Typography variant="body2">{cluster.holding_symbols.join(", ")}</Typography>
@@ -442,14 +442,14 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
           <Typography variant="h6">Direct holding links</Typography>
           {!analysis.mst.direct_edges.length && <Typography color="text.secondary">No holdings are directly adjacent.</Typography>}
           {analysis.mst.direct_edges.map((edge) => (
-            <Stack direction="row" key={`${edge.symbol_a}-${edge.symbol_b}`} sx={{ justifyContent: "space-between", py: 1, px: 1.5, bgcolor: "#E3D7C4", mb: 0.75, boxShadow: "0 2px 4px rgba(41,45,42,0.06)" }}>
-              <Typography>{edge.symbol_a} ↔ {edge.symbol_b}</Typography>
+            <Stack direction="row" key={`${edge.symbol_a}-${edge.symbol_b}`} sx={{ justifyContent: "space-between", py: "var(--space-1)", px: "var(--space-2)", bgcolor: "var(--line)", mb: "var(--space-1)", boxShadow: "none" }}>
+              <Typography>{edge.symbol_a} / {edge.symbol_b}</Typography>
               <Chip size="small" label={`ρ ${edge.correlation.toFixed(2)}`} color={edge.correlation >= 0.7 ? "warning" : "default"} />
             </Stack>
           ))}
-          <Typography variant="h6" sx={{ mt: 2 }}>Bridge stocks</Typography>
+          <Typography variant="h6" sx={{ mt: "var(--space-2)" }}>Bridge stocks</Typography>
           {analysis.mst.bridge_stocks.slice(0, 6).map((bridge) => (
-            <Stack direction="row" key={bridge.symbol} sx={{ justifyContent: "space-between", py: 0.75 }}>
+            <Stack direction="row" key={bridge.symbol} sx={{ justifyContent: "space-between", py: "var(--space-1)" }}>
               <Typography>{bridge.symbol}{bridge.is_holding ? " (held)" : ""}</Typography>
               <Typography variant="body2">{bridge.path_pair_count} paths</Typography>
             </Stack>
@@ -478,12 +478,12 @@ function StressPanel({
   const selectedTarget = targets.includes(target) ? target : targets[0] ?? "";
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: "var(--space-3)" }}>
       <Typography variant="h5">Hypothetical stress test</Typography>
       <Typography color="text.secondary" gutterBottom>
         Apply a holding shock with historical beta propagation, or a parallel shock to one represented industry.
       </Typography>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={2} className="no-print" sx={{ mt: 2 }}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} className="no-print" sx={{ mt: "var(--space-2)" }}>
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel id="stress-kind">Shock type</InputLabel>
           <Select
@@ -510,13 +510,13 @@ function StressPanel({
         <Button variant="contained" disabled={loading || !selectedTarget || shock === 0 || shock < -30 || shock > 30} onClick={() => onRun({ kind, target: selectedTarget, shock_percent: shock })}>Run stress</Button>
       </Stack>
       {analysis.stress && (
-        <Stack spacing={2} sx={{ mt: 3 }}>
+        <Stack spacing={2} sx={{ mt: "var(--space-3)" }}>
           <Alert severity="warning">
             Estimated portfolio impact: <strong>{analysis.stress.portfolio_impact_percent.toFixed(2)}%</strong> from a {analysis.stress.shock_percent.toFixed(1)}% shock to {analysis.stress.target}. {analysis.stress.disclaimer}
           </Alert>
           <Typography variant="body2"><strong>Method:</strong> {analysis.stress.method}</Typography>
           <Box sx={{ overflowX: "auto" }}><Table size="small"><TableHead><TableRow><TableCell>Holding</TableCell><TableCell align="right">Sensitivity</TableCell><TableCell align="right">Estimated return</TableCell><TableCell align="right">Portfolio impact</TableCell></TableRow></TableHead><TableBody>{analysis.stress.results.map((result) => <TableRow key={result.symbol}><TableCell>{result.symbol}</TableCell><TableCell align="right">{result.sensitivity.toFixed(2)}</TableCell><TableCell align="right">{result.estimated_return_percent.toFixed(2)}%</TableCell><TableCell align="right">{result.portfolio_contribution_percent.toFixed(2)}%</TableCell></TableRow>)}</TableBody></Table></Box>
-          <Box component="ul" sx={{ m: 0 }}>{analysis.stress.assumptions.map((assumption) => <li key={assumption}><Typography variant="body2">{assumption}</Typography></li>)}</Box>
+          <Box component="ul" sx={{ m: "var(--space-1)" }}>{analysis.stress.assumptions.map((assumption) => <li key={assumption}><Typography variant="body2">{assumption}</Typography></li>)}</Box>
         </Stack>
       )}
     </Paper>
@@ -525,16 +525,16 @@ function StressPanel({
 
 function HoldingTable({ holdings }: { holdings: PortfolioHoldingAnalytics[] }) {
   return (
-    <Paper sx={{ p: 3, overflowX: "auto" }}>
+    <Paper sx={{ p: "var(--space-3)", overflowX: "auto" }}>
       <Typography variant="h5" gutterBottom>Holdings and current divergence</Typography>
       <Table size="small">
         <TableHead><TableRow><TableCell>Holding</TableCell><TableCell>Industry</TableCell><TableCell align="right">Weight</TableCell><TableCell align="right">20-day divergence</TableCell><TableCell>Band</TableCell></TableRow></TableHead>
         <TableBody>{holdings.map((holding) => (
           <TableRow key={holding.symbol}>
-            <TableCell><MuiLink component={Link} to={`/companies/${holding.symbol}`} sx={{ fontWeight: 700 }}>{holding.symbol}</MuiLink></TableCell>
+            <TableCell><MuiLink component={Link} to={`/companies/${holding.symbol}`} sx={{ fontWeight: 600 }}>{holding.symbol}</MuiLink></TableCell>
             <TableCell>{holding.industry}</TableCell>
             <TableCell align="right">{formatPercent(holding.weight)}</TableCell>
-            <TableCell align="right" sx={{ color: holding.divergence_20d !== null && holding.divergence_20d >= 0 ? "success.main" : "error.main", fontWeight: 700 }}>{holding.divergence_20d === null ? "—" : `${holding.divergence_20d > 0 ? "+" : ""}${holding.divergence_20d.toFixed(2)}σ`}</TableCell>
+            <TableCell align="right" sx={{ color: holding.divergence_20d !== null && holding.divergence_20d >= 0 ? "success.main" : "error.main", fontWeight: 600 }}>{holding.divergence_20d === null ? "—" : `${holding.divergence_20d > 0 ? "+" : ""}${holding.divergence_20d.toFixed(2)}σ`}</TableCell>
             <TableCell>{holding.divergence_band ? <Chip size="small" label={holding.divergence_band} color={bandColor[holding.divergence_band]} /> : "Unavailable"}</TableCell>
           </TableRow>
         ))}</TableBody>
@@ -545,13 +545,13 @@ function HoldingTable({ holdings }: { holdings: PortfolioHoldingAnalytics[] }) {
 
 function MethodAndLimitations({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: "var(--space-3)" }}>
       <Typography variant="h5">Method and limitations</Typography>
-      <Typography variant="body2" sx={{ mt: 1 }}>
+      <Typography variant="body2" sx={{ mt: "var(--space-1)" }}>
         {analysis.envelope.return_frequency}; {analysis.envelope.annualisation_factor}-day annualisation;
         {" "}{analysis.envelope.weighting_assumption}; {analysis.envelope.missing_data_rule}.
       </Typography>
-      <Box component="ul" sx={{ mb: 0 }}>
+      <Box component="ul" sx={{ mb: "var(--space-1)" }}>
         {analysis.limitations.map((limitation) => <li key={limitation}><Typography variant="body2">{limitation}</Typography></li>)}
       </Box>
     </Paper>

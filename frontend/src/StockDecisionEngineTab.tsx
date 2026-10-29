@@ -114,25 +114,25 @@ export default function StockDecisionEngineTab({
     switch (flag) {
       case "HOLD":
         return {
-          bg: "#046A38",
-          color: "#F9EBD7",
-          border: "#058b4a",
+          bg: "var(--up)",
+          color: "var(--white)",
+          border: "var(--up)",
           label: "HOLD",
           desc: "Strong or acceptable fundamentals with no major deterioration signals.",
         };
       case "WAIT & WATCH":
         return {
-          bg: "#8A5A00",
-          color: "#F9EBD7",
-          border: "#b07400",
+          bg: "var(--amber)",
+          color: "var(--white)",
+          border: "var(--amber)",
           label: "WAIT & WATCH",
           desc: "Mixed signals, uncertain conditions, or near decision thresholds.",
         };
       case "SELL":
         return {
-          bg: "#E34222",
-          color: "#F9EBD7",
-          border: "#b8321a",
+          bg: "var(--down)",
+          color: "var(--white)",
+          border: "var(--down)",
           label: "SELL",
           desc: "Significant evidence of financial weakness or downside risk.",
         };
@@ -142,20 +142,20 @@ export default function StockDecisionEngineTab({
   const getConfidenceBadge = (confidence: string) => {
     switch (confidence) {
       case "high":
-        return { label: "High Confidence", color: "#046A38", bg: "#DCE9DE" };
+        return { label: "High Confidence", color: "var(--up)", bg: "var(--line)" };
       case "medium":
-        return { label: "Medium Confidence", color: "#8A5A00", bg: "#FDF0D5" };
+        return { label: "Medium Confidence", color: "var(--amber)", bg: "var(--amber)" };
       case "low":
-        return { label: "Low Confidence", color: "#686B64", bg: "#E3D7C4" };
+        return { label: "Low Confidence", color: "var(--gray)", bg: "var(--line)" };
       default:
-        return { label: "Insufficient Data", color: "#E34222", bg: "#F6D9CC" };
+        return { label: "Insufficient Data", color: "var(--down)", bg: "var(--gray)" };
     }
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 70) return "#046A38";
-    if (score >= 45) return "#8A5A00";
-    return "#E34222";
+    if (score >= 70) return "var(--up)";
+    if (score >= 45) return "var(--amber)";
+    return "var(--down)";
   };
 
   return (
@@ -163,11 +163,11 @@ export default function StockDecisionEngineTab({
       {/* Header Banner */}
       <Paper
         sx={{
-          p: 2.5,
-          borderRadius: 0,
+          p: "var(--space-3)",
+          borderRadius: "var(--radius)",
           bgcolor: COLORS.deepCharcoal,
           color: COLORS.warmIvory,
-          boxShadow: SHADOWS.card,
+          boxShadow: "none",
         }}
       >
         <Box
@@ -176,18 +176,18 @@ export default function StockDecisionEngineTab({
             flexDirection: { xs: "column", sm: "row" },
             justifyContent: "space-between",
             alignItems: { xs: "flex-start", sm: "center" },
-            gap: 2,
+            gap: "var(--space-2)",
           }}
         >
           <Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
               <Typography
                 variant="h6"
                 sx={{
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
+                  fontWeight: 600,
+                  letterSpacing: 0,
                   color: COLORS.warmIvory,
-                  fontFamily: "Outfit, sans-serif",
+                  fontFamily: "var(--font-data)",
                 }}
               >
                 STOCK DECISION ENGINE
@@ -196,17 +196,16 @@ export default function StockDecisionEngineTab({
                 label="3-Factor ML Synthesis"
                 size="small"
                 sx={{
-                  bgcolor: "#046A38",
-                  color: "#F9EBD7",
-                  fontSize: "0.875rem",
+                  bgcolor: "var(--up)", color: "var(--line)",
+                  fontSize: "var(--text-title)",
                   fontWeight: 600,
-                  borderRadius: 0,
+                  borderRadius: "var(--radius)",
                 }}
               />
             </Box>
             <Typography
               variant="body2"
-              sx={{ color: COLORS.sandBeige, mt: 0.5, fontSize: "0.875rem" }}
+              sx={{ color: COLORS.sandBeige, mt: "var(--space-1)", fontSize: "var(--text-title)" }}
             >
               Actionable flags (SELL / HOLD / WAIT & WATCH) combining Five-Factor
               Fundamental Strength (60%), Sector Divergence (25%), and News Sentiment (15%).
@@ -221,13 +220,12 @@ export default function StockDecisionEngineTab({
               loading ? <CircularProgress size={16} color="inherit" /> : <span>↻</span>
             }
             sx={{
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
-              borderRadius: 0,
+              bgcolor: "var(--up)", color: "var(--line)",
+              borderRadius: "var(--radius)",
               textTransform: "none",
               fontWeight: 600,
-              px: 2,
-              "&:hover": { bgcolor: "#03532c" },
+              px: "var(--space-2)",
+              "&:hover": { bgcolor: "var(--up)" },
             }}
           >
             {loading ? "Analyzing..." : "Re-Analyze Decisions"}
@@ -240,10 +238,10 @@ export default function StockDecisionEngineTab({
         <Alert
           severity="error"
           sx={{
-            borderRadius: 0,
-            bgcolor: "#F6D9CC",
-            color: "#B8321A",
-            border: "1px solid #E34222",
+            borderRadius: "var(--radius)",
+            bgcolor: "var(--gray)",
+            color: "var(--down)",
+            border: "var(--border-width) solid var(--down)",
           }}
         >
           {error}
@@ -254,18 +252,18 @@ export default function StockDecisionEngineTab({
       {loading && !response && (
         <Paper
           sx={{
-            p: 6,
+            p: "var(--space-4)",
             textAlign: "center",
             bgcolor: COLORS.warmIvory,
-            borderRadius: 0,
-            boxShadow: SHADOWS.card,
+            borderRadius: "var(--radius)",
+            boxShadow: "none",
           }}
         >
-          <CircularProgress sx={{ color: "#046A38", mb: 2 }} />
+          <CircularProgress sx={{ color: "var(--up)", mb: "var(--space-2)" }} />
           <Typography variant="body1" sx={{ fontWeight: 600, color: COLORS.deepCharcoal }}>
             Synthesizing 5-Factor Risk, Sector Divergence, and News Sentiment...
           </Typography>
-          <Typography variant="body2" sx={{ color: COLORS.mutedGrey, mt: 0.5 }}>
+          <Typography variant="body2" sx={{ color: COLORS.mutedGrey, mt: "var(--space-1)" }}>
             Evaluating dynamic weight regimes and risk override triggers for each portfolio holding.
           </Typography>
         </Paper>
@@ -278,11 +276,11 @@ export default function StockDecisionEngineTab({
           <Grid size={{ xs: 6, sm: 4, md: 2 }}>
             <Paper
               sx={{
-                p: 2,
-                borderRadius: 0,
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
                 bgcolor: COLORS.warmIvory,
-                border: "1px solid #E3D7C4",
-                boxShadow: SHADOWS.control,
+                border: "var(--border-width) solid var(--line)",
+                boxShadow: "none",
               }}
             >
               <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontWeight: 600 }}>
@@ -290,7 +288,7 @@ export default function StockDecisionEngineTab({
               </Typography>
               <Typography
                 variant="h4"
-                sx={{ fontWeight: 700, color: COLORS.deepCharcoal, mt: 0.5 }}
+                sx={{ fontWeight: 600, color: COLORS.deepCharcoal, mt: "var(--space-1)" }}
               >
                 {summary.total_stocks}
               </Typography>
@@ -307,18 +305,18 @@ export default function StockDecisionEngineTab({
             <Paper
               onClick={() => setFilterFlag(filterFlag === "HOLD" ? "ALL" : "HOLD")}
               sx={{
-                p: 2,
-                borderRadius: 0,
-                bgcolor: filterFlag === "HOLD" ? "#DCE9DE" : COLORS.warmIvory,
-                border: "1px solid #046A38",
-                boxShadow: SHADOWS.control,
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
+                bgcolor: filterFlag === "HOLD" ? "var(--line)" : COLORS.warmIvory,
+                border: "var(--border-width) solid var(--up)",
+                boxShadow: "none",
                 cursor: "pointer",
-                transition: "all 0.2s",
-                "&:hover": { boxShadow: SHADOWS.card },
+                transition: "none",
+                "&:hover": { boxShadow: "none" },
               }}
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <Typography variant="caption" sx={{ color: "#046A38", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--up)", fontWeight: 600 }}>
                   HOLD
                 </Typography>
                 <Chip
@@ -326,14 +324,13 @@ export default function StockDecisionEngineTab({
                   size="small"
                   sx={{
                     height: 18,
-                    fontSize: "0.875rem",
-                    bgcolor: "#046A38",
-                    color: "#F9EBD7",
-                    borderRadius: 0,
+                    fontSize: "var(--text-title)",
+                    bgcolor: "var(--up)", color: "var(--line)",
+                    borderRadius: "var(--radius)",
                   }}
                 />
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: "#046A38", mt: 0.5 }}>
+              <Typography variant="h4" sx={{ fontWeight: 600, color: "var(--up)", mt: "var(--space-1)" }}>
                 {summary.hold_count}
               </Typography>
               <Typography variant="caption" sx={{ color: COLORS.mutedGrey }}>
@@ -349,18 +346,18 @@ export default function StockDecisionEngineTab({
             <Paper
               onClick={() => setFilterFlag(filterFlag === "WAIT & WATCH" ? "ALL" : "WAIT & WATCH")}
               sx={{
-                p: 2,
-                borderRadius: 0,
-                bgcolor: filterFlag === "WAIT & WATCH" ? "#FDF0D5" : COLORS.warmIvory,
-                border: "1px solid #8A5A00",
-                boxShadow: SHADOWS.control,
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
+                bgcolor: filterFlag === "WAIT & WATCH" ? "var(--amber)" : COLORS.warmIvory,
+                border: "var(--border-width) solid var(--amber)",
+                boxShadow: "none",
                 cursor: "pointer",
-                transition: "all 0.2s",
-                "&:hover": { boxShadow: SHADOWS.card },
+                transition: "none",
+                "&:hover": { boxShadow: "none" },
               }}
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <Typography variant="caption" sx={{ color: "#8A5A00", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--amber)", fontWeight: 600 }}>
                   WAIT & WATCH
                 </Typography>
                 <Chip
@@ -368,14 +365,14 @@ export default function StockDecisionEngineTab({
                   size="small"
                   sx={{
                     height: 18,
-                    fontSize: "0.875rem",
-                    bgcolor: "#8A5A00",
-                    color: "#F9EBD7",
-                    borderRadius: 0,
+                    fontSize: "var(--text-title)",
+                    bgcolor: "var(--amber)",
+                    color: "var(--white)",
+                    borderRadius: "var(--radius)",
                   }}
                 />
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: "#8A5A00", mt: 0.5 }}>
+              <Typography variant="h4" sx={{ fontWeight: 600, color: "var(--amber)", mt: "var(--space-1)" }}>
                 {summary.wait_and_watch_count}
               </Typography>
               <Typography variant="caption" sx={{ color: COLORS.mutedGrey }}>
@@ -391,18 +388,18 @@ export default function StockDecisionEngineTab({
             <Paper
               onClick={() => setFilterFlag(filterFlag === "SELL" ? "ALL" : "SELL")}
               sx={{
-                p: 2,
-                borderRadius: 0,
-                bgcolor: filterFlag === "SELL" ? "#F6D9CC" : COLORS.warmIvory,
-                border: "1px solid #E34222",
-                boxShadow: SHADOWS.control,
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
+                bgcolor: filterFlag === "SELL" ? "var(--gray)" : COLORS.warmIvory,
+                border: "var(--border-width) solid var(--down)",
+                boxShadow: "none",
                 cursor: "pointer",
-                transition: "all 0.2s",
-                "&:hover": { boxShadow: SHADOWS.card },
+                transition: "none",
+                "&:hover": { boxShadow: "none" },
               }}
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <Typography variant="caption" sx={{ color: "#E34222", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--down)", fontWeight: 600 }}>
                   SELL
                 </Typography>
                 <Chip
@@ -410,14 +407,14 @@ export default function StockDecisionEngineTab({
                   size="small"
                   sx={{
                     height: 18,
-                    fontSize: "0.875rem",
-                    bgcolor: "#E34222",
-                    color: "#F9EBD7",
-                    borderRadius: 0,
+                    fontSize: "var(--text-title)",
+                    bgcolor: "var(--down)",
+                    color: "var(--white)",
+                    borderRadius: "var(--radius)",
                   }}
                 />
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: "#E34222", mt: 0.5 }}>
+              <Typography variant="h4" sx={{ fontWeight: 600, color: "var(--down)", mt: "var(--space-1)" }}>
                 {summary.sell_count}
               </Typography>
               <Typography variant="caption" sx={{ color: COLORS.mutedGrey }}>
@@ -432,11 +429,11 @@ export default function StockDecisionEngineTab({
           <Grid size={{ xs: 6, sm: 4, md: 2 }}>
             <Paper
               sx={{
-                p: 2,
-                borderRadius: 0,
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
                 bgcolor: COLORS.warmIvory,
-                border: "1px solid #E3D7C4",
-                boxShadow: SHADOWS.control,
+                border: "var(--border-width) solid var(--line)",
+                boxShadow: "none",
               }}
             >
               <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontWeight: 600 }}>
@@ -445,9 +442,9 @@ export default function StockDecisionEngineTab({
               <Typography
                 variant="h4"
                 sx={{
-                  fontWeight: 700,
-                  color: summary.portfolio_weighted_risk_exposure > 25 ? "#E34222" : COLORS.deepCharcoal,
-                  mt: 0.5,
+                  fontWeight: 600,
+                  color: summary.portfolio_weighted_risk_exposure > 25 ? "var(--down)" : COLORS.deepCharcoal,
+                  mt: "var(--space-1)",
                 }}
               >
                 {summary.portfolio_weighted_risk_exposure.toFixed(1)}%
@@ -462,11 +459,11 @@ export default function StockDecisionEngineTab({
           <Grid size={{ xs: 6, sm: 4, md: 2 }}>
             <Paper
               sx={{
-                p: 2,
-                borderRadius: 0,
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
                 bgcolor: COLORS.warmIvory,
-                border: "1px solid #E3D7C4",
-                boxShadow: SHADOWS.control,
+                border: "var(--border-width) solid var(--line)",
+                boxShadow: "none",
               }}
             >
               <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontWeight: 600 }}>
@@ -475,11 +472,11 @@ export default function StockDecisionEngineTab({
               <Typography
                 variant="h4"
                 sx={{
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: summary.average_final_score
                     ? getScoreColor(summary.average_final_score)
                     : COLORS.deepCharcoal,
-                  mt: 0.5,
+                  mt: "var(--space-1)",
                 }}
               >
                 {summary.average_final_score ? summary.average_final_score.toFixed(1) : "—"}
@@ -496,25 +493,25 @@ export default function StockDecisionEngineTab({
       {decisions.length > 0 && (
         <Paper
           sx={{
-            p: 2,
-            borderRadius: 0,
+            p: "var(--space-2)",
+            borderRadius: "var(--radius)",
             bgcolor: COLORS.warmIvory,
-            border: "1px solid #E3D7C4",
-            boxShadow: SHADOWS.control,
+            border: "var(--border-width) solid var(--line)",
+            boxShadow: "none",
           }}
         >
           <Box
             sx={{
               display: "flex",
               flexDirection: { xs: "column", md: "row" },
-              gap: 2,
+              gap: "var(--space-2)",
               alignItems: { xs: "stretch", md: "center" },
               justifyContent: "space-between",
             }}
           >
             {/* Decision Filter Chips */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: COLORS.deepCharcoal, mr: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: "var(--space-1)", flexWrap: "wrap" }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: COLORS.deepCharcoal, mr: "var(--space-1)" }}>
                 FLAG:
               </Typography>
               {(["ALL", "HOLD", "WAIT & WATCH", "SELL"] as const).map((flag) => {
@@ -527,21 +524,21 @@ export default function StockDecisionEngineTab({
                     onClick={() => setFilterFlag(flag)}
                     size="small"
                     sx={{
-                      borderRadius: 0,
-                      fontWeight: 700,
-                      fontSize: "0.875rem",
+                      borderRadius: "var(--radius)",
+                      fontWeight: 600,
+                      fontSize: "var(--text-title)",
                       cursor: "pointer",
                       bgcolor: isSelected
                         ? flag === "HOLD"
-                          ? "#046A38"
+                          ? "var(--up)"
                           : flag === "WAIT & WATCH"
-                          ? "#8A5A00"
+                          ? "var(--amber)"
                           : flag === "SELL"
-                          ? "#E34222"
+                          ? "var(--down)"
                           : COLORS.deepCharcoal
-                        : "#E3D7C4",
-                      color: isSelected ? "#F9EBD7" : COLORS.deepCharcoal,
-                      "&:hover": { opacity: 0.85 },
+                        : "var(--line)",
+                      color: isSelected ? "var(--bg)" : COLORS.deepCharcoal,
+                      "&:hover": { opacity: 1 },
                     }}
                   />
                 );
@@ -549,7 +546,7 @@ export default function StockDecisionEngineTab({
             </Box>
 
             {/* Search and Sort */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
               <TextField
                 size="small"
                 placeholder="Search symbol / company..."
@@ -558,9 +555,9 @@ export default function StockDecisionEngineTab({
                 sx={{
                   width: { xs: "100%", sm: 220 },
                   "& .MuiOutlinedInput-root": {
-                    borderRadius: 0,
-                    bgcolor: "#F9EBD7",
-                    fontSize: "0.875rem",
+                    borderRadius: "var(--radius)",
+                    bgcolor: "var(--bg)",
+                    fontSize: "var(--text-title)",
                   },
                 }}
               />
@@ -569,9 +566,9 @@ export default function StockDecisionEngineTab({
                 value={sortField}
                 onChange={(e) => setSortField(e.target.value as typeof sortField)}
                 sx={{
-                  borderRadius: 0,
-                  bgcolor: "#F9EBD7",
-                  fontSize: "0.875rem",
+                  borderRadius: "var(--radius)",
+                  bgcolor: "var(--bg)",
+                  fontSize: "var(--text-title)",
                   minWidth: 140,
                 }}
               >
@@ -586,10 +583,10 @@ export default function StockDecisionEngineTab({
                 size="small"
                 onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
                 sx={{
-                  borderRadius: 0,
-                  border: "1px solid #E3D7C4",
-                  bgcolor: "#F9EBD7",
-                  p: 0.75,
+                  borderRadius: "var(--radius)",
+                  border: "var(--border-width) solid var(--line)",
+                  bgcolor: "var(--bg)",
+                  p: "var(--space-1)",
                 }}
                 title={sortOrder === "asc" ? "Ascending" : "Descending"}
               >
@@ -605,11 +602,11 @@ export default function StockDecisionEngineTab({
         {filteredDecisions.length === 0 && !loading && (
           <Paper
             sx={{
-              p: 4,
+              p: "var(--space-4)",
               textAlign: "center",
               bgcolor: COLORS.warmIvory,
-              borderRadius: 0,
-              boxShadow: SHADOWS.card,
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
             }}
           >
             <Typography variant="body1" sx={{ color: COLORS.mutedGrey, fontWeight: 500 }}>
@@ -632,27 +629,27 @@ export default function StockDecisionEngineTab({
               key={stock.symbol}
               data-testid={`stock-card-${stock.symbol}`}
               sx={{
-                borderRadius: 0,
+                borderRadius: "var(--radius)",
                 bgcolor: COLORS.warmIvory,
-                border: `1px solid ${hasRiskAlerts ? "#E34222" : "#E3D7C4"}`,
-                boxShadow: isExpanded ? SHADOWS.card : SHADOWS.control,
+                border: `1px solid ${hasRiskAlerts ? "var(--down)" : "var(--line)"}`,
+                boxShadow: "none",
                 overflow: "hidden",
-                transition: "all 0.2s",
+                transition: "none",
               }}
             >
               {/* Card Header & Main Overview */}
-              <Box sx={{ p: 2.5 }}>
+              <Box sx={{ p: "var(--space-3)" }}>
                 <Grid container spacing={2} sx={{ alignItems: "center" }}>
                   {/* Stock Identification */}
                   <Grid size={{ xs: 12, sm: 3 }}>
                     <Stack spacing={0.5}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: "var(--space-1)" }}>
                         <Typography
                           variant="h6"
                           sx={{
-                            fontWeight: 700,
+                            fontWeight: 600,
                             color: COLORS.deepCharcoal,
-                            fontFamily: "Outfit, sans-serif",
+                            fontFamily: "var(--font-data)",
                           }}
                         >
                           {stock.symbol}
@@ -663,20 +660,20 @@ export default function StockDecisionEngineTab({
                             size="small"
                             sx={{
                               height: 20,
-                              fontSize: "0.875rem",
-                              borderRadius: 0,
-                              bgcolor: "#E3D7C4",
+                              fontSize: "var(--text-title)",
+                              borderRadius: "var(--radius)",
+                              bgcolor: "var(--line)",
                               color: COLORS.deepCharcoal,
                               fontWeight: 600,
                             }}
                           />
                         )}
                       </Box>
-                      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, fontSize: "0.875rem" }}>
+                      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, fontSize: "var(--text-title)" }}>
                         {stock.company_name || stock.sector || "Equity"}
                       </Typography>
                       {stock.sector && (
-                        <Typography variant="caption" sx={{ color: "#686B64", fontSize: "0.875rem" }}>
+                        <Typography variant="caption" sx={{ color: "var(--gray)", fontSize: "var(--text-title)" }}>
                           Sector: {stock.sector}
                         </Typography>
                       )}
@@ -692,27 +689,27 @@ export default function StockDecisionEngineTab({
                           p: "6px 14px",
                           bgcolor: badge.bg,
                           color: badge.color,
-                          borderRadius: 0,
+                          borderRadius: "var(--radius)",
                           textAlign: "center",
-                          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                          boxShadow: "none",
                         }}
                       >
                         <Typography
                           variant="subtitle2"
-                          sx={{ fontWeight: 800, letterSpacing: "0.06em", fontSize: "0.88rem" }}
+                          sx={{ fontWeight: 600, letterSpacing: 0, fontSize: "var(--text-title)" }}
                         >
                           {badge.label}
                         </Typography>
                       </Box>
                     </Tooltip>
-                    <Box sx={{ mt: 0.75 }}>
+                    <Box sx={{ mt: "var(--space-1)" }}>
                       <Chip
                         label={conf.label}
                         size="small"
                         sx={{
                           height: 18,
-                          fontSize: "0.875rem",
-                          borderRadius: 0,
+                          fontSize: "var(--text-title)",
+                          borderRadius: "var(--radius)",
                           bgcolor: conf.bg,
                           color: conf.color,
                           fontWeight: 600,
@@ -725,22 +722,22 @@ export default function StockDecisionEngineTab({
                   <Grid size={{ xs: 6, sm: 2.5 }}>
                     <Stack spacing={0.5}>
                       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                        <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontWeight: 700 }}>
+                        <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontWeight: 600 }}>
                           HEALTH SCORE
                         </Typography>
                         <Typography
                           variant="h6"
                           sx={{
-                            fontWeight: 800,
+                            fontWeight: 600,
                             color: getScoreColor(stock.final_score),
-                            lineHeight: 1,
+                            lineHeight: "var(--leading)",
                           }}
                         >
                           {stock.final_score.toFixed(1)}
                           <Typography
                             component="span"
                             variant="caption"
-                            sx={{ color: COLORS.mutedGrey, ml: 0.25 }}
+                            sx={{ color: COLORS.mutedGrey, ml: "var(--space-1)" }}
                           >
                             /100
                           </Typography>
@@ -751,14 +748,14 @@ export default function StockDecisionEngineTab({
                         value={stock.final_score}
                         sx={{
                           height: 8,
-                          borderRadius: 0,
-                          bgcolor: "#E3D7C4",
+                          borderRadius: "var(--radius)",
+                          bgcolor: "var(--line)",
                           "& .MuiLinearProgress-bar": {
                             bgcolor: getScoreColor(stock.final_score),
                           },
                         }}
                       />
-                      <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontSize: "0.875rem" }}>
+                      <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontSize: "var(--text-title)" }}>
                         Regime: {stock.applied_weights.regime} (
                         {Math.round(stock.applied_weights.fundamental * 100)}/
                         {Math.round(stock.applied_weights.sector * 100)}/
@@ -778,7 +775,7 @@ export default function StockDecisionEngineTab({
                         <Typography
                           variant="caption"
                           sx={{
-                            fontWeight: 700,
+                            fontWeight: 600,
                             color: getScoreColor(stock.fundamental.fundamental_strength_score),
                           }}
                         >
@@ -790,8 +787,8 @@ export default function StockDecisionEngineTab({
                         value={stock.fundamental.fundamental_strength_score}
                         sx={{
                           height: 4,
-                          borderRadius: 0,
-                          bgcolor: "#E3D7C4",
+                          borderRadius: "var(--radius)",
+                          bgcolor: "var(--line)",
                           "& .MuiLinearProgress-bar": {
                             bgcolor: getScoreColor(stock.fundamental.fundamental_strength_score),
                           },
@@ -806,7 +803,7 @@ export default function StockDecisionEngineTab({
                         <Typography
                           variant="caption"
                           sx={{
-                            fontWeight: 700,
+                            fontWeight: 600,
                             color: getScoreColor(stock.sector_strength.sector_strength_score),
                           }}
                         >
@@ -818,8 +815,8 @@ export default function StockDecisionEngineTab({
                         value={stock.sector_strength.sector_strength_score}
                         sx={{
                           height: 4,
-                          borderRadius: 0,
-                          bgcolor: "#E3D7C4",
+                          borderRadius: "var(--radius)",
+                          bgcolor: "var(--line)",
                           "& .MuiLinearProgress-bar": {
                             bgcolor: getScoreColor(stock.sector_strength.sector_strength_score),
                           },
@@ -834,7 +831,7 @@ export default function StockDecisionEngineTab({
                         <Typography
                           variant="caption"
                           sx={{
-                            fontWeight: 700,
+                            fontWeight: 600,
                             color: getScoreColor(stock.news.news_score),
                           }}
                         >
@@ -846,8 +843,8 @@ export default function StockDecisionEngineTab({
                         value={stock.news.news_score}
                         sx={{
                           height: 4,
-                          borderRadius: 0,
-                          bgcolor: "#E3D7C4",
+                          borderRadius: "var(--radius)",
+                          bgcolor: "var(--line)",
                           "& .MuiLinearProgress-bar": {
                             bgcolor: getScoreColor(stock.news.news_score),
                           },
@@ -864,12 +861,12 @@ export default function StockDecisionEngineTab({
                       sx={{
                         minWidth: 32,
                         p: "4px 8px",
-                        borderRadius: 0,
+                        borderRadius: "var(--radius)",
                         textTransform: "none",
-                        fontSize: "0.875rem",
+                        fontSize: "var(--text-title)",
                         color: COLORS.deepCharcoal,
-                        border: "1px solid #E3D7C4",
-                        "&:hover": { bgcolor: "#E3D7C4" },
+                        border: "var(--border-width) solid var(--line)",
+                        "&:hover": { bgcolor: "var(--line)" },
                       }}
                     >
                       {isExpanded ? "Hide" : "Details"}
@@ -879,20 +876,20 @@ export default function StockDecisionEngineTab({
 
                 {/* Risk Alerts Banner (always visible if present) */}
                 {hasRiskAlerts && (
-                  <Box sx={{ mt: 2 }}>
+                  <Box sx={{ mt: "var(--space-2)" }}>
                     {stock.risk_alerts.map((alert, idx) => (
                       <Alert
                         key={idx}
                         severity="warning"
                         sx={{
-                          borderRadius: 0,
-                          mb: 0.5,
+                          borderRadius: "var(--radius)",
+                          mb: "var(--space-1)",
                           p: "4px 12px",
-                          bgcolor: "#FDF0D5",
-                          color: "#8A5A00",
-                          border: "1px solid #8A5A00",
-                          fontSize: "0.875rem",
-                          "& .MuiAlert-icon": { color: "#8A5A00", py: 0 },
+                          bgcolor: "var(--amber)",
+                          color: "var(--amber)",
+                          border: "var(--border-width) solid var(--amber)",
+                          fontSize: "var(--text-title)",
+                          "& .MuiAlert-icon": { color: "var(--amber)", py: "var(--space-1)" },
                         }}
                       >
                         {alert}
@@ -904,47 +901,47 @@ export default function StockDecisionEngineTab({
 
               {/* Expandable Deep-Dive Details */}
               <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                <Divider sx={{ borderColor: "#E3D7C4" }} />
-                <Box sx={{ p: 2.5, bgcolor: "#F5E6D0" }}>
+                <Divider sx={{ borderColor: "var(--line)" }} />
+                <Box sx={{ p: "var(--space-3)", bgcolor: "var(--amber)" }}>
                   <Grid container spacing={3}>
                     {/* Component 1: Fundamental Analysis */}
                     <Grid size={{ xs: 12, md: 4 }}>
                       <Paper
                         sx={{
-                          p: 2,
-                          borderRadius: 0,
+                          p: "var(--space-2)",
+                          borderRadius: "var(--radius)",
                           bgcolor: COLORS.warmIvory,
-                          border: "1px solid #E3D7C4",
+                          border: "var(--border-width) solid var(--line)",
                           height: "100%",
                         }}
                       >
                         <Stack spacing={1}>
                           <Typography
                             variant="subtitle2"
-                            sx={{ fontWeight: 700, color: COLORS.deepCharcoal }}
+                            sx={{ fontWeight: 600, color: COLORS.deepCharcoal }}
                           >
                             1. Fundamental Health (60%)
                           </Typography>
                           <Typography variant="caption" sx={{ color: COLORS.mutedGrey }}>
                             Source: 5-Factor Risk Score (Inverted)
                           </Typography>
-                          <Divider sx={{ my: 0.5 }} />
-                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                          <Divider sx={{ my: "var(--space-1)" }} />
+                          <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                             <strong>Strength Score:</strong>{" "}
                             {stock.fundamental.fundamental_strength_score.toFixed(1)} / 100
                           </Typography>
                           {stock.fundamental.raw_risk_score !== null &&
                             stock.fundamental.raw_risk_score !== undefined && (
-                              <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                              <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                                 <strong>Raw Risk Percentile:</strong>{" "}
                                 {stock.fundamental.raw_risk_score.toFixed(1)} (lower = safer)
                               </Typography>
                             )}
-                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                             <strong>Classification:</strong>{" "}
                             {stock.fundamental.fundamental_classification}
                           </Typography>
-                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                             <strong>Anomaly ML Model:</strong>{" "}
                             {stock.fundamental.anomaly_flag ? (
                               <Chip
@@ -952,10 +949,10 @@ export default function StockDecisionEngineTab({
                                 size="small"
                                 sx={{
                                   height: 18,
-                                  fontSize: "0.875rem",
-                                  bgcolor: "#E34222",
-                                  color: "#F9EBD7",
-                                  borderRadius: 0,
+                                  fontSize: "var(--text-title)",
+                                  bgcolor: "var(--down)",
+                                  color: "var(--white)",
+                                  borderRadius: "var(--radius)",
                                 }}
                               />
                             ) : (
@@ -963,7 +960,7 @@ export default function StockDecisionEngineTab({
                             )}
                           </Typography>
                           {stock.fundamental.failure_reason && (
-                            <Typography variant="caption" sx={{ color: "#E34222" }}>
+                            <Typography variant="caption" sx={{ color: "var(--down)" }}>
                               Note: {stock.fundamental.failure_reason}
                             </Typography>
                           )}
@@ -975,45 +972,45 @@ export default function StockDecisionEngineTab({
                     <Grid size={{ xs: 12, md: 4 }}>
                       <Paper
                         sx={{
-                          p: 2,
-                          borderRadius: 0,
+                          p: "var(--space-2)",
+                          borderRadius: "var(--radius)",
                           bgcolor: COLORS.warmIvory,
-                          border: "1px solid #E3D7C4",
+                          border: "var(--border-width) solid var(--line)",
                           height: "100%",
                         }}
                       >
                         <Stack spacing={1}>
                           <Typography
                             variant="subtitle2"
-                            sx={{ fontWeight: 700, color: COLORS.deepCharcoal }}
+                            sx={{ fontWeight: 600, color: COLORS.deepCharcoal }}
                           >
                             2. Sector Divergence (25%)
                           </Typography>
                           <Typography variant="caption" sx={{ color: COLORS.mutedGrey }}>
                             Source: 20-Day Sector Peer Residual
                           </Typography>
-                          <Divider sx={{ my: 0.5 }} />
-                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                          <Divider sx={{ my: "var(--space-1)" }} />
+                          <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                             <strong>Sector Strength:</strong>{" "}
                             {stock.sector_strength.sector_strength_score.toFixed(1)} / 100
                           </Typography>
                           {stock.sector_strength.divergence_value !== null &&
                             stock.sector_strength.divergence_value !== undefined && (
-                              <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                              <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                                 <strong>Divergence Z-Score:</strong>{" "}
                                 {stock.sector_strength.divergence_value > 0 ? "+" : ""}
                                 {stock.sector_strength.divergence_value.toFixed(2)}σ
                               </Typography>
                             )}
-                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                             <strong>Interpretation:</strong>{" "}
                             {stock.sector_strength.interpretation || "Industry Rank"}
                           </Typography>
-                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                             <strong>Horizon:</strong> {stock.sector_strength.horizon_days} trading days
                           </Typography>
                           {stock.sector_strength.failure_reason && (
-                            <Typography variant="caption" sx={{ color: "#E34222" }}>
+                            <Typography variant="caption" sx={{ color: "var(--down)" }}>
                               Note: {stock.sector_strength.failure_reason}
                             </Typography>
                           )}
@@ -1025,36 +1022,36 @@ export default function StockDecisionEngineTab({
                     <Grid size={{ xs: 12, md: 4 }}>
                       <Paper
                         sx={{
-                          p: 2,
-                          borderRadius: 0,
+                          p: "var(--space-2)",
+                          borderRadius: "var(--radius)",
                           bgcolor: COLORS.warmIvory,
-                          border: "1px solid #E3D7C4",
+                          border: "var(--border-width) solid var(--line)",
                           height: "100%",
                         }}
                       >
                         <Stack spacing={1}>
                           <Typography
                             variant="subtitle2"
-                            sx={{ fontWeight: 700, color: COLORS.deepCharcoal }}
+                            sx={{ fontWeight: 600, color: COLORS.deepCharcoal }}
                           >
                             3. News Intelligence (15%)
                           </Typography>
                           <Typography variant="caption" sx={{ color: COLORS.mutedGrey }}>
                             Source: FinBERT + News Classifier
                           </Typography>
-                          <Divider sx={{ my: 0.5 }} />
-                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                          <Divider sx={{ my: "var(--space-1)" }} />
+                          <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                             <strong>News Score:</strong> {stock.news.news_score.toFixed(1)} / 100
                           </Typography>
-                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                             <strong>Dominant Sentiment:</strong>{" "}
                             <span style={{ textTransform: "capitalize" }}>{stock.news.sentiment}</span>
                           </Typography>
-                          <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                          <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                             <strong>Articles Tracked (7d):</strong> {stock.news.articles_analyzed}
                           </Typography>
                           {stock.news.major_events && stock.news.major_events.length > 0 && (
-                            <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
+                            <Typography variant="body2" sx={{ fontSize: "var(--text-title)" }}>
                               <strong>Events:</strong> {stock.news.major_events.join(", ")}
                             </Typography>
                           )}
@@ -1071,15 +1068,15 @@ export default function StockDecisionEngineTab({
                     <Grid size={{ xs: 12 }}>
                       <Paper
                         sx={{
-                          p: 2,
-                          borderRadius: 0,
+                          p: "var(--space-2)",
+                          borderRadius: "var(--radius)",
                           bgcolor: COLORS.warmIvory,
-                          border: "1px solid #E3D7C4",
+                          border: "var(--border-width) solid var(--line)",
                         }}
                       >
                         <Typography
                           variant="subtitle2"
-                          sx={{ fontWeight: 700, color: COLORS.deepCharcoal, mb: 1 }}
+                          sx={{ fontWeight: 600, color: COLORS.deepCharcoal, mb: "var(--space-1)" }}
                         >
                           Decision Rationale & Contributing Factors
                         </Typography>
@@ -1087,28 +1084,28 @@ export default function StockDecisionEngineTab({
                           variant="body2"
                           sx={{
                             color: COLORS.deepCharcoal,
-                            fontSize: "0.875rem",
-                            mb: 1.5,
-                            lineHeight: 1.5,
+                            fontSize: "var(--text-title)",
+                            mb: "var(--space-2)",
+                            lineHeight: "var(--leading)",
                           }}
                         >
                           {stock.explanation}
                         </Typography>
                         {stock.reasons && stock.reasons.length > 0 && (
-                          <Box component="ul" sx={{ pl: 2.5, m: 0 }}>
+                          <Box component="ul" sx={{ pl: "var(--space-3)", m: "var(--space-1)" }}>
                             {stock.reasons.map((reason, rIdx) => (
                               <Typography
                                 component="li"
                                 key={rIdx}
                                 variant="caption"
-                                sx={{ color: COLORS.deepCharcoal, fontSize: "0.875rem", mb: 0.5 }}
+                                sx={{ color: COLORS.deepCharcoal, fontSize: "var(--text-title)", mb: "var(--space-1)" }}
                               >
                                 {reason}
                               </Typography>
                             ))}
                           </Box>
                         )}
-                        <Divider sx={{ my: 1.5 }} />
+                        <Divider sx={{ my: "var(--space-2)" }} />
                         <Box
                           sx={{
                             display: "flex",
@@ -1139,20 +1136,20 @@ export default function StockDecisionEngineTab({
       {response && (
         <Paper
           sx={{
-            p: 2,
-            borderRadius: 0,
-            bgcolor: "#E3D7C4",
+            p: "var(--space-2)",
+            borderRadius: "var(--radius)",
+            bgcolor: "var(--line)",
             color: COLORS.deepCharcoal,
-            fontSize: "0.875rem",
+            fontSize: "var(--text-title)",
           }}
         >
-          <Typography variant="caption" sx={{ fontWeight: 700, display: "block", mb: 0.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 600, display: "block", mb: "var(--space-1)" }}>
             GOVERNANCE & METHODOLOGY NOTICE
           </Typography>
-          <Typography variant="caption" sx={{ color: "#686B64", display: "block", lineHeight: 1.4 }}>
+          <Typography variant="caption" sx={{ color: "var(--gray)", display: "block", lineHeight: "var(--leading)" }}>
             {response.governance_disclaimer}
           </Typography>
-          <Typography variant="caption" sx={{ color: "#686B64", mt: 0.5, display: "block" }}>
+          <Typography variant="caption" sx={{ color: "var(--gray)", mt: "var(--space-1)", display: "block" }}>
             Methodology version: {response.methodology_version} | Weights: Fundamental (60%), Sector
             (25%), News Sentiment (15%). Dynamic adjustment triggered by material corporate events.
           </Typography>

@@ -192,20 +192,17 @@ export function NewsIntelligencePanel({
     <Stack spacing={3}>
       <Stack
         direction={{ xs: "column", sm: "row" }}
-        sx={{ justifyContent: "space-between", gap: 2 }}
+        sx={{ justifyContent: "space-between", gap: "var(--space-2)" }}
       >
         <Box>
           <Typography
             component={embedded ? "h2" : "h1"}
             variant={embedded ? "h2" : "h1"}
-            sx={{ fontWeight: 700 }}
+            sx={{ fontWeight: 600 }}
           >
             News
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 1 }}>
-            Company and market updates from the last 7 days. Filter by company
-            or sentiment to find what matters.
-          </Typography>
+
         </Box>
         <Button
           variant="contained"
@@ -262,7 +259,7 @@ export function NewsIntelligencePanel({
           {state.running && (
             <Box>
               <LinearProgress />
-              <Typography sx={{ mt: 1 }} variant="body2">
+              <Typography sx={{ mt: "var(--space-1)" }} variant="body2">
                 Collecting publisher articles and analyzing financial sentiment.
                 You can leave this page while it runs.
               </Typography>
@@ -326,19 +323,15 @@ export function NewsIntelligencePanel({
             </Box>
           )}
           {!articles.length && (
-            <Paper variant="outlined" sx={{ p: 5, textAlign: "center" }}>
+            <Paper variant="outlined" sx={{ p: "var(--space-4)", textAlign: "left" }}>
               <Typography variant="h6">
                 {activeArticles.length
-                  ? "No articles match these filters"
-                  : "No news available for the last 7 days"}
-              </Typography>
-              <Typography color="text.secondary">
-                {activeArticles.length
-                  ? "Try another company or sentiment."
-                  : "New articles will appear after collection. Check the collection status above."}
+                  ? "NO MATCHES"
+                  : "NO DATA / 7D"}
               </Typography>
             </Paper>
           )}
+          <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: "var(--space-2)" }}>
           {articles.map((article) => {
             const result =
               symbol === "all" ? article.sentiment : article.companies[symbol];
@@ -347,9 +340,9 @@ export function NewsIntelligencePanel({
                 component="article"
                 key={article.url}
                 variant="outlined"
-                sx={{ p: { xs: 2, md: 3 } }}
+                className="terminal-news-article" sx={{ p: "var(--space-2)" }}
               >
-                <Stack spacing={1.5}>
+                <Stack spacing={1}>
                   {article.is_retained_context &&
                     !publishedInWindow(article.published_at, now) && (
                       <Alert severity="info">
@@ -407,7 +400,7 @@ export function NewsIntelligencePanel({
                   <ReviewDetails title="Sentiment details">
                     <Stack
                       direction="row"
-                      sx={{ gap: 1, flexWrap: "wrap", mb: 2 }}
+                      sx={{ gap: "var(--space-1)", flexWrap: "wrap", mb: "var(--space-2)" }}
                     >
                       {Object.keys(article.companies).map((company) => (
                         <Chip
@@ -436,7 +429,7 @@ export function NewsIntelligencePanel({
                 </Stack>
               </Paper>
             );
-          })}
+          })}</Box>
           <ReviewDetails title="Collection details">
             {state.warnings.map((warning) => (
               <Alert key={warning} severity="warning">
@@ -444,7 +437,7 @@ export function NewsIntelligencePanel({
               </Alert>
             ))}
 
-            <Typography variant="body2" sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ mb: "var(--space-2)" }}>
               {state.configured
                 ? "Firecrawl connected"
                 : "Firecrawl API key needed on the backend"}{" "}
@@ -453,7 +446,7 @@ export function NewsIntelligencePanel({
                 ? "FinBERT ready"
                 : "FinBERT model download needed"}
             </Typography>
-            <Paper variant="outlined" sx={{ p: 2.5 }}>
+            <Paper variant="outlined" sx={{ p: "var(--space-3)" }}>
               <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="caption" color="text.secondary">

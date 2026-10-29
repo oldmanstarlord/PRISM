@@ -94,21 +94,21 @@ export function RiskReviewInboxPanel({
       defaultExpanded={activeCount > 0}
       elevation={0}
       sx={{
-        borderRadius: 0,
-        bgcolor: "#F9EBD7",
-        boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+        borderRadius: "var(--radius)",
+        bgcolor: "var(--bg)",
+        boxShadow: "none",
         "&:before": { display: "none" },
       }}
     >
       <AccordionSummary
         sx={{
-          px: 2.5,
-          py: 1.25,
-          bgcolor: "#E3D7C4",
-          color: "#292D2A",
-          borderBottom: "1px solid rgba(41,45,42,0.08)",
+          px: "var(--space-3)",
+          py: "var(--space-1)",
+          bgcolor: "var(--line)",
+          color: "var(--white)",
+          borderBottom: "var(--border-width) solid var(--gray)",
           "&:focus-visible": {
-            boxShadow: "0 0 0 2px #046A38",
+            boxShadow: "none",
           },
         }}
       >
@@ -118,36 +118,36 @@ export function RiskReviewInboxPanel({
             justifyContent: "space-between",
             alignItems: { xs: "flex-start", sm: "center" },
             width: "100%",
-            pr: 1,
-            gap: 1,
+            pr: "var(--space-1)",
+            gap: "var(--space-1)",
           }}
         >
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A", fontSize: "1.05rem" }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--white)", fontSize: "var(--text-title)" }}>
               Risk Review Inbox
             </Typography>
             <Chip
               size="small"
               label={`${activeCount} Pending Review`}
               sx={{
-                bgcolor: activeCount > 0 ? "#E34222" : "#046A38",
-                color: "#F9EBD7",
-                fontWeight: 700,
-                borderRadius: 0,
-                fontSize: "0.875rem",
+                bgcolor: activeCount > 0 ? "var(--down)" : "var(--up)",
+                color: "var(--white)",
+                fontWeight: 600,
+                borderRadius: "var(--radius)",
+                fontSize: "var(--text-title)",
                 height: 20,
               }}
             />
           </Stack>
-          <Typography variant="caption" sx={{ color: "#686B64" }}>
+          <Typography variant="caption" sx={{ color: "var(--gray)" }}>
             Audit trail of triggered threshold alerts with user sign-off
           </Typography>
         </Stack>
       </AccordionSummary>
 
-      <AccordionDetails sx={{ p: 3, bgcolor: "#F9EBD7" }}>
+      <AccordionDetails sx={{ p: "var(--space-3)", bgcolor: "var(--bg)" }}>
         {/* Filter Bar */}
-        <Stack direction="row" spacing={1} sx={{ mb: 2.5, flexWrap: "wrap", gap: 0.5 }}>
+        <Stack direction="row" spacing={1} sx={{ mb: "var(--space-3)", flexWrap: "wrap", gap: "var(--space-1)" }}>
           {(
             [
               { id: "active" as const, label: `Pending Active (${activeCount})` },
@@ -161,14 +161,14 @@ export function RiskReviewInboxPanel({
               size="small"
               onClick={() => setFilter(tab.id)}
               sx={{
-                borderRadius: 0,
+                borderRadius: "var(--radius)",
                 textTransform: "none",
                 fontWeight: filter === tab.id ? 700 : 500,
-                bgcolor: filter === tab.id ? "#046A38" : "#E3D7C4",
-                color: filter === tab.id ? "#F9EBD7" : "#292D2A",
-                boxShadow: filter === tab.id ? "0 2px 6px rgba(4,106,56,0.20)" : "none",
+                bgcolor: filter === tab.id ? "var(--up)" : "var(--line)",
+                color: filter === tab.id ? "var(--bg)" : "var(--white)",
+                boxShadow: "none",
                 "&:hover": {
-                  bgcolor: filter === tab.id ? "#03532c" : "#d8cbbe",
+                  bgcolor: filter === tab.id ? "var(--up)" : "var(--white)",
                 },
               }}
             >
@@ -179,8 +179,8 @@ export function RiskReviewInboxPanel({
 
         {/* Alerts List */}
         {filteredAlerts.length === 0 ? (
-          <Box sx={{ p: 4, textAlign: "center", bgcolor: "#E3D7C4", borderRadius: 0 }}>
-            <Typography variant="body2" sx={{ color: "#686B64" }}>
+          <Box sx={{ p: "var(--space-4)", textAlign: "center", bgcolor: "var(--line)", borderRadius: "var(--radius)" }}>
+            <Typography variant="body2" sx={{ color: "var(--gray)" }}>
               {filter === "active"
                 ? "No pending alerts in the inbox. All monitored parameters are within configured thresholds."
                 : `No alerts found matching filter "${filter}".`}
@@ -193,15 +193,15 @@ export function RiskReviewInboxPanel({
                 key={alert.id}
                 elevation={0}
                 sx={{
-                  p: 2.5,
-                  borderRadius: 0,
+                  p: "var(--space-3)",
+                  borderRadius: "var(--radius)",
                   bgcolor:
                     alert.status === "active"
                       ? alert.severity === "critical"
-                        ? "#F6D9CC"
-                        : "#F9EBD7"
-                      : "#E3D7C4",
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                        ? "var(--gray)"
+                        : "var(--bg)"
+                      : "var(--line)",
+                  boxShadow: "none",
                 }}
               >
                 <Stack
@@ -209,38 +209,38 @@ export function RiskReviewInboxPanel({
                   sx={{
                     justifyContent: "space-between",
                     alignItems: { xs: "flex-start", sm: "center" },
-                    gap: 1.5,
+                    gap: "var(--space-2)",
                   }}
                 >
                   <Box>
                     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 750, color: "#292D2A" }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)" }}>
                         {alert.title}
                       </Typography>
                       <Chip
                         size="small"
                         label={alert.status.toUpperCase()}
                         sx={{
-                          borderRadius: 0,
-                          fontSize: "0.875rem",
-                          fontWeight: 700,
+                          borderRadius: "var(--radius)",
+                          fontSize: "var(--text-title)",
+                          fontWeight: 600,
                           bgcolor:
                             alert.status === "active"
-                              ? "#B8321A"
+                              ? "var(--down)"
                               : alert.status === "reviewed"
-                                ? "#046A38"
-                                : "#686B64",
-                          color: "#F9EBD7",
+                                ? "var(--up)"
+                                : "var(--gray)",
+                          color: "var(--white)",
                         }}
                       />
                     </Stack>
                     <Typography
                       variant="caption"
                       sx={{
-                        color: "#686B64",
+                        color: "var(--gray)",
                         display: "block",
-                        mt: 0.5,
-                        fontFamily: "JetBrains Mono",
+                        mt: "var(--space-1)",
+                        fontFamily: "var(--font-data)",
                       }}
                     >
                       Triggered: {new Date(alert.triggeredAt).toLocaleString("en-IN")} · Trigger:{" "}
@@ -257,15 +257,14 @@ export function RiskReviewInboxPanel({
                           size="small"
                           onClick={() => handleOpenNotes(alert)}
                           sx={{
-                            borderRadius: 0,
-                            bgcolor: "#046A38",
-                            color: "#F9EBD7",
+                            borderRadius: "var(--radius)",
+                            bgcolor: "var(--up)", color: "var(--line)",
                             textTransform: "none",
                             fontWeight: 600,
-                            fontSize: "0.875rem",
-                            px: 1.5,
-                            boxShadow: "0 2px 5px rgba(4,106,56,0.20)",
-                            "&:hover": { bgcolor: "#03532c" },
+                            fontSize: "var(--text-title)",
+                            px: "var(--space-2)",
+                            boxShadow: "none",
+                            "&:hover": { bgcolor: "var(--up)" },
                           }}
                         >
                           Mark Reviewed
@@ -274,14 +273,14 @@ export function RiskReviewInboxPanel({
                           size="small"
                           onClick={() => handleStatusChange(alert.id, "dismissed")}
                           sx={{
-                            borderRadius: 0,
-                            bgcolor: "#E3D7C4",
-                            color: "#292D2A",
+                            borderRadius: "var(--radius)",
+                            bgcolor: "var(--line)",
+                            color: "var(--white)",
                             textTransform: "none",
                             fontWeight: 600,
-                            fontSize: "0.875rem",
-                            px: 1.5,
-                            "&:hover": { bgcolor: "#d8cbbe" },
+                            fontSize: "var(--text-title)",
+                            px: "var(--space-2)",
+                            "&:hover": { bgcolor: "var(--white)" },
                           }}
                         >
                           Dismiss
@@ -292,14 +291,14 @@ export function RiskReviewInboxPanel({
                         size="small"
                         onClick={() => handleStatusChange(alert.id, "active")}
                         sx={{
-                          borderRadius: 0,
-                          bgcolor: "#F9EBD7",
-                          color: "#292D2A",
+                          borderRadius: "var(--radius)",
+                          bgcolor: "var(--bg)",
+                          color: "var(--white)",
                           textTransform: "none",
                           fontWeight: 600,
-                          fontSize: "0.875rem",
-                          boxShadow: "0 1px 3px rgba(41,45,42,0.10)",
-                          "&:hover": { bgcolor: "#E3D7C4" },
+                          fontSize: "var(--text-title)",
+                          boxShadow: "none",
+                          "&:hover": { bgcolor: "var(--line)" },
                         }}
                       >
                         Re-open Alert
@@ -308,13 +307,13 @@ export function RiskReviewInboxPanel({
                   </Stack>
                 </Stack>
 
-                <Typography variant="body2" sx={{ mt: 1.5, color: "#292D2A", fontSize: "0.875rem", lineHeight: 1.55 }}>
+                <Typography variant="body2" sx={{ mt: "var(--space-2)", color: "var(--white)", fontSize: "var(--text-title)", lineHeight: "var(--leading)" }}>
                   {alert.explanation}
                 </Typography>
 
                 {alert.contributingHoldings && alert.contributingHoldings.length > 0 && (
-                  <Stack direction="row" spacing={1} sx={{ mt: 1.5, alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
-                    <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 700 }}>
+                  <Stack direction="row" spacing={1} sx={{ mt: "var(--space-2)", alignItems: "center", flexWrap: "wrap", gap: "var(--space-1)" }}>
+                    <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600 }}>
                       Contributing Holdings:
                     </Typography>
                     {alert.contributingHoldings.map((sym) => (
@@ -323,11 +322,11 @@ export function RiskReviewInboxPanel({
                         size="small"
                         label={sym}
                         sx={{
-                          borderRadius: 0,
-                          bgcolor: "#F9EBD7",
-                          color: "#292D2A",
+                          borderRadius: "var(--radius)",
+                          bgcolor: "var(--bg)",
+                          color: "var(--white)",
                           fontWeight: 600,
-                          fontSize: "0.875rem",
+                          fontSize: "var(--text-title)",
                         }}
                       />
                     ))}
@@ -335,11 +334,11 @@ export function RiskReviewInboxPanel({
                 )}
 
                 {alert.reviewNotes && (
-                  <Box sx={{ mt: 1.5, p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0 }}>
-                    <Typography variant="caption" sx={{ color: "#046A38", fontWeight: 700, display: "block" }}>
+                  <Box sx={{ mt: "var(--space-2)", p: "var(--space-2)", bgcolor: "var(--bg)", borderRadius: "var(--radius)" }}>
+                    <Typography variant="caption" sx={{ color: "var(--up)", fontWeight: 600, display: "block" }}>
                       Reviewer Sign-off Note:
                     </Typography>
-                    <Typography variant="body2" sx={{ color: "#292D2A", fontStyle: "italic", fontSize: "0.875rem" }}>
+                    <Typography variant="body2" sx={{ color: "var(--white)", fontStyle: "italic", fontSize: "var(--text-title)" }}>
                       "{alert.reviewNotes}"
                     </Typography>
                   </Box>
@@ -359,22 +358,22 @@ export function RiskReviewInboxPanel({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
-              color: "#292D2A",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
+              color: "var(--white)",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1, color: "#292D2A" }}>
+        <DialogTitle sx={{ fontWeight: 600, pb: "var(--space-1)", color: "var(--white)" }}>
           Sign-Off on Risk Alert
-          <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
+          <Typography variant="caption" sx={{ display: "block", color: "var(--gray)" }}>
             {notesModalAlert?.title} (Trigger: {notesModalAlert?.currentValue} vs {notesModalAlert?.thresholdValue})
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
-          <Typography variant="body2" sx={{ color: "#686B64", mb: 2 }}>
+        <DialogContent sx={{ pt: "var(--space-1)" }}>
+          <Typography variant="body2" sx={{ color: "var(--gray)", mb: "var(--space-2)" }}>
             Record analytical rationale, rebalancing intent, or reason for acknowledging this condition without portfolio adjustment.
           </Typography>
           <TextField
@@ -388,20 +387,19 @@ export function RiskReviewInboxPanel({
             onChange={(e) => setNotesText(e.target.value)}
           />
         </DialogContent>
-        <DialogActions sx={{ p: 2, bgcolor: "#E3D7C4" }}>
-          <Button onClick={() => setNotesModalAlert(null)} sx={{ color: "#292D2A", textTransform: "none" }}>
+        <DialogActions sx={{ p: "var(--space-2)", bgcolor: "var(--line)" }}>
+          <Button onClick={() => setNotesModalAlert(null)} sx={{ color: "var(--white)", textTransform: "none" }}>
             Cancel
           </Button>
           <Button
             onClick={handleSaveNotes}
             sx={{
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
+              bgcolor: "var(--up)", color: "var(--line)",
               textTransform: "none",
-              fontWeight: 700,
-              borderRadius: 0,
-              px: 2,
-              "&:hover": { bgcolor: "#03532c" },
+              fontWeight: 600,
+              borderRadius: "var(--radius)",
+              px: "var(--space-2)",
+              "&:hover": { bgcolor: "var(--up)" },
             }}
           >
             Confirm Review

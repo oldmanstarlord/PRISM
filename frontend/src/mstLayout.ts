@@ -1,7 +1,8 @@
+import { SERIES, resolveTerminalColor } from "./terminalTokens";
 import type { CoseLayoutOptions, ElementDefinition } from "cytoscape";
 import type { MstResponse } from "./types";
 
-const clusterColors = ["#1F6F78", "#6B3F69", "#3F5B7A", "#A0522D", "#6B7A2A", "#8A5A00", "#144e54", "#4a2d48", "#2a3d53", "#733b20"];
+const clusterColors = SERIES;
 const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
 
 export function industryColors(industries: string[]) {
@@ -39,7 +40,7 @@ export function mstElements(data: Pick<MstResponse, "nodes" | "edges">): Element
       const angle = index * Math.PI * (3 - Math.sqrt(5));
       const radius = 85 * Math.sqrt(index + 1);
       return {
-        data: { ...node, degree: degree.get(node.id), color: colors[node.industry] },
+        data: { ...node, degree: degree.get(node.id), color: resolveTerminalColor(colors[node.industry]) },
         position: { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius },
       };
     }),

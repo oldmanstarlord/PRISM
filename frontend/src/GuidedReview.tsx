@@ -26,10 +26,10 @@ export function GuidedSteps({
         sx={{
           display: "grid",
           gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))`,
-          p: 0,
-          m: 0,
+          p: "var(--space-1)",
+          m: "var(--space-1)",
           listStyle: "none",
-          borderBottom: "1px solid",
+          borderBottom: "var(--border-width) solid",
           borderColor: "divider",
         }}
       >
@@ -43,12 +43,12 @@ export function GuidedSteps({
               aria-current={activeStep === index ? "step" : undefined}
               sx={{
                 width: "100%",
-                minHeight: 72,
-                gap: 1.25,
-                px: { xs: 0.5, sm: 2 },
-                py: 2,
+                minHeight: "var(--control-height)",
+                gap: "var(--space-1)",
+                px: "var(--space-2)",
+                py: "var(--space-1)",
                 justifyContent: "flex-start",
-                borderBottom: "3px solid",
+                borderBottom: "var(--border-width) solid",
                 borderColor:
                   activeStep === index ? "primary.main" : "transparent",
                 color: activeStep === index ? "primary.main" : "text.secondary",
@@ -57,25 +57,10 @@ export function GuidedSteps({
                     activeStep === index ? "primary.main" : "text.disabled",
                 },
                 boxShadow: "none",
-                fontSize: { xs: ".8125rem", sm: ".9375rem" },
-                lineHeight: 1.4,
+                fontSize: "var(--text-title)",
+                lineHeight: "var(--leading)",
               }}
             >
-              <Box
-                component="span"
-                aria-hidden="true"
-                sx={{
-                  display: "grid",
-                  placeItems: "center",
-                  flexShrink: 0,
-                  width: 28,
-                  height: 28,
-                  bgcolor: activeStep === index ? "primary.main" : "#E3D7C4",
-                  color: activeStep === index ? "#F9EBD7" : "text.secondary",
-                }}
-              >
-                {index + 1}
-              </Box>
               {step.label}
             </Button>
           </Box>
@@ -96,27 +81,26 @@ export function ReviewDetails({
     <Box
       component="details"
       sx={{
-        borderTop: "1px solid",
+        borderTop: "var(--border-width) solid",
         borderColor: "divider",
-        py: 2,
+        py: "var(--space-1)",
         "& > summary": {
           cursor: "pointer",
           color: "primary.main",
           fontWeight: 600,
-          minHeight: 28,
-          lineHeight: 1.8,
+          minHeight: "var(--panel-title-height)",
+          lineHeight: "var(--leading)",
         },
       }}
     >
       <Box component="summary">{title}</Box>
-      <Box sx={{ pt: 2 }}>{children}</Box>
+      <Box sx={{ pt: "var(--space-2)" }}>{children}</Box>
     </Box>
   );
 }
 
 export function ReviewHeading({
   title,
-  description,
   action,
   level = 1,
 }: {
@@ -129,18 +113,13 @@ export function ReviewHeading({
     <Stack
       direction={{ xs: "column", sm: "row" }}
       sx={{
-        gap: 2,
+        gap: "var(--space-2)",
         justifyContent: "space-between",
         alignItems: { sm: "center" },
       }}
     >
       <Box>
         <Typography variant={level === 1 ? "h1" : "h2"}>{title}</Typography>
-        {description && (
-          <Typography sx={{ mt: 1, maxWidth: "65ch", color: "text.secondary" }}>
-            {description}
-          </Typography>
-        )}
       </Box>
       {action}
     </Stack>

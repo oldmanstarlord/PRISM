@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
@@ -48,11 +48,11 @@ it("carries the chosen period into company comparisons, paginates, and recovers 
     "true",
   );
   fireEvent.click(screen.getByRole("button", { name: /One week/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Review companies" }));
+  // Changing the period now updates the visible research table immediately.
   expect(
     await screen.findByRole("link", { name: "Compare COMPANY0" }),
   ).toHaveAttribute("href", "/companies/COMPANY0?horizon=5");
-  expect(screen.getAllByRole("row")).toHaveLength(16);
+  expect(within(screen.getByRole("table", {name:"Companies compared with industry peers"})).getAllByRole("row")).toHaveLength(16);
   expect(screen.getAllByText("80%")).toHaveLength(15);
   fireEvent.click(screen.getByRole("button", { name: "Next companies" }));
   expect(screen.getByRole("link", { name: "Compare COMPANY15" })).toBeVisible();
@@ -78,7 +78,7 @@ it("starts an empty portfolio with a clear action and keeps all risk and researc
     </MemoryRouter>,
   );
   expect(
-    screen.getByRole("heading", { name: "Start with your first holding" }),
+    screen.getByRole("heading", { name: "NO HOLDINGS" }),
   ).toBeVisible();
   expect(
     screen.getByRole("button", { name: "Add your first holding" }),

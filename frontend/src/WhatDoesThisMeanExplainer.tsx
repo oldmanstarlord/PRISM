@@ -92,21 +92,21 @@ export function WhatDoesThisMeanExplainer({
       onChange={(_, isExp) => setExpanded(isExp)}
       elevation={0}
       sx={{
-        borderRadius: 0,
-        bgcolor: "#F9EBD7",
-        boxShadow: "0 2px 6px rgba(41,45,42,0.08)",
+        borderRadius: "var(--radius)",
+        bgcolor: "var(--bg)",
+        boxShadow: "none",
         "&:before": { display: "none" },
         overflow: "hidden",
       }}
     >
       <AccordionSummary
         sx={{
-          px: 2,
-          py: 1,
-          bgcolor: expanded ? "#E3D7C4" : "#F9EBD7",
-          "&:hover": { bgcolor: "#E3D7C4" },
+          px: "var(--space-2)",
+          py: "var(--space-1)",
+          bgcolor: expanded ? "var(--line)" : "var(--bg)",
+          "&:hover": { bgcolor: "var(--line)" },
           "&:focus-visible": {
-            boxShadow: "0 0 0 2px #046A38",
+            boxShadow: "none",
           },
         }}
       >
@@ -116,15 +116,15 @@ export function WhatDoesThisMeanExplainer({
             justifyContent: "space-between",
             alignItems: { xs: "flex-start", sm: "center" },
             width: "100%",
-            gap: 1,
-            pr: 1,
+            gap: "var(--space-1)",
+            pr: "var(--space-1)",
           }}
         >
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)" }}>
               What does this mean?
             </Typography>
-            <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 600 }}>
+            <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600 }}>
               — {displayTitle}
             </Typography>
           </Stack>
@@ -135,13 +135,13 @@ export function WhatDoesThisMeanExplainer({
                 size="small"
                 label={`Current: ${currentValue}${displayUnits ? ` ${displayUnits}` : ""}`}
                 sx={{
-                  borderRadius: 0,
-                  bgcolor: "#F9EBD7",
-                  color: "#292D2A",
-                  fontWeight: 700,
-                  fontFamily: "JetBrains Mono",
-                  fontSize: "0.875rem",
-                  boxShadow: "0 1px 3px rgba(41,45,42,0.10)",
+                  borderRadius: "var(--radius)",
+                  bgcolor: "var(--bg)",
+                  color: "var(--white)",
+                  fontWeight: 600,
+                  fontFamily: "var(--font-data)",
+                  fontSize: "var(--text-title)",
+                  boxShadow: "none",
                 }}
               />
             )}
@@ -149,35 +149,34 @@ export function WhatDoesThisMeanExplainer({
               size="small"
               label={expanded ? "Hide Explanation ▲" : "Explain ▼"}
               sx={{
-                borderRadius: 0,
-                bgcolor: "#046A38",
-                color: "#F9EBD7",
-                fontWeight: 700,
-                fontSize: "0.875rem",
+                borderRadius: "var(--radius)",
+                bgcolor: "var(--up)", color: "var(--line)",
+                fontWeight: 600,
+                fontSize: "var(--text-title)",
               }}
             />
           </Stack>
         </Stack>
       </AccordionSummary>
 
-      <AccordionDetails sx={{ p: 2.5, bgcolor: "#F9EBD7" }}>
+      <AccordionDetails sx={{ p: "var(--space-3)", bgcolor: "var(--bg)" }}>
         <Stack spacing={2}>
           {/* 1. What it measures */}
           <Box>
-            <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 700, textTransform: "uppercase" }}>
+            <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600, textTransform: "uppercase" }}>
               What it measures
             </Typography>
-            <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5, lineHeight: 1.6 }}>
+            <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)", lineHeight: "var(--leading)" }}>
               {definition}
             </Typography>
           </Box>
 
           {/* 2. Why it matters to an investor */}
-          <Box sx={{ p: 1.5, bgcolor: "#E3D7C4", borderRadius: 0 }}>
-            <Typography variant="caption" sx={{ color: "#292D2A", fontWeight: 700, textTransform: "uppercase" }}>
+          <Box sx={{ p: "var(--space-2)", bgcolor: "var(--line)", borderRadius: "var(--radius)" }}>
+            <Typography variant="caption" sx={{ color: "var(--white)", fontWeight: 600, textTransform: "uppercase" }}>
               Why it matters
             </Typography>
-            <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5, lineHeight: 1.6 }}>
+            <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)", lineHeight: "var(--leading)" }}>
               {defaultWhyItMatters}
             </Typography>
           </Box>
@@ -185,20 +184,20 @@ export function WhatDoesThisMeanExplainer({
           {/* 3. Window & Data Coverage */}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 700, textTransform: "uppercase" }}>
+              <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600, textTransform: "uppercase" }}>
                 Estimation Window & Units
               </Typography>
-              <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5, fontFamily: "JetBrains Mono" }}>
+              <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)", fontFamily: "var(--font-data)" }}>
                 {displayWindow} {displayUnits ? `· Units: ${displayUnits}` : ""}
               </Typography>
             </Box>
 
             {dataCoverage && (
               <Box sx={{ flex: 1 }}>
-                <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 700, textTransform: "uppercase" }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600, textTransform: "uppercase" }}>
                   Data Coverage & Freshness
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5, fontFamily: "JetBrains Mono" }}>
+                <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)", fontFamily: "var(--font-data)" }}>
                   {dataCoverage.observations !== undefined
                     ? `${dataCoverage.observations} observations (${dataCoverage.percent?.toFixed(1) ?? 100}% coverage)`
                     : "Full historical coverage"}{" "}
@@ -211,10 +210,10 @@ export function WhatDoesThisMeanExplainer({
           {/* 4. Contributing Holdings */}
           {contributingHoldings && contributingHoldings.length > 0 && (
             <Box>
-              <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 700, textTransform: "uppercase", display: "block", mb: 0.75 }}>
+              <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600, textTransform: "uppercase", display: "block", mb: "var(--space-1)" }}>
                 Contributing Holdings
               </Typography>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 0.75 }}>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: "var(--space-1)" }}>
                 {contributingHoldings.map((item, idx) => {
                   if (typeof item === "string") {
                     return (
@@ -223,11 +222,11 @@ export function WhatDoesThisMeanExplainer({
                         size="small"
                         label={item}
                         sx={{
-                          borderRadius: 0,
-                          bgcolor: "#E3D7C4",
-                          color: "#292D2A",
+                          borderRadius: "var(--radius)",
+                          bgcolor: "var(--line)",
+                          color: "var(--white)",
                           fontWeight: 600,
-                          fontSize: "0.875rem",
+                          fontSize: "var(--text-title)",
                         }}
                       />
                     );
@@ -238,11 +237,11 @@ export function WhatDoesThisMeanExplainer({
                       size="small"
                       label={`${item.symbol}${item.weight ? ` (${item.weight})` : ""}${item.contribution ? ` · Risk: ${item.contribution}` : ""}`}
                       sx={{
-                        borderRadius: 0,
-                        bgcolor: "#E3D7C4",
-                        color: "#292D2A",
+                        borderRadius: "var(--radius)",
+                        bgcolor: "var(--line)",
+                        color: "var(--white)",
                         fontWeight: 600,
-                        fontSize: "0.875rem",
+                        fontSize: "var(--text-title)",
                       }}
                     />
                   );
@@ -252,12 +251,12 @@ export function WhatDoesThisMeanExplainer({
           )}
 
           {/* 5. Assumptions & Limitations */}
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ pt: 1 }}>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ pt: "var(--space-1)" }}>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 700, textTransform: "uppercase", display: "block", mb: 0.5 }}>
+              <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600, textTransform: "uppercase", display: "block", mb: "var(--space-1)" }}>
                 Assumptions
               </Typography>
-              <Box component="ul" sx={{ m: 0, pl: 2.5, color: "#686B64", fontSize: "0.875rem", lineHeight: 1.6 }}>
+              <Box component="ul" sx={{ m: "var(--space-1)", pl: "var(--space-3)", color: "var(--gray)", fontSize: "var(--text-title)", lineHeight: "var(--leading)" }}>
                 {assumptions.map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}
@@ -265,10 +264,10 @@ export function WhatDoesThisMeanExplainer({
             </Box>
 
             <Box sx={{ flex: 1 }}>
-              <Typography variant="caption" sx={{ color: "#8A5A00", fontWeight: 700, textTransform: "uppercase", display: "block", mb: 0.5 }}>
+              <Typography variant="caption" sx={{ color: "var(--amber)", fontWeight: 600, textTransform: "uppercase", display: "block", mb: "var(--space-1)" }}>
                 Diagnostic Limitations & Warnings
               </Typography>
-              <Box component="ul" sx={{ m: 0, pl: 2.5, color: "#8A5A00", fontSize: "0.875rem", lineHeight: 1.6 }}>
+              <Box component="ul" sx={{ m: "var(--space-1)", pl: "var(--space-3)", color: "var(--amber)", fontSize: "var(--text-title)", lineHeight: "var(--leading)" }}>
                 {limitations.map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}

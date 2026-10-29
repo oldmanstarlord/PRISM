@@ -165,7 +165,7 @@ export default function CompanyDetail() {
         />
         <Stack
           direction="row"
-          sx={{ justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}
+          sx={{ justifyContent: "space-between", flexWrap: "wrap", gap: "var(--space-1)" }}
         >
           <Button component={Link} to={`/?step=companies&horizon=${horizon}`}>
             Back to companies
@@ -190,7 +190,7 @@ export default function CompanyDetail() {
           </Alert>
         )}
         {!current && !error && (
-          <Box sx={{ textAlign: "center", py: 6 }}>
+          <Box sx={{ textAlign: "center", py: "var(--space-4)" }}>
             <CircularProgress aria-label="Loading company comparison" />
           </Box>
         )}
@@ -198,19 +198,19 @@ export default function CompanyDetail() {
           <>
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              sx={{ justifyContent: "space-between", gap: 2 }}
+              sx={{ justifyContent: "space-between", gap: "var(--space-2)" }}
             >
               <Box>
                 <Typography variant="h1">{current.company.symbol}</Typography>
-                <Typography sx={{ mt: 1, color: "text.secondary" }}>
+                <Typography sx={{ mt: "var(--space-1)", color: "text.secondary" }}>
                   {current.company.name} · {current.company.industry}
                 </Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}>
+                <Typography variant="body2" sx={{ mt: "var(--space-1)" }}>
                   {portfolioWeight === null
                     ? "Not in your portfolio"
                     : `${portfolioWeight.toFixed(1)}% of your portfolio by invested cost`}{" "}
                   ·{" "}
-                  <Link to="/portfolio" style={{ color: "#046A38" }}>
+                  <Link to="/portfolio" style={{ color: "var(--up)" }}>
                     View portfolio
                   </Link>
                 </Typography>
@@ -236,7 +236,7 @@ export default function CompanyDetail() {
             <Stack
               direction={{ xs: "column", sm: "row" }}
               sx={{
-                gap: 2,
+                gap: "var(--space-2)",
                 alignItems: { sm: "center" },
                 justifyContent: "space-between",
               }}
@@ -246,7 +246,7 @@ export default function CompanyDetail() {
                 direction="row"
                 role="group"
                 aria-label="Comparison period"
-                sx={{ gap: 1, flexWrap: "wrap" }}
+                sx={{ gap: "var(--space-1)", flexWrap: "wrap" }}
               >
                 {(
                   [
@@ -261,13 +261,13 @@ export default function CompanyDetail() {
                     onClick={() => setParams({ horizon: String(period.value) })}
                     sx={{
                       bgcolor:
-                        horizon === period.value ? "primary.main" : "#E3D7C4",
+                        horizon === period.value ? "primary.main" : "var(--line)",
                       color:
-                        horizon === period.value ? "#F9EBD7" : "text.primary",
-                      px: 3,
+                        horizon === period.value ? "var(--bg)" : "text.primary",
+                      px: "var(--space-3)",
                       "&:hover": {
                         bgcolor:
-                          horizon === period.value ? "primary.dark" : "#d8cabc",
+                          horizon === period.value ? "primary.dark" : "var(--white)",
                       },
                     }}
                   >
@@ -286,15 +286,15 @@ export default function CompanyDetail() {
               sx={{
                 display: "grid",
                 gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
-                gap: 2,
+                gap: "var(--space-2)",
               }}
             >
-              <Paper sx={{ p: 2.5, bgcolor: "#E3D7C4", boxShadow: "none" }}>
+              <Paper sx={{ p: "var(--space-3)", bgcolor: "var(--line)", boxShadow: "none" }}>
                 <Typography variant="body2">Peer difference</Typography>
                 <Typography
                   variant="h3"
                   sx={{
-                    mt: 1,
+                    mt: "var(--space-1)",
                     color:
                       (score?.divergence_value ?? 0) >= 0
                         ? "primary.main"
@@ -304,7 +304,7 @@ export default function CompanyDetail() {
                   {score ? `${signed(score.divergence_value)}σ` : "Unavailable"}
                 </Typography>
                 {score && (
-                  <Typography variant="body2" sx={{ mt: 1 }}>
+                  <Typography variant="body2" sx={{ mt: "var(--space-1)" }}>
                     {score.divergence_value >= 0 ? "positive" : "negative"}{" "}
                     residual versus peer model
                   </Typography>
@@ -316,15 +316,15 @@ export default function CompanyDetail() {
               ].map((stat) => (
                 <Paper
                   key={stat.label}
-                  sx={{ p: 2.5, bgcolor: "#E3D7C4", boxShadow: "none" }}
+                  sx={{ p: "var(--space-3)", bgcolor: "var(--line)", boxShadow: "none" }}
                 >
                   <Typography variant="body2">{stat.label}</Typography>
-                  <Typography variant="h3" sx={{ mt: 1 }}>
+                  <Typography variant="h3" sx={{ mt: "var(--space-1)" }}>
                     {stat.value === null
                       ? "Unavailable"
                       : `${signed(stat.value)}%`}
                   </Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
+                  <Typography variant="body2" sx={{ mt: "var(--space-1)" }}>
                     {horizon} trading {horizon === 1 ? "session" : "sessions"}
                   </Typography>
                 </Paper>
@@ -334,14 +334,14 @@ export default function CompanyDetail() {
               sx={{
                 p: { xs: 2, sm: 3 },
                 boxShadow: "none",
-                border: "1px solid",
+                border: "var(--border-width) solid",
                 borderColor: "divider",
               }}
             >
               <Typography variant="h2">
                 {horizon}-day actual performance
               </Typography>
-              <Typography variant="body2" sx={{ mt: 1, mb: 3 }}>
+              <Typography variant="body2" sx={{ mt: "var(--space-1)", mb: "var(--space-3)" }}>
                 Both lines start at 100. The benchmark uses{" "}
                 {current.comparison.peer_count} industry peers and excludes{" "}
                 {current.company.symbol}.
@@ -366,7 +366,7 @@ export default function CompanyDetail() {
                 cause of a move or predict returns.
               </Typography>
               {score && (
-                <Typography variant="body2" sx={{ mt: 2 }}>
+                <Typography variant="body2" sx={{ mt: "var(--space-2)" }}>
                   Difference: {score.interpretation} · Industry percentile:{" "}
                   {score.industry_percentile.toFixed(0)} ·{" "}
                   {score.observations_used} observations.
@@ -392,7 +392,7 @@ export default function CompanyDetail() {
                           <TableCell>
                             {signed(peer.divergence_value)}σ
                           </TableCell>
-                          <TableCell>
+                          <TableCell align="right">
                             {peer.industry_percentile.toFixed(0)}%
                           </TableCell>
                           <TableCell>
@@ -417,11 +417,11 @@ export default function CompanyDetail() {
             </ReviewDetails>
             <ReviewDetails title="Peer set and data details">
               <Typography variant="h3">Exact peer set</Typography>
-              <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
+              <Typography variant="body2" sx={{ mt: "var(--space-1)", mb: "var(--space-2)" }}>
                 These companies formed the benchmark; {current.company.symbol}{" "}
                 was excluded from its own comparison.
               </Typography>
-              <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap" }}>
+              <Stack direction="row" sx={{ gap: "var(--space-1)", flexWrap: "wrap" }}>
                 {current.comparison.peer_symbols.map((peer) => (
                   <Chip
                     key={peer}
@@ -432,13 +432,13 @@ export default function CompanyDetail() {
                   />
                 ))}
               </Stack>
-              <Typography variant="body2" sx={{ mt: 2 }}>
+              <Typography variant="body2" sx={{ mt: "var(--space-2)" }}>
                 Signal date: {current.run.signal_date} · Data cutoff:{" "}
                 {current.run.data_cutoff ?? "Unavailable"} · Benchmark:{" "}
                 {current.comparison.basis}.
               </Typography>
               {currentQuote && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
+                <Typography variant="body2" sx={{ mt: "var(--space-1)" }}>
                   Price source: {currentQuote.source} · Day range: ₹
                   {currentQuote.day_low ?? "—"}–₹{currentQuote.day_high ?? "—"}{" "}
                   · Open: ₹{currentQuote.day_open ?? "—"} · Volume:{" "}
@@ -446,7 +446,7 @@ export default function CompanyDetail() {
                 </Typography>
               )}
               {current.limitations.map((item) => (
-                <Typography key={item} variant="body2" sx={{ mt: 1 }}>
+                <Typography key={item} variant="body2" sx={{ mt: "var(--space-1)" }}>
                   {item}
                 </Typography>
               ))}
@@ -456,7 +456,7 @@ export default function CompanyDetail() {
             </ReviewDetails>
             <Box>
               <Typography variant="h2">Your notes & decisions</Typography>
-              <Typography variant="body2" sx={{ mt: 1, mb: 2 }}>
+              <Typography variant="body2" sx={{ mt: "var(--space-1)", mb: "var(--space-2)" }}>
                 Keep your research and decision history for{" "}
                 {current.company.symbol}.
               </Typography>
@@ -465,7 +465,7 @@ export default function CompanyDetail() {
                 value={journalSearch}
                 onChange={(event) => setJournalSearch(event.target.value)}
                 fullWidth
-                sx={{ mb: 2 }}
+                sx={{ mb: "var(--space-2)" }}
               />
               <Stack spacing={2}>
                 <StockResearchNotes

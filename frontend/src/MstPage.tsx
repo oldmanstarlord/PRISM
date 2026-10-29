@@ -1,14 +1,18 @@
-import { ReviewDetails, ReviewHeading } from "./GuidedReview";
+import { TerminalPanel, SummaryStrip } from "./Terminal";
+import { resolveTerminalStyles } from "./terminalTokens";
+import { ReviewDetails } from "./GuidedReview";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Autocomplete, Box, Button, Chip, CircularProgress, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Autocomplete, TextField } from "@mui/material";
 import cytoscape, { type Core } from "cytoscape";
 import { Link } from "react-router-dom";
 
+import NetworkExposure from "./NetworkExposure";
+import NetworkEvidence from "./NetworkEvidence";
 import AppShell from "./AppShell";
 import { fetchJson } from "./api";
 import { CorrelationMstExplainer } from "./PrismExplainer";
 import { getDecisionsCountMap, getNotesCountMap } from "./journalStorage";
-import { industryColors, mstElements, mstLayout } from "./mstLayout";
+import { industryColors, mstElements } from "./mstLayout";
 import type { MstResponse } from "./types";
 
 export default function MstPage() {
@@ -16,14 +20,28 @@ export default function MstPage() {
   const graph = useRef<Core | null>(null);
   const [data, setData] = useState<MstResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
   const [zoom, setZoom] = useState(1);
-  const [selected, setSelected] = useState<{ title: string; detail: string; symbol?: string; isNode?: boolean } | null>(null);
-  const [notesCountMap, setNotesCountMap] = useState<Record<string, number>>({});
-  const [decisionsCountMap, setDecisionsCountMap] = useState<Record<string, number>>({});
+  const [selected, setSelected] = useState<{
+    title: string;
+    detail: string;
+    symbol?: string;
+    isNode?: boolean;
+  } | null>(null);
+  const [notesCountMap, setNotesCountMap] = useState<Record<string, number>>(
+    {},
+  );
+  const [decisionsCountMap, setDecisionsCountMap] = useState<
+    Record<string, number>
+  >({});
 
   useEffect(() => {
-    void getNotesCountMap().then(setNotesCountMap).catch(() => { });
-    void getDecisionsCountMap().then(setDecisionsCountMap).catch(() => { });
+    void getNotesCountMap()
+      .then(setNotesCountMap)
+      .catch(() => {});
+    void getDecisionsCountMap()
+      .then(setDecisionsCountMap)
+      .catch(() => {});
   }, []);
 
   function resetGraph() {
@@ -37,7 +55,13 @@ export default function MstPage() {
   function zoomGraph(factor: number) {
     const current = graph.current;
     if (!current) return;
-    current.zoom({ level: Math.max(current.minZoom(), Math.min(current.maxZoom(), current.zoom() * factor)), renderedPosition: { x: current.width() / 2, y: current.height() / 2 } });
+    current.zoom({
+      level: Math.max(
+        current.minZoom(),
+        Math.min(current.maxZoom(), current.zoom() * factor),
+      ),
+      renderedPosition: { x: current.width() / 2, y: current.height() / 2 },
+    });
   }
 
   function focusStock(id: string) {
@@ -52,285 +76,408 @@ export default function MstPage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchJson<MstResponse>("/mst/latest", controller.signal).then(setData).catch((reason: unknown) => {
-      if (reason instanceof DOMException && reason.name === "AbortError") return;
-      setError(reason instanceof Error ? reason.message : "Unable to load MST");
-    });
+    fetchJson<MstResponse>("/mst/latest", controller.signal)
+      .then(setData)
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === "AbortError")
+          return;
+        setError(
+          reason instanceof Error ? reason.message : "Unable to load MST",
+        );
+      });
     return () => controller.abort();
-  }, []);
-
+  }, [revision]);
   useEffect(() => {
-    if (!data || !container.current) return;
-    graph.current = cytoscape({
+    if (!data || !container.current || !data.nodes.length) return;
+    const instance = cytoscape({
       container: container.current,
       elements: mstElements(data),
-      style: [
+      layout: {
+        name: "cose",
+        animate: false,
+        randomize: false,
+        nodeRepulsion: () => 18000,
+        idealEdgeLength: () => 120,
+        nodeOverlap: 30,
+        componentSpacing: 60,
+        gravity: 0.1,
+        padding: 24,
+      },
+      minZoom: 0.04,
+      maxZoom: 3,
+
+      boxSelectionEnabled: false,
+      style: resolveTerminalStyles([
         {
           selector: "node",
           style: {
-            shape: "ellipse",
+            shape: "rectangle",
+            label: "",
             "background-color": "data(color)",
-            label: "data(symbol)",
-            width: "mapData(degree, 0, 12, 20, 44)",
-            height: "mapData(degree, 0, 12, 20, 44)",
-            "border-width": 2,
-            "border-color": "#ffffff",
-            "font-size": 13,
-            "min-zoomed-font-size": 9,
-            "font-weight": 700,
-            "font-family": 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            width: "mapData(degree, 0, 12, 14, 36)",
+            height: "mapData(degree, 0, 12, 14, 36)",
+            "border-width": 1,
+            "border-color": "var(--bg)",
+            color: "var(--white)",
+            "font-family": "var(--font-data)",
+            "font-size": "var(--text-label)",
+            "min-zoomed-font-size": 10,
             "text-valign": "bottom",
-            "text-margin-y": 6,
-            color: "#292D2A",
-            "text-background-color": "#F9EBD7",
-            "text-background-opacity": 0.95,
-            "text-background-padding": "3px",
+            "text-margin-y": 8,
+            "text-background-color": "var(--bg)",
+            "text-background-opacity": 1,
+            "text-background-padding": "var(--space-1)",
           },
         },
         {
           selector: "edge",
           style: {
-            width: "mapData(correlation, -1, 1, 0.75, 3.5)",
-            "line-color": "#8a9995",
-            opacity: 0.65,
+            width: 1,
+            "line-color": "var(--cyan)",
+            opacity: 1,
             "curve-style": "straight",
           },
         },
         {
-          selector: "node:selected",
+          selector: "node[degree >= 4]",
           style: {
-            "border-width": 3,
-            "border-color": "#046A38",
-            opacity: 1,
+            label: "data(symbol)",
+            "font-size": "var(--text-label)",
+            "font-weight": 600,
           },
         },
-        { selector: "edge:selected", style: { "line-color": "#046A38", width: 4, opacity: 1 } },
-        { selector: "node.focused", style: { "min-zoomed-font-size": 0, "font-size": 15 } },
-        { selector: ".faded", style: { opacity: 0.09 } },
-      ],
-      layout: mstLayout,
-      minZoom: 0.04,
-      maxZoom: 3,
-      wheelSensitivity: 0.2,
-      boxSelectionEnabled: false,
+        {
+          selector: "node.focused",
+          style: { label: "data(symbol)", "font-size": "var(--text-label)" },
+        },
+        {
+          selector: "edge.focused",
+          style: { "line-color": "var(--amber)", width: 1, opacity: 1 },
+        },
+        {
+          selector: "node:selected",
+          style: {
+            "background-color": "var(--amber)",
+            "border-color": "var(--yellow)",
+            "border-width": 1,
+          },
+        },
+        {
+          selector: "node.faded",
+          style: { "background-color": "var(--gray)", color: "var(--gray)" },
+        },
+        { selector: "edge.faded", style: { "line-color": "var(--line)" } },
+      ]),
     });
-    setZoom(graph.current.zoom());
-    graph.current.on("zoom", () => setZoom(graph.current?.zoom() ?? 1));
-    graph.current.on("tap", "node", (event) => {
+    graph.current = instance;
+    const updateZoom = () => {
+      setZoom(instance.zoom());
+      instance.nodes().style("font-size", 11 / instance.zoom());
+    };
+    updateZoom();
+    instance.on("zoom", updateZoom);
+    instance.on("tap", "node", (event) => {
       const node = event.target;
-      const nodeData = node.data();
-      graph.current?.elements().unselect().removeClass("focused").addClass("faded");
+      const value = node.data();
+      instance.elements().unselect().removeClass("focused").addClass("faded");
       node.closedNeighborhood().removeClass("faded").addClass("focused");
       node.select();
       setSelected({
-        title: nodeData.symbol,
-        detail: `${nodeData.industry} · ${nodeData.degree} MST connection${nodeData.degree === 1 ? "" : "s"}`,
-        symbol: nodeData.symbol,
+        title: value.symbol,
+        detail: `${value.industry} · ${value.degree} MST connections`,
+        symbol: value.symbol,
         isNode: true,
       });
     });
-    graph.current.on("tap", "edge", (event) => {
+    instance.on("tap", "edge", (event) => {
       const edge = event.target;
-      const edgeData = edge.data();
-      graph.current?.elements().unselect().removeClass("focused").addClass("faded");
+      const value = edge.data();
+      instance.elements().unselect().removeClass("focused").addClass("faded");
       edge.connectedNodes().add(edge).removeClass("faded").addClass("focused");
       edge.select();
       setSelected({
-        title: `${edgeData.symbol_a} ↔ ${edgeData.symbol_b}`,
-        detail: `Correlation ${Number(edgeData.correlation).toFixed(3)} · distance ${Number(edgeData.distance).toFixed(3)} · ${edgeData.paired_observations} paired returns`,
+        title: `${value.symbol_a} / ${value.symbol_b}`,
+        detail: `Correlation ${Number(value.correlation).toFixed(3)} · ${value.paired_observations} paired returns`,
         isNode: false,
       });
     });
-    graph.current.on("tap", (event) => {
-      if (event.target === graph.current) {
-        graph.current?.elements().removeClass("faded focused").unselect();
+    instance.on("tap", (event) => {
+      if (event.target === instance) {
+        instance.elements().removeClass("faded focused").unselect();
         setSelected(null);
       }
     });
-
-    const handleResize = () => {
-      if (graph.current) {
-        graph.current.resize();
-      }
-    };
-    const observer = new ResizeObserver(handleResize);
+    const observer = new ResizeObserver(() => instance.resize());
     observer.observe(container.current);
-
     return () => {
       observer.disconnect();
-      graph.current?.destroy();
+      instance.destroy();
       graph.current = null;
     };
   }, [data]);
-
+  const colors = industryColors(data?.nodes.map((node) => node.industry) ?? []);
+  const sectors = Object.entries(colors)
+    .map(([name, color]) => ({
+      name,
+      color,
+      count: data?.nodes.filter((node) => node.industry === name).length ?? 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+  const connections = (data?.edges ?? [])
+    .filter(
+      (edge) =>
+        !selected?.symbol ||
+        edge.symbol_a === selected.symbol ||
+        edge.symbol_b === selected.symbol,
+    )
+    .sort((a, b) => Math.abs(b.correlation) - Math.abs(a.correlation));
+  const currentNode = data?.nodes.find(
+    (node) => node.symbol === selected?.symbol,
+  );
+  const hubs = (data?.nodes ?? [])
+    .map((node) => ({
+      ...node,
+      degree:
+        data?.edges.filter(
+          (edge) => edge.source === node.id || edge.target === node.id,
+        ).length ?? 0,
+    }))
+    .sort((a, b) => b.degree - a.degree)
+    .slice(0, 8);
   return (
-    <AppShell subtitle="Market Correlation Minimum Spanning Tree">
-      <Stack spacing={2.5}>
-        <ReviewHeading title="Explore market connections" description="Find a company to see how its returns move with the rest of the market." />
-        {!data && !error && (
-          <Box sx={{ display: "grid", placeItems: "center", py: 10 }}>
-            <CircularProgress />
-          </Box>
-        )}
-        {error && <Alert severity="warning">The market network is unavailable. {error}</Alert>}
-        {data && (
-          <>
-            {selected && (
-              <Alert
-                severity="info"
-                onClose={resetGraph}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  borderRadius: 0,
-                  border: "none",
-                  boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
-                  "& .MuiAlert-message": { width: "100%" },
-                }}
-              >
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, width: "100%", gap: 1 }}
+    <AppShell subtitle="Network">
+      <SummaryStrip
+        items={[
+          { label: "UNIVERSE", value: data?.nodes.length ?? "NO DATA" },
+          { label: "EDGES", value: data?.edges.length ?? "—" },
+          {
+            label: "WINDOW",
+            value: data
+              ? `${data.run.window_start} / ${data.run.window_end}`
+              : "—",
+          },
+          {
+            label: "TOPOLOGY",
+            value: data
+              ? data.run.is_connected
+                ? "CONNECTED"
+                : "DISCONNECTED"
+              : "NO DATA",
+          },
+          { label: "EXCLUDED", value: data?.run.exclusions.length ?? "—" },
+        ]}
+      />
+      <div className="terminal-grid">
+        <div className="panel-column">
+          <TerminalPanel
+            title="Market network"
+            meta="MST / historical correlation"
+            controls={
+              <>
+                <button
+                  className="terminal-button"
+                  aria-label="Zoom out"
+                  onClick={() => zoomGraph(1 / 1.3)}
                 >
-                  <Box>
-                    <strong>{selected.title}</strong>: {selected.detail}
-                    {selected.isNode && selected.symbol && (
-                      <Stack direction="row" spacing={0.75} sx={{ mt: 0.75, flexWrap: "wrap" }}>
-                        <Chip
-                          size="small"
-                          label={`${notesCountMap[selected.symbol] ?? 0} notes`}
-                          sx={{
-                            borderRadius: 0,
-                            border: "none",
-                            fontSize: "0.875rem",
-                            bgcolor: (notesCountMap[selected.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
-                            color: (notesCountMap[selected.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
-                          }}
-                        />
-                        <Chip
-                          size="small"
-                          label={`${decisionsCountMap[selected.symbol] ?? 0} decisions`}
-                          sx={{
-                            borderRadius: 0,
-                            border: "none",
-                            fontSize: "0.875rem",
-                            bgcolor: (decisionsCountMap[selected.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
-                            color: (decisionsCountMap[selected.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
-                          }}
-                        />
-                      </Stack>
-                    )}
-                  </Box>
-                  {selected.isNode && selected.symbol && (
-                    <Button
-                      component={Link}
-                      to={`/companies/${selected.symbol}`}
-                      size="small"
-                      variant="contained"
-                      sx={{
-                        borderRadius: 0,
-                        border: "none",
-                        textTransform: "none",
-                        fontSize: "0.875rem",
-                        bgcolor: "#046A38",
-                        color: "#F9EBD7",
-                        boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                        "&:hover": { bgcolor: "#034d28" },
-                        flexShrink: 0,
-                      }}
-                    >
-                      Compare {selected.symbol}
-                    </Button>
-                  )}
-                </Stack>
-              </Alert>
-            )}
-            <Paper sx={{ overflow: "hidden", borderRadius: 0, border: "1px solid #E3D7C4", position: "relative", boxShadow: "0 8px 28px rgba(41,45,42,0.08)" }}>
-              <Stack direction={{ xs: "column", sm: "row" }} sx={{ p: 2, gap: 2, alignItems: { sm: "center" }, justifyContent: "space-between", bgcolor: "#F9EBD7", borderBottom: "1px solid #E3D7C4" }}>
-                <Box>
-                  <Typography sx={{ fontWeight: 700 }}>Explore the market network</Typography>
-                  <Typography variant="body2" color="text.secondary">Search a stock to focus its connections. Use the zoom controls or drag to pan.</Typography>
-                </Box>
-                <Autocomplete
-                  options={[...data.nodes].sort((a, b) => a.symbol.localeCompare(b.symbol))}
-                  getOptionLabel={(node) => `${node.symbol} · ${node.industry}`}
-                  onChange={(_, node) => { if (node) focusStock(node.id); }}
-                  renderInput={(params) => <TextField {...params} label="Find a stock" size="small" />}
-                  sx={{ width: { xs: "100%", sm: 300 }, flexShrink: 0 }}
-                  blurOnSelect
-                />
-              </Stack>
-              <Box sx={{ position: "relative" }}>
-              <Stack direction="row" sx={{ position: "absolute", top: 16, right: 16, zIndex: 10, bgcolor: "#F9EBD7", border: "1px solid #E3D7C4", borderRadius: 0, boxShadow: "0 2px 8px #292d2a12", alignItems: "center" }}>
-              <Button aria-label="Zoom out" onClick={() => zoomGraph(1 / 1.3)} sx={{ minWidth: 40, fontSize: 22 }}>−</Button>
-              <Typography variant="caption" sx={{ minWidth: 40, textAlign: "center" }}>{Math.round(zoom * 100)}%</Typography>
-              <Button aria-label="Zoom in" onClick={() => zoomGraph(1.3)} sx={{ minWidth: 40, fontSize: 22 }}>+</Button>
-              <Button
-                size="small"
-                onClick={resetGraph}
-                className="no-print"
-                sx={{
-                  bgcolor: "#F9EBD7",
-                  color: "#292D2A",
-                  borderRadius: 0,
-                  border: "none",
-                  textTransform: "none",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  "&:hover": { bgcolor: "#d5c7b2" },
-                }}
-              >
-                Fit all
-              </Button>
-              </Stack>
-              <Box
+                  [-]
+                </button>
+                <span>{Math.round(zoom * 100)}%</span>
+                <button
+                  className="terminal-button"
+                  aria-label="Zoom in"
+                  onClick={() => zoomGraph(1.3)}
+                >
+                  [+]
+                </button>
+                <button className="terminal-button" onClick={resetGraph}>
+                  FIT
+                </button>
+              </>
+            }
+            className="network-panel"
+          >
+            <div className="network-toolbar">
+              <Autocomplete
+                options={[...(data?.nodes ?? [])].sort((a, b) =>
+                  a.symbol.localeCompare(b.symbol),
+                )}
+                getOptionLabel={(node) => `${node.symbol} / ${node.industry}`}
+                value={currentNode ?? null}
+                onChange={(_, node) =>
+                  node ? focusStock(node.id) : resetGraph()
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="Symbol" />
+                )}
+                className="network-search"
+              />
+              <span className="terminal-panel-meta">
+                SIZE: DEGREE / COLOUR: INDUSTRY
+              </span>
+            </div>
+            <div className="network-canvas-wrap">
+              <div
                 ref={container}
                 aria-label="correlation minimum spanning tree"
-                sx={{
-                  width: "100%",
-                  height: { xs: 520, md: 680, lg: 760 },
-                  bgcolor: "#F9EBD7",
-                  backgroundImage: "radial-gradient(#E3D7C4 1px, transparent 1px)",
-                  backgroundSize: "24px 24px",
-                }}
+                className="network-canvas"
               />
-              </Box>
-              <Box sx={{ p: 2, bgcolor: "#F9EBD7", borderTop: "1px solid #E3D7C4" }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Color indicates industry · Larger nodes have more connections · Labels appear as you zoom in</Typography>
-                <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap", maxHeight: 120, overflowY: "auto" }}>
-                  {Object.entries(industryColors(data.nodes.map((node) => node.industry))).map(([industry, color]) => (
-                    <Chip key={industry} size="small" variant="outlined" label={industry} icon={<Box component="span" sx={{ width: 9, height: 9, bgcolor: color, borderRadius: "50%" }} />} sx={{ bgcolor: "transparent", "& .MuiChip-icon": { ml: 1 } }} />
-                  ))}
-                </Stack>
-              </Box>
-            </Paper>
-            <ReviewDetails title="Network methodology and data">
-            <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2 }}>
-              <Paper sx={{ p: 2.5, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                <Typography variant="overline" color="text.secondary">Window</Typography>
-                <Typography variant="h6" sx={{ color: "#292D2A", fontWeight: 700 }}>{data.run.window_start} to {data.run.window_end}</Typography>
-              </Paper>
-              <Paper sx={{ p: 2.5, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                <Typography variant="overline" color="text.secondary">Validated topology</Typography>
-                <Typography variant="h6" sx={{ color: "#292D2A", fontWeight: 700 }}>{data.run.included_symbol_count} nodes / {data.run.edge_count} edges</Typography>
-                <Typography color="text.secondary" variant="body2">
-                  Connected: {data.run.is_connected ? "yes" : "no"} / Acyclic: {data.run.is_acyclic ? "yes" : "no"}
-                </Typography>
-              </Paper>
-              <Paper sx={{ p: 2.5, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                <Typography variant="overline" color="text.secondary">Exclusions</Typography>
-                <Typography variant="h6" sx={{ color: "#292D2A", fontWeight: 700 }}>{data.run.exclusions.length}</Typography>
-                <Typography color="text.secondary" variant="body2">No missing values were imputed</Typography>
-              </Paper>
-            </Stack>
-            <CorrelationMstExplainer />
-            </ReviewDetails>
-            <Alert severity="warning" sx={{ borderRadius: 0, border: "none", boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}>
-              An MST deliberately keeps only {data.run.edge_count} of the possible pair relationships. A missing edge does not mean two stocks are uncorrelated, and an edge does not imply that one stock affects another.
-            </Alert>
-          </>
-        )}
-      </Stack>
+              {(!data || !data.nodes.length) && (
+                <div className="network-empty">
+                  <span>
+                    {error
+                      ? "ERR: NETWORK UNAVAILABLE"
+                      : data
+                        ? "NO DATA"
+                        : "LOADING..."}
+                  </span>
+                  {error && (
+                    <button
+                      className="terminal-button"
+                      onClick={() => {
+                        setError(null);
+                        setRevision((value) => value + 1);
+                      }}
+                    >
+                      RETRY
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </TerminalPanel>
+          <TerminalPanel
+            title="Retained relationships"
+            meta={selected?.symbol ?? "ALL"}
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>SYMBOL A</th>
+                  <th>SYMBOL B</th>
+                  <th className="numeric">CORRELATION</th>
+                  <th className="numeric">OBS.</th>
+                  <th className="numeric">DISTANCE</th>
+                </tr>
+              </thead>
+              <tbody>
+                {connections.slice(0, 12).map((edge) => (
+                  <tr key={`${edge.source}-${edge.target}`}>
+                    <td>
+                      <button
+                        className="table-link"
+                        onClick={() => focusStock(edge.source)}
+                      >
+                        {edge.symbol_a}
+                      </button>
+                    </td>
+                    <td>
+                      <button
+                        className="table-link"
+                        onClick={() => focusStock(edge.target)}
+                      >
+                        {edge.symbol_b}
+                      </button>
+                    </td>
+                    <td
+                      className={`numeric ${edge.correlation >= 0 ? "up" : "down"}`}
+                    >
+                      {edge.correlation >= 0 ? "+" : ""}
+                      {edge.correlation.toFixed(3)}
+                    </td>
+                    <td className="numeric">{edge.paired_observations}</td>
+                    <td className="numeric">{edge.distance.toFixed(3)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!connections.length && <div>NO DATA</div>}
+          </TerminalPanel>
+        </div>
+        <div className="panel-column">
+          <TerminalPanel title="Security" meta={selected?.symbol ?? "NONE"}>
+            <div className="ticker">{selected?.title ?? "SELECT SYMBOL"}</div>
+            <div>{selected?.detail ?? "NO SELECTION"}</div>
+            {selected?.symbol && (
+              <>
+                <SummaryStrip
+                  items={[
+                    {
+                      label: "NOTES",
+                      value: notesCountMap[selected.symbol] ?? 0,
+                    },
+                    {
+                      label: "DECISIONS",
+                      value: decisionsCountMap[selected.symbol] ?? 0,
+                    },
+                    {
+                      label: "OBS.",
+                      value: currentNode?.observations_used ?? "—",
+                    },
+                  ]}
+                />
+                <Link to={`/companies/${encodeURIComponent(selected.symbol)}`}>
+                  RESEARCH &gt;
+                </Link>
+              </>
+            )}
+          </TerminalPanel>
+          <TerminalPanel title="Industries" meta="COMPANY COUNT">
+            <table>
+              <thead>
+                <tr>
+                  <th>INDUSTRY</th>
+                  <th className="numeric">N</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sectors.map((sector) => (
+                  <tr
+                    key={sector.name}
+                    data-terminal-selected={
+                      currentNode?.industry === sector.name || undefined
+                    }
+                  >
+                    <td>{sector.name}</td>
+                    <td className="numeric">{sector.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!sectors.length && <div>NO DATA</div>}
+          </TerminalPanel>
+          <TerminalPanel title="Junctions" meta="RETAINED DEGREE">
+            <table>
+              <thead>
+                <tr>
+                  <th>SYMBOL</th>
+                  <th className="numeric">EDGES</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hubs.map((node) => (
+                  <tr key={node.id}>
+                    <td>
+                      <button
+                        className="table-link"
+                        onClick={() => focusStock(node.id)}
+                      >
+                        {node.symbol}
+                      </button>
+                    </td>
+                    <td className="numeric">{node.degree}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TerminalPanel>
+          <NetworkExposure symbol={selected?.symbol} />
+          <NetworkEvidence symbol={selected?.symbol} />
+        </div>
+      </div>
+      <ReviewDetails title="Methodology">
+        <div>{data ? `COMPUTED ${data.run.computed_at}` : "NO DATA"}</div>
+        <CorrelationMstExplainer />
+      </ReviewDetails>
     </AppShell>
   );
 }

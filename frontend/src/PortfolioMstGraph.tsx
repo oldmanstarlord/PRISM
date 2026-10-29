@@ -1,3 +1,4 @@
+import { resolveTerminalStyles, resolveTerminalColor, SERIES } from "./terminalTokens";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import cytoscape, { type Core } from "cytoscape";
@@ -25,7 +26,7 @@ type Selection = {
   } | null;
 };
 
-const clusterColors = ["#1F6F78", "#6B3F69", "#3F5B7A", "#A0522D", "#6B7A2A"];
+const clusterColors = SERIES.map(resolveTerminalColor);
 
 function edgeKey(symbolA: string, symbolB: string) {
   return [symbolA, symbolB].sort().join("::");
@@ -85,7 +86,7 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
           weight: holding?.weight ?? 0,
           weightLabel: holding ? `${(holding.weight * 100).toFixed(1)}% portfolio weight` : "Not held",
           cluster: cluster?.name ?? "Bridge stock",
-          color: cluster?.color ?? "#E3D7C4",
+          color: cluster?.color ?? "var(--line)",
           pathCount: bridge?.path_pair_count ?? 0,
           degree: nodeDegree.get(symbol) ?? 0,
           volatility: holding?.annualized_volatility ?? null,
@@ -143,18 +144,18 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
     const instance = cytoscape({
       container: container.current,
       elements: [...graphData.nodes, ...graphData.edges],
-      style: [
+      style: resolveTerminalStyles([
         {
           selector: "node",
           style: {
             label: "data(symbol)",
-            "font-family": 'Inter, "Segoe UI", sans-serif',
-            "font-size": 11,
-            "font-weight": 700,
+            "font-family": "var(--font-data)",
+            "font-size": "var(--text-data)",
+            "font-weight": 600,
             "text-wrap": "none",
             "overlay-opacity": 0,
-            "transition-property": "opacity, border-width, border-color",
-            "transition-duration": 160,
+            "transition-property": "none",
+            "transition-duration": 0,
           },
         },
         {
@@ -164,10 +165,10 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
             width: "mapData(weight, 0, 0.5, 52, 78)",
             height: "mapData(weight, 0, 0.5, 34, 48)",
             "background-color": "data(color)",
-            "border-width": 0,
-            color: "#F9EBD7",
+            "border-width": 1,
+            color: "var(--white)",
             "text-outline-color": "data(color)",
-            "text-outline-width": 2,
+            "text-outline-width": 0,
           },
         },
         {
@@ -176,13 +177,13 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
             shape: "rectangle",
             width: "mapData(pathCount, 0, 15, 24, 45)",
             height: "mapData(pathCount, 0, 15, 24, 45)",
-            "background-color": "#E3D7C4",
-            "border-width": 0,
-            color: "#292D2A",
+            "background-color": "var(--line)",
+            "border-width": 1,
+            color: "var(--white)",
             "text-valign": "bottom",
             "text-margin-y": 7,
-            "text-background-color": "#F9EBD7",
-            "text-background-opacity": 0.9,
+            "text-background-color": "var(--bg)",
+            "text-background-opacity": 1,
             "text-background-padding": "2px",
           },
         },
@@ -190,38 +191,38 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
           selector: "edge",
           style: {
             width: "mapData(correlation, -1, 1, 1.25, 5)",
-            "line-color": "#686B64",
+            "line-color": "var(--gray)",
             "curve-style": "straight",
-            opacity: 0.78,
+            opacity: 1,
             "overlay-opacity": 0,
-            "transition-property": "opacity, line-color, width",
-            "transition-duration": 160,
+            "transition-property": "none",
+            "transition-duration": 0,
           },
         },
-        { selector: "edge.strong", style: { "line-color": "#046A38" } },
-        { selector: "edge.weak", style: { "line-color": "#8A5A00", "line-style": "dashed" } },
-        { selector: "edge.direct", style: { width: 6 } },
+        { selector: "edge.strong", style: { "line-color": "var(--up)" } },
+        { selector: "edge.weak", style: { "line-color": "var(--amber)", "line-style": "solid" } },
+        { selector: "edge.direct", style: { width: 1 } },
         {
           selector: "edge:selected",
           style: {
             label: "data(correlationLabel)",
-            "font-size": 11,
-            "font-weight": 700,
-            color: "#292D2A",
-            "text-background-color": "#F9EBD7",
+            "font-size": "var(--text-data)",
+            "font-weight": 600,
+            color: "var(--white)",
+            "text-background-color": "var(--bg)",
             "text-background-opacity": 1,
             "text-background-padding": "4px",
-            "line-color": "#E34222",
-            width: 7,
+            "line-color": "var(--down)",
+            width: 1,
             opacity: 1,
           },
         },
         {
           selector: "node:selected",
-          style: { "border-width": 4, "border-color": "#046A38" },
+          style: { "border-width": 1, "border-color": "var(--up)" },
         },
-        { selector: ".faded", style: { opacity: 0.15 } },
-      ],
+        { selector: "node.faded", style: { "background-color": "var(--gray)", color: "var(--gray)" } }, { selector: "edge.faded", style: { "line-color": "var(--line)" } },
+      ]),
       layout: { name: "preset" },
       minZoom: 0.45,
       maxZoom: 2.2,
@@ -287,7 +288,7 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
       edge.select();
       setSelection({
         eyebrow: data.direct ? "Direct holding link" : "MST route segment",
-        title: `${data.symbolA} ↔ ${data.symbolB}`,
+        title: `${data.symbolA} / ${data.symbolB}`,
         detail: `Correlation ${Number(data.correlation).toFixed(2)} · Mantegna distance ${Number(data.distance).toFixed(2)}`,
         secondary: `${data.correlation >= mst.cluster_correlation_floor
           ? `This edge meets the ${mst.cluster_correlation_floor.toFixed(2)} cluster threshold.`
@@ -315,34 +316,34 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
   ).length;
 
   return (
-    <Box sx={{ mt: 2.5, borderRadius: 0, overflow: "hidden", boxShadow: "0 10px 28px rgba(41,45,42,0.18)" }}>
+    <Box sx={{ mt: "var(--space-3)", borderRadius: "var(--radius)", overflow: "hidden", boxShadow: "none" }}>
       <Box
         sx={{
           px: { xs: 2, md: 2.5 },
-          py: 1.5,
-          color: "#292D2A",
-          bgcolor: "#E3D7C4",
-          borderBottom: "1px solid rgba(41,45,42,0.08)",
+          py: "var(--space-2)",
+          color: "var(--white)",
+          bgcolor: "var(--line)",
+          borderBottom: "var(--border-width) solid var(--gray)",
         }}
       >
-        <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 1.5, justifyContent: "space-between" }}>
+        <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: "var(--space-2)", justifyContent: "space-between" }}>
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>Portfolio MST map</Typography>
-            <Typography variant="body2" sx={{ color: "#686B64" }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--white)" }}>Portfolio MST map</Typography>
+            <Typography variant="body2" sx={{ color: "var(--gray)" }}>
               The smallest part of the market tree needed to connect every holding.
             </Typography>
           </Box>
-          <Stack direction="row" sx={{ gap: 0.75, flexWrap: "wrap", alignItems: "center" }}>
-            <Chip size="small" label={`${holdings.length} held`} sx={{ bgcolor: "#F9EBD7", color: "#292D2A", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }} />
-            <Chip size="small" label={`${bridgeCount} bridge${bridgeCount === 1 ? "" : "s"}`} sx={{ bgcolor: "#F9EBD7", color: "#292D2A", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }} />
-            <Chip size="small" label={`${mst.subtree_edges.length} links`} sx={{ bgcolor: "#F9EBD7", color: "#292D2A", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }} />
-            <Chip size="small" label={`${mst.stability.confidence} confidence`} sx={{ bgcolor: "#F9EBD7", color: "#292D2A", borderRadius: 0, fontWeight: 600, border: "1px solid rgba(41,45,42,0.08)" }} />
+          <Stack direction="row" sx={{ gap: "var(--space-1)", flexWrap: "wrap", alignItems: "center" }}>
+            <Chip size="small" label={`${holdings.length} held`} sx={{ bgcolor: "var(--bg)", color: "var(--white)", borderRadius: "var(--radius)", fontWeight: 600, border: "var(--border-width) solid var(--gray)" }} />
+            <Chip size="small" label={`${bridgeCount} bridge${bridgeCount === 1 ? "" : "s"}`} sx={{ bgcolor: "var(--bg)", color: "var(--white)", borderRadius: "var(--radius)", fontWeight: 600, border: "var(--border-width) solid var(--gray)" }} />
+            <Chip size="small" label={`${mst.subtree_edges.length} links`} sx={{ bgcolor: "var(--bg)", color: "var(--white)", borderRadius: "var(--radius)", fontWeight: 600, border: "var(--border-width) solid var(--gray)" }} />
+            <Chip size="small" label={`${mst.stability.confidence} confidence`} sx={{ bgcolor: "var(--bg)", color: "var(--white)", borderRadius: "var(--radius)", fontWeight: 600, border: "var(--border-width) solid var(--gray)" }} />
           </Stack>
         </Stack>
       </Box>
 
       <Stack direction={{ xs: "column", md: "row" }} sx={{ minHeight: 470 }}>
-        <Box sx={{ position: "relative", flex: 1, minWidth: 0, bgcolor: "#F9EBD7" }}>
+        <Box sx={{ position: "relative", flex: 1, minWidth: 0, bgcolor: "var(--bg)" }}>
           <Box
             ref={container}
             role="img"
@@ -357,36 +358,36 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
               position: "absolute",
               top: 12,
               right: 12,
-              bgcolor: "#E3D7C4",
-              color: "#292D2A",
-              borderRadius: 0,
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-              "&:hover": { bgcolor: "#E3D7C4" },
+              bgcolor: "var(--line)",
+              color: "var(--white)",
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--line)" },
             }}
           >
             Reset view
           </Button>
         </Box>
 
-        <Box sx={{ width: { md: 320 }, p: 2.5, bgcolor: "#F9EBD7", boxShadow: { xs: "none", md: "-4px 0 16px rgba(41,45,42,0.06)" } }}>
+        <Box sx={{ width: { md: 320 }, p: "var(--space-3)", bgcolor: "var(--bg)", boxShadow: "none" }}>
           {selection ? (
             <Box sx={{ minHeight: 145 }}>
               <Typography variant="overline" color="text.secondary">{selection.eyebrow}</Typography>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.75, color: "#292D2A" }}>{selection.title}</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: "var(--space-1)", color: "var(--white)" }}>{selection.title}</Typography>
               <Typography variant="body2">{selection.detail}</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{selection.secondary}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: "var(--space-1)" }}>{selection.secondary}</Typography>
 
               {selection.isNode && selection.symbol && (
-                <Box sx={{ mt: 1.5 }}>
-                  <Stack direction="row" spacing={0.75} sx={{ mb: 1, flexWrap: "wrap" }}>
+                <Box sx={{ mt: "var(--space-2)" }}>
+                  <Stack direction="row" spacing={0.75} sx={{ mb: "var(--space-1)", flexWrap: "wrap" }}>
                     <Chip
                       size="small"
                       label={`${notesCountMap[selection.symbol] ?? 0} notes`}
                       sx={{
-                        fontSize: "0.875rem",
-                        borderRadius: 0,
-                        bgcolor: (notesCountMap[selection.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
-                        color: (notesCountMap[selection.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
+                        fontSize: "var(--text-title)",
+                        borderRadius: "var(--radius)",
+                        bgcolor: (notesCountMap[selection.symbol] ?? 0) > 0 ? "var(--line)" : "var(--line)",
+                        color: (notesCountMap[selection.symbol] ?? 0) > 0 ? "var(--up)" : "var(--white)",
                         fontWeight: 600,
                       }}
                     />
@@ -394,37 +395,37 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
                       size="small"
                       label={`${decisionsCountMap[selection.symbol] ?? 0} decisions`}
                       sx={{
-                        fontSize: "0.875rem",
-                        borderRadius: 0,
-                        bgcolor: (decisionsCountMap[selection.symbol] ?? 0) > 0 ? "#DCE9DE" : "#E3D7C4",
-                        color: (decisionsCountMap[selection.symbol] ?? 0) > 0 ? "#046A38" : "#292D2A",
+                        fontSize: "var(--text-title)",
+                        borderRadius: "var(--radius)",
+                        bgcolor: (decisionsCountMap[selection.symbol] ?? 0) > 0 ? "var(--line)" : "var(--line)",
+                        color: (decisionsCountMap[selection.symbol] ?? 0) > 0 ? "var(--up)" : "var(--white)",
                         fontWeight: 600,
                       }}
                     />
                   </Stack>
 
                   {selection.riskMetrics && (
-                    <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0, mb: 1.5, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
-                      <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 0.5 }}>
+                    <Box sx={{ p: "var(--space-2)", bgcolor: "var(--bg)", borderRadius: "var(--radius)", mb: "var(--space-2)", boxShadow: "none" }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", display: "block", mb: "var(--space-1)" }}>
                         Risk Profile
                       </Typography>
                       <Stack spacing={0.35}>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
-                          <span style={{ color: "#686B64" }}>Ann. Volatility:</span>
-                          <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{(selection.riskMetrics.volatility * 100).toFixed(1)}%</strong>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-title)" }}>
+                          <span style={{ color: "var(--gray)" }}>Ann. Volatility:</span>
+                          <strong style={{ fontFamily: "var(--font-data)", color: "var(--white)" }}>{(selection.riskMetrics.volatility * 100).toFixed(1)}%</strong>
                         </Box>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
-                          <span style={{ color: "#686B64" }}>Marginal Risk:</span>
-                          <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{(selection.riskMetrics.marginalRisk * 100).toFixed(2)}%</strong>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-title)" }}>
+                          <span style={{ color: "var(--gray)" }}>Marginal Risk:</span>
+                          <strong style={{ fontFamily: "var(--font-data)", color: "var(--white)" }}>{(selection.riskMetrics.marginalRisk * 100).toFixed(2)}%</strong>
                         </Box>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
-                          <span style={{ color: "#686B64" }}>Risk Share:</span>
-                          <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{(selection.riskMetrics.riskContribution * 100).toFixed(1)}%</strong>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-title)" }}>
+                          <span style={{ color: "var(--gray)" }}>Risk Share:</span>
+                          <strong style={{ fontFamily: "var(--font-data)", color: "var(--white)" }}>{(selection.riskMetrics.riskContribution * 100).toFixed(1)}%</strong>
                         </Box>
                         {selection.riskMetrics.divergence !== null && (
-                          <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
-                            <span style={{ color: "#686B64" }}>20D Divergence:</span>
-                            <strong style={{ fontFamily: "JetBrains Mono", color: "#292D2A" }}>{selection.riskMetrics.divergence.toFixed(2)}σ</strong>
+                          <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-title)" }}>
+                            <span style={{ color: "var(--gray)" }}>20D Divergence:</span>
+                            <strong style={{ fontFamily: "var(--font-data)", color: "var(--white)" }}>{selection.riskMetrics.divergence.toFixed(2)}σ</strong>
                           </Box>
                         )}
                       </Stack>
@@ -439,16 +440,15 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
                     fullWidth
                     sx={{
                       textTransform: "none",
-                      bgcolor: "#046A38",
-                      color: "#F9EBD7",
-                      borderRadius: 0,
-                      fontSize: "0.875rem",
+                      bgcolor: "var(--up)", color: "var(--line)",
+                      borderRadius: "var(--radius)",
+                      fontSize: "var(--text-title)",
                       fontWeight: 600,
-                      boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                      "&:hover": { bgcolor: "#03532c" },
+                      boxShadow: "none",
+                      "&:hover": { bgcolor: "var(--up)" },
                     }}
                   >
-                    Open Company Details ({selection.symbol}) →
+                    Open Company Details ({selection.symbol}) /
                   </Button>
                 </Box>
               )}
@@ -456,32 +456,32 @@ export default function PortfolioMstGraph({ mst, holdings }: { mst: MstSummary; 
           ) : (
             <Box sx={{ minHeight: 145 }}>
               <Typography variant="overline" color="text.secondary">How to explore</Typography>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.75, color: "#292D2A" }}>Select a stock or link</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: "var(--space-1)", color: "var(--white)" }}>Select a stock or link</Typography>
               <Typography variant="body2" color="text.secondary">
                 A selection isolates its local connections and explains why it matters. Pan, zoom, or tap the background to clear it.
               </Typography>
             </Box>
           )}
 
-          <Box sx={{ pt: 2, mt: 1 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: "#292D2A" }}>Legend</Typography>
-            <LegendItem color="#046A38" shape="square" label="Held stock · size shows weight" />
-            <LegendItem color="#E3D7C4" shape="square" label="Bridge stock · not held" />
-            <LegendItem color="#046A38" label={`Correlation ≥ ${mst.cluster_correlation_floor.toFixed(2)}`} />
-            <LegendItem color="#8A5A00" dashed label={`Weaker connector < ${mst.cluster_correlation_floor.toFixed(2)}`} />
+          <Box sx={{ pt: "var(--space-2)", mt: "var(--space-1)" }}>
+            <Typography variant="subtitle2" sx={{ mb: "var(--space-1)", fontWeight: 600, color: "var(--white)" }}>Legend</Typography>
+            <LegendItem color="var(--up)" shape="square" label="Held stock · size shows weight" />
+            <LegendItem color="var(--line)" shape="square" label="Bridge stock · not held" />
+            <LegendItem color="var(--up)" label={`Correlation ≥ ${mst.cluster_correlation_floor.toFixed(2)}`} />
+            <LegendItem color="var(--amber)" dashed label={`Weaker connector < ${mst.cluster_correlation_floor.toFixed(2)}`} />
           </Box>
 
-          <Box sx={{ pt: 2, mt: 1 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>What stands out</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Box sx={{ pt: "var(--space-2)", mt: "var(--space-1)" }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)" }}>What stands out</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: "var(--space-1)" }}>
               {weakEdgeCount === 0
                 ? "All displayed links meet the cluster threshold."
                 : `${weakEdgeCount} weaker link${weakEdgeCount === 1 ? "" : "s"} connect the portfolio’s denser groups.`}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: "var(--space-1)" }}>
               {mst.stability.reason}
             </Typography>
-            <Typography variant="caption" sx={{ display: "block", mt: 1.5, color: "#8A5A00" }}>
+            <Typography variant="caption" sx={{ display: "block", mt: "var(--space-2)", color: "var(--amber)" }}>
               <strong>Topological Invariants:</strong> Spanning tree retains exactly N-1 edges from N(N-1)/2 pairs using Mantegna distance d = √(2(1 - ρ)) ∈ [0, 2]. Tree isolates ultrametric connectivity while discarding cycles. It visualizes empirical co-movement and does not imply causation or lead-lag relationships.
             </Typography>
           </Box>
@@ -495,7 +495,6 @@ function LegendItem({
   color,
   label,
   shape,
-  dashed = false,
 }: {
   color: string;
   label: string;
@@ -503,11 +502,11 @@ function LegendItem({
   dashed?: boolean;
 }) {
   return (
-    <Stack direction="row" sx={{ gap: 1, alignItems: "center", mb: 1 }}>
+    <Stack direction="row" sx={{ gap: "var(--space-1)", alignItems: "center", mb: "var(--space-1)" }}>
       {shape ? (
-        <Box sx={{ width: 16, height: 16, borderRadius: 0, bgcolor: color, flex: "0 0 auto", boxShadow: "0 1px 3px rgba(41,45,42,0.12)" }} />
+        <Box sx={{ width: 16, height: 16, borderRadius: "var(--radius)", bgcolor: color, flex: "0 0 auto", boxShadow: "none" }} />
       ) : (
-        <Box sx={{ width: 25, height: 0, borderTop: `3px ${dashed ? "dashed" : "solid"} ${color}`, flex: "0 0 auto" }} />
+        <Box sx={{ width: 25, height: 0, borderTop: `var(--border-width) solid ${color}`, flex: "0 0 auto" }} />
       )}
       <Typography variant="caption" color="text.secondary">{label}</Typography>
     </Stack>

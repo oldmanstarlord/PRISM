@@ -252,16 +252,16 @@ describe("Investor Experience Phase 6 Test Suite", () => {
 
   describe("4. Strict Design Palette & Invariant Assurance", () => {
     it("ensures theme color tokens strictly follow PRISM palette guidelines", () => {
-      expect(COLORS.warmIvory).toBe("#F9EBD7");
-      expect(COLORS.sandBeige).toBe("#E3D7C4");
-      expect(COLORS.deepCharcoal).toBe("#292D2A");
-      expect(COLORS.mutedGrey).toBe("#686B64");
-      expect(COLORS.emerald).toBe("#046A38");
-      expect(COLORS.vermilion).toBe("#E34222");
-      expect(COLORS.vermilionText).toBe("#B8321A");
-      expect(COLORS.paleSage).toBe("#DCE9DE");
-      expect(COLORS.paleTerracotta).toBe("#F6D9CC");
-      expect(COLORS.darkOchre).toBe("#8A5A00");
+      expect(COLORS.warmIvory).toBe("var(--bg)");
+      expect(COLORS.sandBeige).toBe("var(--bg-raised)");
+      expect(COLORS.deepCharcoal).toBe("var(--white)");
+      expect(COLORS.mutedGrey).toBe("var(--gray)");
+      expect(COLORS.emerald).toBe("var(--up)");
+      expect(COLORS.vermilion).toBe("var(--down)");
+      expect(COLORS.vermilionText).toBe("var(--down)");
+      expect(COLORS.paleSage).toBe("var(--bg)");
+      expect(COLORS.paleTerracotta).toBe("var(--bg)");
+      expect(COLORS.darkOchre).toBe("var(--amber)");
     });
   });
 });

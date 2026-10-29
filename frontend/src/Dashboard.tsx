@@ -21,8 +21,9 @@ import {
   Typography,
 } from "@mui/material";
 import { Link, useSearchParams } from "react-router-dom";
+import MarketOverview from "./MarketOverview";
 import AppShell from "./AppShell";
-import { GuidedSteps, ReviewDetails, ReviewHeading } from "./GuidedReview";
+import { ReviewDetails, ReviewHeading } from "./GuidedReview";
 import { fetchJson } from "./api";
 import type { Horizon, RankingsResponse, SectorRefreshStatus } from "./types";
 
@@ -37,7 +38,7 @@ export default function Dashboard() {
   const [params, setParams] = useSearchParams();
   const horizon: Horizon =
     params.get("horizon") === "1" ? 1 : params.get("horizon") === "5" ? 5 : 20;
-  const step = params.get("step") === "companies" ? 1 : 0;
+
   const [data, setData] = useState<RankingsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -153,18 +154,15 @@ export default function Dashboard() {
   };
   return (
     <AppShell>
-      <Stack
-        spacing={2.5}
-        sx={{ maxWidth: step === 0 ? 900 : undefined, mx: "auto" }}
-      >
+      <Stack spacing={2.5} sx={{ width: "100%" }}>
         <ReviewHeading
           title="Explore the market"
-          description="Compare companies with their industry peers, one step at a time."
+          description="Compare companies with their industry peers, across the selected observation window."
         />
         {refreshStatus && (
           <Typography
             variant="body2"
-            sx={{ pb: 2, borderBottom: "1px solid", borderColor: "divider" }}
+            sx={{ pb: "var(--space-2)", borderBottom: "var(--border-width) solid", borderColor: "divider" }}
           >
             {!refreshStatus.enabled
               ? "Automatic recalculation is disabled."
@@ -182,324 +180,257 @@ export default function Dashboard() {
         {refreshStatus?.calendar_warning && (
           <Alert severity="info">{refreshStatus.calendar_warning}</Alert>
         )}
-        {step === 1 && currentData?.run.observation_basis ===
+        {currentData?.run.observation_basis ===
           "current_session_provisional" && (
           <Alert severity="info">Current-session prices are provisional.</Alert>
         )}
-        <GuidedSteps
-          activeStep={step}
-          onChange={go}
-          steps={[
-            { label: "Choose period" },
-            { label: "Review companies" },
-            { label: "Compare", disabled: true },
-          ]}
-        />
-        {step === 0 ? (
-          <Stack spacing={2.5}>
-            <Box>
-              <Typography variant="h2">
-                Which period would you like to review?
-              </Typography>
-              <Typography
-                color="text.secondary"
-                sx={{ mt: 1, display: "block" }}
-              >
-                Choose a time frame for the company comparison.
-              </Typography>
-            </Box>
-            <Box
-              role="group"
-              aria-label="Comparison period"
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
-                gap: 2,
+        <Stack
+          direction="row"
+          sx={{ gap: "var(--space-1)", alignItems: "center", flexWrap: "wrap" }}
+        >
+          <Typography variant="overline" sx={{ mr: "var(--space-2)" }}>
+            Observation window
+          </Typography>
+          {periods.map((period) => (
+            <Button
+              key={period.value}
+              variant={horizon === period.value ? "contained" : "outlined"}
+              aria-pressed={horizon === period.value}
+              onClick={() => {
+                reset();
+                go(1, period.value);
               }}
             >
-              {periods.map((period) => (
-                <Button
-                  key={period.value}
-                  aria-pressed={horizon === period.value}
-                  onClick={() => {
-                    reset();
-                    go(0, period.value);
-                  }}
-                  sx={{
-                    display: "block",
-                    textAlign: "left",
-                    p: 3,
-                    minHeight: 116,
-                    color: "text.primary",
-                    border: "2px solid",
-                    borderColor:
-                      horizon === period.value ? "primary.main" : "transparent",
-                    bgcolor: horizon === period.value ? "#DCE9DE" : "#E3D7C4",
-                    boxShadow: "none",
-                    "&:hover": { bgcolor: "#DCE9DE" },
-                  }}
-                >
-                  <Typography
-                    component="span"
-                    variant="h3"
-                    sx={{ display: "block" }}
-                  >
-                    {period.title}
-                  </Typography>
-                  <Typography
-                    component="span"
-                    variant="body2"
-                    sx={{ mt: 1, display: "block" }}
-                  >
-                    {period.description}
-                  </Typography>
-                </Button>
-              ))}
-            </Box>
-            <Paper sx={{ p: 3, bgcolor: "#E3D7C4", boxShadow: "none" }}>
-              <Typography sx={{ fontWeight: 600 }}>
-                Compared with industry peers
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1, display: "block" }}>
-                Each company is measured against its peer model. A larger
-                difference is a reason to investigate, not a buy or sell
-                recommendation.
-              </Typography>
-            </Paper>
-            <Box>
-              <Button variant="contained" onClick={() => go(1)} sx={{ px: 4 }}>
-                Review companies
+              {period.title}
+            </Button>
+          ))}
+        </Stack>
+        <MarketOverview data={currentData} horizon={horizon} />{" "}
+        <Stack spacing={3}>
+          <ReviewHeading
+            title="Review companies"
+            level={2}
+            description={`${horizon} trading ${horizon === 1 ? "session" : "sessions"} · Choose a company to open its peer comparison.`}
+            action={
+              <Button
+                variant="outlined"
+                onClick={() => load()}
+                disabled={loading}
+              >
+                {loading ? "Refreshing…" : "Refresh results"}
               </Button>
-            </Box>
-          </Stack>
-        ) : (
-          <Stack spacing={3}>
-            <ReviewHeading
-              title="Review companies"
-              level={2}
-              description={`${horizon} trading ${horizon === 1 ? "session" : "sessions"} · Choose a company to open its peer comparison.`}
+            }
+          />
+          {error && (
+            <Alert
+              severity="warning"
               action={
-                <Button
-                  variant="outlined"
-                  onClick={() => load()}
-                  disabled={loading}
-                >
-                  {loading ? "Refreshing…" : "Refresh results"}
+                <Button onClick={() => load()} disabled={loading}>
+                  Retry
                 </Button>
               }
+            >
+              {currentData
+                ? "Showing the last available results. "
+                : "Results are unavailable. "}
+              {error}
+            </Alert>
+          )}
+          <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: "var(--space-2)" }}>
+            <TextField
+              label="Find a company or industry"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
+              sx={{ flex: 1 }}
             />
-            {error && (
-              <Alert
-                severity="warning"
-                action={
-                  <Button onClick={() => load()} disabled={loading}>
-                    Retry
-                  </Button>
-                }
-              >
-                {currentData
-                  ? "Showing the last available results. "
-                  : "Results are unavailable. "}
-                {error}
-              </Alert>
-            )}
-            <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: 2 }}>
-              <TextField
-                label="Find a company or industry"
-                value={search}
+            <FormControl sx={{ minWidth: 190 }}>
+              <InputLabel id="industry-label">Industry</InputLabel>
+              <Select
+                labelId="industry-label"
+                label="Industry"
+                value={industry}
                 onChange={(e) => {
-                  setSearch(e.target.value);
+                  setIndustry(e.target.value);
                   setPage(0);
                 }}
-                sx={{ flex: 1 }}
-              />
-              <FormControl sx={{ minWidth: 190 }}>
-                <InputLabel id="industry-label">Industry</InputLabel>
-                <Select
-                  labelId="industry-label"
-                  label="Industry"
-                  value={industry}
-                  onChange={(e) => {
-                    setIndustry(e.target.value);
-                    setPage(0);
-                  }}
-                >
-                  <MenuItem value="ALL">All industries</MenuItem>
-                  {industries.map((name) => (
-                    <MenuItem value={name} key={name}>
-                      {name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl sx={{ minWidth: 190 }}>
-                <InputLabel id="direction-label">Peer difference</InputLabel>
-                <Select
-                  labelId="direction-label"
-                  label="Peer difference"
-                  value={direction}
-                  onChange={(e) => {
-                    setDirection(e.target.value);
-                    setPage(0);
-                  }}
-                >
-                  <MenuItem value="all">All companies</MenuItem>
-                  <MenuItem value="positive">Above peer model</MenuItem>
-                  <MenuItem value="negative">Below peer model</MenuItem>
-                  <MenuItem value="outliers">Strong differences</MenuItem>
-                </Select>
-              </FormControl>
-            </Stack>
-            <Stack
-              direction="row"
-              sx={{ alignItems: "center", justifyContent: "space-between" }}
-            >
-              <Typography role="status" variant="body2">
-                {results.length}{" "}
-                {results.length === 1 ? "company" : "companies"}
-              </Typography>
-              {(search || industry !== "ALL" || direction !== "all") && (
-                <Button onClick={reset}>Clear filters</Button>
-              )}
-            </Stack>
-            {loading && !currentData ? (
-              <Box sx={{ py: 5, textAlign: "center" }}>
-                <CircularProgress aria-label="Loading companies" />
-              </Box>
-            ) : results.length > 0 ? (
-              <TableContainer
-                component={Paper}
-                sx={{
-                  boxShadow: "none",
-                  border: "1px solid",
-                  borderColor: "divider",
+              >
+                <MenuItem value="ALL">All industries</MenuItem>
+                {industries.map((name) => (
+                  <MenuItem value={name} key={name}>
+                    {name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl sx={{ minWidth: 190 }}>
+              <InputLabel id="direction-label">Peer difference</InputLabel>
+              <Select
+                labelId="direction-label"
+                label="Peer difference"
+                value={direction}
+                onChange={(e) => {
+                  setDirection(e.target.value);
+                  setPage(0);
                 }}
               >
-                <Table aria-label="Companies compared with industry peers">
-                  <TableHead>
-                    <TableRow>
-                      {(
-                        [
-                          { field: "symbol", label: "Company" },
-                          { field: "industry", label: "Industry" },
-                          { field: "divergence", label: "Peer difference" },
-                          { field: "percentile", label: "Industry percentile" },
-                        ] as const
-                      ).map((column) => (
-                        <TableCell key={column.field}>
-                          <TableSortLabel
-                            active={sort === column.field}
-                            direction={ascending ? "asc" : "desc"}
-                            onClick={() => changeSort(column.field)}
-                          >
-                            {column.label}
-                          </TableSortLabel>
-                        </TableCell>
-                      ))}
-                      <TableCell>Review</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {results
-                      .slice(currentPage * 15, (currentPage + 1) * 15)
-                      .map((item) => (
-                        <TableRow key={item.symbol} hover>
-                          <TableCell
-                            component="th"
-                            scope="row"
-                            sx={{ fontWeight: 650 }}
-                          >
-                            {item.symbol}
-                          </TableCell>
-                          <TableCell>{item.industry}</TableCell>
-                          <TableCell
-                            sx={{
-                              fontVariantNumeric: "tabular-nums",
-                              color:
-                                item.divergence_value >= 0
-                                  ? "primary.main"
-                                  : "error.dark",
-                            }}
-                          >
-                            {item.divergence_value >= 0 ? "+" : ""}
-                            {item.divergence_value.toFixed(2)}
-                            <Typography
-                              variant="caption"
-                              sx={{ display: "block" }}
-                            >
-                              {item.interpretation}
-                            </Typography>
-                          </TableCell>
-                          <TableCell>
-                            {item.industry_percentile.toFixed(0)}%
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              component={Link}
-                              to={`/companies/${encodeURIComponent(item.symbol)}?horizon=${horizon}`}
-                              aria-label={`Compare ${item.symbol}`}
-                            >
-                              Compare
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            ) : (
-              <Paper sx={{ p: 4, boxShadow: "none", bgcolor: "#E3D7C4" }}>
-                <Typography variant="h3">
-                  {currentData
-                    ? "No companies match these filters"
-                    : "No comparison data available"}
-                </Typography>
-                <Typography sx={{ mt: 1, display: "block" }}>
-                  {currentData
-                    ? "Try another company name or clear your filters."
-                    : "Refresh the results to try again."}
-                </Typography>
-                <Button
-                  onClick={currentData ? reset : () => load()}
-                  sx={{ mt: 2 }}
-                >
-                  {currentData ? "Clear filters" : "Refresh results"}
-                </Button>
-              </Paper>
-            )}
-            {results.length > 15 && (
-              <Stack
-                direction="row"
-                sx={{
-                  gap: 2,
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                <Typography variant="body2">
-                  Showing {currentPage * 15 + 1}–
-                  {Math.min((currentPage + 1) * 15, results.length)} of{" "}
-                  {results.length}
-                </Typography>
-                <Box>
-                  <Button
-                    disabled={currentPage === 0}
-                    onClick={() => setPage(currentPage - 1)}
-                  >
-                    Previous companies
-                  </Button>
-                  <Button
-                    disabled={(currentPage + 1) * 15 >= results.length}
-                    onClick={() => setPage(currentPage + 1)}
-                  >
-                    Next companies
-                  </Button>
-                </Box>
-              </Stack>
+                <MenuItem value="all">All companies</MenuItem>
+                <MenuItem value="positive">Above peer model</MenuItem>
+                <MenuItem value="negative">Below peer model</MenuItem>
+                <MenuItem value="outliers">Strong differences</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
+          <Stack
+            direction="row"
+            sx={{ alignItems: "center", justifyContent: "space-between" }}
+          >
+            <Typography role="status" variant="body2">
+              {results.length} {results.length === 1 ? "company" : "companies"}
+            </Typography>
+            {(search || industry !== "ALL" || direction !== "all") && (
+              <Button onClick={reset}>Clear filters</Button>
             )}
           </Stack>
-        )}
+          {loading && !currentData ? (
+            <Box sx={{ py: "var(--space-4)", textAlign: "center" }}>
+              <CircularProgress aria-label="Loading companies" />
+            </Box>
+          ) : results.length > 0 ? (
+            <TableContainer
+              component={Paper}
+              sx={{
+                boxShadow: "none",
+                border: "var(--border-width) solid",
+                borderColor: "divider",
+              }}
+            >
+              <Table aria-label="Companies compared with industry peers">
+                <TableHead>
+                  <TableRow>
+                    {(
+                      [
+                        { field: "symbol", label: "Company" },
+                        { field: "industry", label: "Industry" },
+                        { field: "divergence", label: "Peer difference" },
+                        { field: "percentile", label: "Industry percentile" },
+                      ] as const
+                    ).map((column) => (
+                      <TableCell key={column.field}>
+                        <TableSortLabel
+                          active={sort === column.field}
+                          direction={ascending ? "asc" : "desc"}
+                          onClick={() => changeSort(column.field)}
+                        >
+                          {column.label}
+                        </TableSortLabel>
+                      </TableCell>
+                    ))}
+                    <TableCell>Review</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {results
+                    .slice(currentPage * 15, (currentPage + 1) * 15)
+                    .map((item) => (
+                      <TableRow key={item.symbol} hover>
+                        <TableCell
+                          component="th"
+                          scope="row"
+                          sx={{ fontWeight: 600 }}
+                        >
+                          {item.symbol}
+                        </TableCell>
+                        <TableCell>{item.industry}</TableCell>
+                        <TableCell
+                          sx={{
+                            fontVariantNumeric: "tabular-nums",
+                            color:
+                              item.divergence_value >= 0
+                                ? "primary.main"
+                                : "error.dark",
+                          }} align="right"
+                        >
+                          {item.divergence_value >= 0 ? "+" : ""}
+                          {item.divergence_value.toFixed(2)}
+                          <Typography
+                            variant="caption"
+                            sx={{ display: "block" }}
+                          >
+                            {item.interpretation}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          {item.industry_percentile.toFixed(0)}%
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            component={Link}
+                            to={`/companies/${encodeURIComponent(item.symbol)}?horizon=${horizon}`}
+                            aria-label={`Compare ${item.symbol}`}
+                          >
+                            Compare
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Paper sx={{ p: "var(--space-4)", boxShadow: "none", bgcolor: "var(--line)" }}>
+              <Typography variant="h3">
+                {currentData
+                  ? "No companies match these filters"
+                  : "No comparison data available"}
+              </Typography>
+              <Typography sx={{ mt: "var(--space-1)", display: "block" }}>
+                {currentData
+                  ? "Try another company name or clear your filters."
+                  : "Refresh the results to try again."}
+              </Typography>
+              <Button
+                onClick={currentData ? reset : () => load()}
+                sx={{ mt: "var(--space-2)" }}
+              >
+                {currentData ? "Clear filters" : "Refresh results"}
+              </Button>
+            </Paper>
+          )}
+          {results.length > 15 && (
+            <Stack
+              direction="row"
+              sx={{
+                gap: "var(--space-2)",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <Typography variant="body2">
+                Showing {currentPage * 15 + 1}–
+                {Math.min((currentPage + 1) * 15, results.length)} of{" "}
+                {results.length}
+              </Typography>
+              <Box>
+                <Button
+                  disabled={currentPage === 0}
+                  onClick={() => setPage(currentPage - 1)}
+                >
+                  Previous companies
+                </Button>
+                <Button
+                  disabled={(currentPage + 1) * 15 >= results.length}
+                  onClick={() => setPage(currentPage + 1)}
+                >
+                  Next companies
+                </Button>
+              </Box>
+            </Stack>
+          )}
+        </Stack>
         <ReviewDetails title="How to read the comparison">
           <Typography variant="body2">
             Peer difference measures how far a company moved from its industry
@@ -509,7 +440,7 @@ export default function Dashboard() {
             predict returns.
           </Typography>
           {currentData && (
-            <Typography variant="caption" sx={{ display: "block", mt: 2 }}>
+            <Typography variant="caption" sx={{ display: "block", mt: "var(--space-2)" }}>
               Signal date: {currentData.run.signal_date} · Data cutoff:{" "}
               {currentData.run.data_cutoff}
             </Typography>
