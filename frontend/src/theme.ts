@@ -120,6 +120,7 @@ export const theme = createTheme({
     },
   },
   components: {
+    MuiCircularProgress: { defaultProps: { "aria-label": "Loading" } },
     MuiCssBaseline: {
       styleOverrides: {
         body: { background: "var(--bg)", color: "var(--white)" },

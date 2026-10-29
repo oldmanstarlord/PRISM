@@ -123,7 +123,7 @@ class NewsService:
         )
         last_success = state.get("last_success_at")
         stale = not is_current_day(last_success, now) or (
-            bool(last_success) and now - datetime.fromisoformat(last_success) > timedelta(
+            last_success is not None and now - datetime.fromisoformat(last_success) > timedelta(
                 minutes=self.config.news_refresh_minutes * 2
             )
         )

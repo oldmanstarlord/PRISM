@@ -193,7 +193,7 @@ describe("StockDecisionEngineTab Component", () => {
       />
     );
 
-    expect(screen.getByText("STOCK DECISION ENGINE")).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Stock decisions" })).toBeDefined();
     expect(screen.getByText("PORTFOLIO STOCKS")).toBeDefined();
     expect(screen.getByText("AVG HEALTH SCORE")).toBeDefined();
     expect(screen.getByText("RISK EXPOSURE")).toBeDefined();

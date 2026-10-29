@@ -150,7 +150,7 @@ def multi_user_db_session() -> Generator[Session, None, None]:
 
 
 def test_ensure_active_portfolio_creates_and_idempotent(multi_user_db_session: Session) -> None:
-    """POST /portfolios/ensure-active creates initial portfolio if none, returns existing if present."""
+    """Create an initial portfolio or return the existing active portfolio."""
     app.dependency_overrides[get_session] = lambda: multi_user_db_session
     # Authenticate as User B who has no portfolio initially
     app.dependency_overrides[require_user] = lambda: AuthenticatedUser(
@@ -202,7 +202,7 @@ def test_ensure_active_portfolio_creates_and_idempotent(multi_user_db_session: S
 def test_transaction_idempotency_prevents_duplicate_submission(
     multi_user_db_session: Session,
 ) -> None:
-    """Submitting transactions with an idempotency_key does not duplicate ledger records on retry."""
+    """Retrying a transaction with an idempotency key does not duplicate ledger records."""
     portfolio_a_id = "11111111-1111-1111-1111-111111111111"
 
     app.dependency_overrides[get_session] = lambda: multi_user_db_session
@@ -260,7 +260,7 @@ def test_transaction_idempotency_prevents_duplicate_submission(
 def test_risk_history_snapshots_persistence_and_isolation(
     multi_user_db_session: Session,
 ) -> None:
-    """Portfolio risk history records methodology version, calculation date, cutoff, and enforces isolation."""
+    """Risk history records provenance and enforces user isolation."""
     portfolio_a_id = "11111111-1111-1111-1111-111111111111"
 
     app.dependency_overrides[get_session] = lambda: multi_user_db_session

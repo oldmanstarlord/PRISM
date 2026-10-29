@@ -2,6 +2,7 @@
 
 import argparse
 import json
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from importlib.metadata import version
 from pathlib import Path
@@ -108,9 +109,10 @@ def _train_volatility(data: Any, registry: ModelRegistry) -> ModelCard:
             per_stock_cards[symbol] = card
         else:
             unavailable[symbol] = result.failure_reason or "insufficient_data"
-    pooled: PooledVolatilityForecaster | None = PooledVolatilityForecaster()
+    pooled_candidate = PooledVolatilityForecaster()
+    pooled: PooledVolatilityForecaster | None = pooled_candidate
     try:
-        pooled_card = pooled.fit(data.prices, data.volumes, benchmark_returns)
+        pooled_card = pooled_candidate.fit(data.prices, data.volumes, benchmark_returns)
     except (TypeError, ValueError) as exc:
         pooled = None
         pooled_card = {
@@ -130,16 +132,10 @@ def _train_volatility(data: Any, registry: ModelRegistry) -> ModelCard:
     for symbol in per_stock:
         card = per_stock_cards[symbol]
         selected = str(card["model_selected"])
-        individual_qlike = float(
-            card["metrics_vs_baseline"]["validation"][selected]["qlike"]
-        )
-        pooled_qlike = (
-            pooled.validation_qlike_by_symbol.get(symbol) if pooled is not None else None
-        )
+        individual_qlike = float(card["metrics_vs_baseline"]["validation"][selected]["qlike"])
+        pooled_qlike = pooled.validation_qlike_by_symbol.get(symbol) if pooled is not None else None
         selection[symbol] = (
-            "individual"
-            if pooled_qlike is None or individual_qlike <= pooled_qlike
-            else "pooled"
+            "individual" if pooled_qlike is None or individual_qlike <= pooled_qlike else "pooled"
         )
     if pooled is not None:
         for symbol in pooled.symbols:
@@ -149,9 +145,7 @@ def _train_volatility(data: Any, registry: ModelRegistry) -> ModelCard:
     bundle = VolatilityArtifactBundle(per_stock, pooled, selection, unavailable)
     statuses = [str(card["status"]) for card in per_stock_cards.values()]
     status = (
-        "ready"
-        if "ready" in statuses or pooled_card["status"] == "ready"
-        else "baseline_selected"
+        "ready" if "ready" in statuses or pooled_card["status"] == "ready" else "baseline_selected"
     )
     metadata = _decorate(
         {
@@ -160,17 +154,16 @@ def _train_volatility(data: Any, registry: ModelRegistry) -> ModelCard:
             "type": "individual and pooled supervised volatility regressors",
             "status": status,
             "data_cutoff": str(data.data_cutoff),
-            "training_start": pooled_card["training_start"] or min(
-                card["training_start"] for card in per_stock_cards.values()
-            ),
-            "training_end": pooled_card["training_end"] or max(
-                card["training_end"] for card in per_stock_cards.values()
-            ),
+            "training_start": pooled_card["training_start"]
+            or min(card["training_start"] for card in per_stock_cards.values()),
+            "training_end": pooled_card["training_end"]
+            or max(card["training_end"] for card in per_stock_cards.values()),
             "validation_start": pooled_card["validation_start"],
             "validation_end": pooled_card["validation_end"],
             "test_start": pooled_card["test_start"],
             "test_end": pooled_card["test_end"],
-            "features": pooled_card["features"] or sorted(
+            "features": pooled_card["features"]
+            or sorted(
                 {feature for card in per_stock_cards.values() for feature in card["features"]}
             ),
             "feature_schema_version": "volatility-features-v2",
@@ -181,8 +174,7 @@ def _train_volatility(data: Any, registry: ModelRegistry) -> ModelCard:
             "metrics_vs_baseline": {
                 "pooled": pooled_card,
                 "per_symbol_feature_schemas": {
-                    symbol: card["features"]
-                    for symbol, card in sorted(per_stock_cards.items())
+                    symbol: card["features"] for symbol, card in sorted(per_stock_cards.items())
                 },
                 "individual_models_ready": len(per_stock),
                 "individual_selected": sum(value == "individual" for value in selection.values()),
@@ -239,9 +231,7 @@ def _train_anomaly(data: Any, registry: ModelRegistry) -> ModelCard:
     detector = AnomalyDetector()
     benchmark = data.benchmark_prices.pct_change(fill_method=None).dropna()
     metadata = detector.fit(data.prices, benchmark, data.volumes, data.sectors)
-    return registry.save_artifact_and_card(
-        detector, _decorate(metadata, data.source_data_version)
-    )
+    return registry.save_artifact_and_card(detector, _decorate(metadata, data.source_data_version))
 
 
 def _train_risk_validation(session: Any, data: Any, registry: ModelRegistry) -> ModelCard:
@@ -333,7 +323,11 @@ def _train_risk_validation(session: Any, data: Any, registry: ModelRegistry) -> 
             row.factor_beta,
             row.factor_instability,
         ]
-        if any(value is None for value in factors):
+        if (
+            row.score is None
+            or row.factor_volatility is None
+            or any(value is None for value in factors)
+        ):
             continue
         records.append(
             {
@@ -341,7 +335,9 @@ def _train_risk_validation(session: Any, data: Any, registry: ModelRegistry) -> 
                 "symbol": row.symbol,
                 "score": float(row.score),
                 "volatility_only_score": float(row.factor_volatility),
-                "equal_weight_score": float(np.mean([float(value) for value in factors])),
+                "equal_weight_score": float(
+                    np.mean([float(value) for value in factors if value is not None])
+                ),
                 "forward_volatility_21d": vol21,
                 "forward_volatility_63d": vol63,
                 "forward_drawdown_21d": drawdown21,
@@ -353,9 +349,7 @@ def _train_risk_validation(session: Any, data: Any, registry: ModelRegistry) -> 
     metadata["status"] = validation["status"]
     metadata["failure_reason"] = validation.get("reason")
     if validation["status"] == "ready":
-        metadata["training_start"], metadata["training_end"] = validation[
-            "training_period"
-        ]
+        metadata["training_start"], metadata["training_end"] = validation["training_period"]
         metadata["test_start"], metadata["test_end"] = validation["test_period"]
     metadata["selection_reason"] = (
         "Fixed weights were declared before the untouched test period; no weights refitted."
@@ -377,7 +371,7 @@ def train_all_models(
     results: dict[str, object] = {}
     with SessionLocal() as session:
         data = load_validated_market_data(session, cutoff=cutoff_date)
-        trainers = {
+        trainers: dict[str, Callable[[], ModelCard]] = {
             "volatility_forecast": lambda: _train_volatility(data, registry),
             "market_regime": lambda: _train_regime(data, registry),
             "anomaly_detector": lambda: _train_anomaly(data, registry),

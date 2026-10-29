@@ -175,3 +175,9 @@ uv export --locked --no-dev --no-emit-project --no-hashes --no-annotate --output
 
 The `vatsal` branch also includes the historical fundamental regression workflows
 documented in [FUNDAMENTALS.md](FUNDAMENTALS.md).
+
+On macOS, the backend defaults `OMP_NUM_THREADS` to `1` before loading the native
+ML libraries to prevent crashes from mixed Homebrew/PyTorch OpenMP runtimes.
+An explicitly set `OMP_NUM_THREADS` overrides this default. Pytest uses isolated
+module imports and its system temporary directory so duplicate test filenames
+and generated test artifacts do not interfere with the checkout.

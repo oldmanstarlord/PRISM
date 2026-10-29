@@ -592,12 +592,14 @@ export default function PortfolioManager() {
 
   const handleSelectTab = (tabId: typeof activeTab) => {
     setActiveTab(tabId);
+  };
+  useEffect(() => {
     try {
-      localStorage.setItem("prism_portfolio_active_tab", tabId);
+      localStorage.setItem("prism_portfolio_active_tab", activeTab);
     } catch {
       // ignore
     }
-  };
+  }, [activeTab]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sectorFilter, setSectorFilter] = useState("ALL");
@@ -2023,7 +2025,7 @@ export default function PortfolioManager() {
                                         fontSize: "var(--text-title)",
                                         fontWeight: 600,
                                         bgcolor: "var(--up)",
-                                        color: "var(--up)",
+                                        color: "var(--bg)",
                                         "&:hover": { bgcolor: "var(--up)" },
                                       }}
                                     />
@@ -2050,7 +2052,7 @@ export default function PortfolioManager() {
                                             borderRadius: "var(--radius)",
                                             fontSize: "var(--text-title)",
                                             fontWeight: 600,
-                                            bgcolor: isPos ? "var(--line)" : isNeg ? "var(--gray)" : "var(--line)",
+                                            bgcolor: isNeg ? "var(--bg)" : "var(--line)",
                                             color: isPos ? "var(--up)" : isNeg ? "var(--down)" : "var(--white)",
                                             border: "none",
                                             "&:hover": { bgcolor: "var(--line)" },
@@ -2087,10 +2089,10 @@ export default function PortfolioManager() {
                                           borderRadius: "var(--radius)",
                                           fontSize: "var(--text-title)",
                                           fontWeight: 600,
-                                          bgcolor: "var(--gray)",
+                                          bgcolor: "var(--bg)",
                                           color: "var(--down)",
-                                          border: "none",
-                                          "&:hover": { bgcolor: "var(--amber)" },
+                                          border: "var(--border-width) solid currentColor",
+                                          "&:hover": { bgcolor: "var(--down)", color: "var(--bg)" },
                                         }}
                                       />
                                     </Tooltip>
@@ -2148,7 +2150,7 @@ export default function PortfolioManager() {
                                           fontWeight: 600,
                                           fontSize: "var(--text-title)",
                                           bgcolor: bg,
-                                          color: "var(--white)",
+                                          color: "var(--bg)",
                                           boxShadow: "none",
                                           "&:hover": { opacity: 1 },
                                         }}

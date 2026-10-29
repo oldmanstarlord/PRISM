@@ -356,7 +356,10 @@ def fetch_quote(
         is_market_open=None,
         source="unavailable",
         data_quality="error",
-        error=f"Price unavailable for {raw_symbol}. Price series not found in database. Verified ingestion via pipeline required.",
+        error=(
+            f"Price unavailable for {raw_symbol}. Price series not found in database. "
+            "Verified ingestion via pipeline required."
+        ),
     )
 
 

@@ -48,7 +48,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-ra --strict-markers --basetemp=.pytest_tmp"
+addopts = "-ra --strict-markers --import-mode=importlib"
 markers = [
   "integration: requires an explicitly configured PostgreSQL test database",
 ]

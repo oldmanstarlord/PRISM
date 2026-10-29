@@ -16,7 +16,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
-from sklearn.isotonic import IsotonicRegression  # type: ignore[import-untyped]
+from sklearn.isotonic import IsotonicRegression
 
 from backend.app.ml.feature_builder import (
     compute_forward_max_drawdown,

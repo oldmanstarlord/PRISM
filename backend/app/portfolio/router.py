@@ -479,9 +479,7 @@ def record_transactions(
     portfolio = _owned_portfolio(session, portfolio_id, user.id)
 
     # 1. Check for already processed idempotency keys
-    incoming_keys = [
-        tx.idempotency_key for tx in payload.transactions if tx.idempotency_key
-    ]
+    incoming_keys = [tx.idempotency_key for tx in payload.transactions if tx.idempotency_key]
     idempotent_map: dict[str, PortfolioTransaction] = {}
     if incoming_keys:
         already_saved = session.scalars(
@@ -644,7 +642,9 @@ def record_transactions(
                 )
             )
         else:
-            rec = next((r for r in new_db_records if r.idempotency_key == tx_in.idempotency_key), None)
+            rec = next(
+                (r for r in new_db_records if r.idempotency_key == tx_in.idempotency_key), None
+            )
             if rec is None and new_db_records:
                 rec = new_db_records.pop(0)
             if rec is not None:

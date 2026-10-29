@@ -82,23 +82,22 @@ def _load_holdings_from_saved_portfolio(
         )
 
     # Compute total portfolio value for weight calculation
-    total_value = sum(
-        float(h.quantity or h.target_weight or 1.0)
-        for h, *_ in rows
-    )
+    total_value = sum(float(h.quantity or h.target_weight or 1.0) for h, *_ in rows)
 
     holdings: list[dict[str, Any]] = []
     for holding, company_name, industry, sector in rows:
         raw_value = float(holding.quantity or holding.target_weight or 1.0)
         weight = raw_value / total_value if total_value > 0 else 0.0
-        holdings.append({
-            "symbol": holding.symbol,
-            "company_name": company_name,
-            "sector": sector or industry,
-            "quantity": float(holding.quantity or 1.0),
-            "buy_price": 1.0,  # buyPrice not persisted in snapshot; weight carries the info
-            "weight": weight,
-        })
+        holdings.append(
+            {
+                "symbol": holding.symbol,
+                "company_name": company_name,
+                "sector": sector or industry,
+                "quantity": float(holding.quantity or 1.0),
+                "buy_price": 1.0,  # buyPrice not persisted in snapshot; weight carries the info
+                "weight": weight,
+            }
+        )
 
     return holdings
 
@@ -165,14 +164,16 @@ def analyze_portfolio(
 def analyze_saved_portfolio(
     session: DatabaseSession,
     user: CurrentUser,
-    portfolio_id: UUID = Query(..., description="ID of the saved portfolio to analyze"),
+    portfolio_id: Annotated[UUID, Query(description="ID of the saved portfolio to analyze")],
 ) -> PortfolioDecisionResponse:
     """Load holdings from a persisted portfolio and run the decision engine."""
     holdings = _load_holdings_from_saved_portfolio(session, portfolio_id, user.id)
     try:
         return analyze_portfolio_decisions(holdings, session)
     except Exception as exc:
-        logger.error("Decision engine failed for portfolio %s: %s", portfolio_id, exc, exc_info=True)
+        logger.error(
+            "Decision engine failed for portfolio %s: %s", portfolio_id, exc, exc_info=True
+        )
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Decision analysis failed; see server logs.",

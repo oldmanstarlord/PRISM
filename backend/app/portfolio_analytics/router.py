@@ -153,9 +153,7 @@ def get_structural_monitoring(
         largest_wt = 0.0
         if total_invested > 0:
             for h in holdings_dicts:
-                wt = (
-                    (float(h["quantity"]) * float(h["buyPrice"])) / total_invested
-                ) * 100.0
+                wt = ((float(h["quantity"]) * float(h["buyPrice"])) / total_invested) * 100.0
                 if wt > largest_wt:
                     largest_wt = wt
                     largest_sym = str(h.get("symbol", "")).upper()
@@ -190,11 +188,7 @@ def get_structural_monitoring(
                 avg_rho = sum(pair_corrs) / len(pair_corrs)
                 # Calculate aggregate weight
                 agg_wt = sum(
-                    (
-                        (float(h["quantity"]) * float(h["buyPrice"]))
-                        / total_invested
-                        * 100.0
-                    )
+                    ((float(h["quantity"]) * float(h["buyPrice"])) / total_invested * 100.0)
                     for h in holdings_dicts
                     if str(h.get("symbol", "")).upper() in group
                 )
@@ -291,10 +285,14 @@ def get_news_signals(payload: ComprehensiveRiskRequest, _user: CurrentUser) -> d
 
     service = NewsIntelligenceService(use_transformer=False)
     holdings_dicts = [h.model_dump() for h in payload.holdings]
-    total_val = sum(float(h.get("quantity", 1.0)) * float(h.get("buyPrice", 1.0)) for h in holdings_dicts)
+    total_val = sum(
+        float(h.get("quantity", 1.0)) * float(h.get("buyPrice", 1.0)) for h in holdings_dicts
+    )
     for h in holdings_dicts:
         if total_val > 0:
-            h["weight"] = (float(h.get("quantity", 1.0)) * float(h.get("buyPrice", 1.0))) / total_val
+            h["weight"] = (
+                float(h.get("quantity", 1.0)) * float(h.get("buyPrice", 1.0))
+            ) / total_val
         else:
             h["weight"] = 1.0 / len(holdings_dicts) if holdings_dicts else 0.0
     intel = service.get_portfolio_news_intelligence(holdings_dicts)

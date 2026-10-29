@@ -7,8 +7,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
-from sklearn.ensemble import HistGradientBoostingRegressor  # type: ignore[import-untyped]
-from sklearn.linear_model import LinearRegression  # type: ignore[import-untyped]
+from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.linear_model import LinearRegression
 
 from backend.app.ml.feature_builder import (
     build_volatility_features,
@@ -230,7 +230,7 @@ class VolatilityForecaster:
         }
         evaluations: list[dict[str, Any]] = []
         for name, prediction in test_predictions.items():
-            values = _metrics(y[partitions.test], prediction)
+            values: dict[str, Any] = dict(_metrics(y[partitions.test], prediction))
             low, high = _interval(prediction, residual_radius)
             values.update(
                 {

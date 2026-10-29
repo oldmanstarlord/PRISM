@@ -5,8 +5,8 @@ from typing import Any
 
 import numpy as np
 import pandas as pd  # type: ignore[import-untyped]
-from sklearn.ensemble import IsolationForest  # type: ignore[import-untyped]
-from sklearn.preprocessing import RobustScaler  # type: ignore[import-untyped]
+from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import RobustScaler
 
 FEATURES = [
     "daily_return",

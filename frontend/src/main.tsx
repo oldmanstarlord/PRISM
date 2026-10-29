@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 
 import App from "./App";
+import StartupIntro from "./StartupIntro";
 import { theme } from "./theme";
 
 const queryClient = new QueryClient();
@@ -13,7 +14,9 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <App />
+        <StartupIntro>
+          <App />
+        </StartupIntro>
       </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,

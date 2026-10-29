@@ -15,19 +15,15 @@ Tests:
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import date
 from unittest.mock import MagicMock
 from uuid import UUID
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from backend.app.core.auth import AuthenticatedUser, require_user
 from backend.app.db.session import engine
 from backend.app.decision.engine import (
-    HOLD_THRESHOLD,
-    WATCH_THRESHOLD,
     _calculate_final_score,
     _classify_decision,
     _fetch_fundamental_score,
@@ -118,13 +114,21 @@ def test_decision_classification_thresholds() -> None:
         fundamental=0.60, sector=0.25, news=0.15, regime="normal", regime_reason=""
     )
     f_strong = FundamentalScorePayload(
-        symbol="INFY", fundamental_strength_score=85.0, fundamental_classification="Low Risk", raw_risk_score=15.0
+        symbol="INFY",
+        fundamental_strength_score=85.0,
+        fundamental_classification="Low Risk",
+        raw_risk_score=15.0,
     )
     sec_strong = SectorStrengthPayload(
         symbol="INFY", sector_strength_score=80.0, divergence_value=1.5
     )
     news_strong = NewsScorePayload(
-        symbol="INFY", news_score=75.0, sentiment="positive", news_confidence=0.8, articles_analyzed=5, provider_status="ok"
+        symbol="INFY",
+        news_score=75.0,
+        sentiment="positive",
+        news_confidence=0.8,
+        articles_analyzed=5,
+        provider_status="ok",
     )
 
     # 1. HOLD (score >= 70)
@@ -143,7 +147,10 @@ def test_decision_classification_thresholds() -> None:
 
     # 3. SELL (score < 45)
     f_weak = FundamentalScorePayload(
-        symbol="INFY", fundamental_strength_score=30.0, fundamental_classification="High Risk", raw_risk_score=70.0
+        symbol="INFY",
+        fundamental_strength_score=30.0,
+        fundamental_classification="High Risk",
+        raw_risk_score=70.0,
     )
     decision, conf, explanation, reasons, alerts = _classify_decision(
         35.0, f_weak, sec_strong, news_strong, weights
@@ -155,7 +162,7 @@ def test_anomaly_and_alert_escalation() -> None:
     weights = AppliedWeights(
         fundamental=0.60, sector=0.25, news=0.15, regime="normal", regime_reason=""
     )
-    # Stock has score 72 (ordinarily HOLD), but fundamental strength is 55 (<60) and anomaly flag is True
+    # Score 72 ordinarily means HOLD, but strength is 55 (<60) with an anomaly flag.
     f_anomaly = FundamentalScorePayload(
         symbol="ALERT",
         fundamental_strength_score=55.0,
@@ -163,11 +170,14 @@ def test_anomaly_and_alert_escalation() -> None:
         anomaly_flag=True,
         raw_risk_score=45.0,
     )
-    sec = SectorStrengthPayload(
-        symbol="ALERT", sector_strength_score=80.0, divergence_value=0.5
-    )
+    sec = SectorStrengthPayload(symbol="ALERT", sector_strength_score=80.0, divergence_value=0.5)
     news = NewsScorePayload(
-        symbol="ALERT", news_score=80.0, sentiment="positive", news_confidence=0.8, articles_analyzed=4, provider_status="ok"
+        symbol="ALERT",
+        news_score=80.0,
+        sentiment="positive",
+        news_confidence=0.8,
+        articles_analyzed=4,
+        provider_status="ok",
     )
 
     decision, conf, explanation, reasons, alerts = _classify_decision(
@@ -211,7 +221,9 @@ def test_sector_divergence_adapter() -> None:
 
     mock_session.scalar.return_value = mock_row
 
-    payload = _fetch_sector_strength(mock_session, "RELIANCE", UUID("00000000-0000-0000-0000-000000000001"))
+    payload = _fetch_sector_strength(
+        mock_session, "RELIANCE", UUID("00000000-0000-0000-0000-000000000001")
+    )
     assert payload.availability == "available"
     assert payload.sector_strength_score == 88.5
     assert payload.divergence_value == 1.85
@@ -260,4 +272,3 @@ def test_api_analyze_endpoint_and_saved_authentication() -> None:
         "/api/v1/portfolio/analyze/saved?portfolio_id=00000000-0000-0000-0000-000000000001"
     )
     assert saved_resp.status_code == 401
-

@@ -20,11 +20,10 @@ import {
 } from "@mui/material";
 
 import type { PortfolioHolding } from "./PortfolioManager";
-import { COLORS, SHADOWS } from "./theme";
+import { COLORS } from "./theme";
 import type {
   DecisionFlag,
   PortfolioDecisionResponse,
-  StockDecision,
 } from "./types";
 
 interface Props {
@@ -67,7 +66,7 @@ export default function StockDecisionEngineTab({
   }, [holdings]);
 
   const summary = response?.summary;
-  const decisions = response?.decisions || [];
+  const decisions = useMemo(() => response?.decisions ?? [], [response]);
 
   // Filtered and sorted decisions
   const filteredDecisions = useMemo(() => {
@@ -115,7 +114,7 @@ export default function StockDecisionEngineTab({
       case "HOLD":
         return {
           bg: "var(--up)",
-          color: "var(--white)",
+          color: "var(--bg)",
           border: "var(--up)",
           label: "HOLD",
           desc: "Strong or acceptable fundamentals with no major deterioration signals.",
@@ -123,7 +122,7 @@ export default function StockDecisionEngineTab({
       case "WAIT & WATCH":
         return {
           bg: "var(--amber)",
-          color: "var(--white)",
+          color: "var(--bg)",
           border: "var(--amber)",
           label: "WAIT & WATCH",
           desc: "Mixed signals, uncertain conditions, or near decision thresholds.",
@@ -131,7 +130,7 @@ export default function StockDecisionEngineTab({
       case "SELL":
         return {
           bg: "var(--down)",
-          color: "var(--white)",
+          color: "var(--bg)",
           border: "var(--down)",
           label: "SELL",
           desc: "Significant evidence of financial weakness or downside risk.",
@@ -144,11 +143,11 @@ export default function StockDecisionEngineTab({
       case "high":
         return { label: "High Confidence", color: "var(--up)", bg: "var(--line)" };
       case "medium":
-        return { label: "Medium Confidence", color: "var(--amber)", bg: "var(--amber)" };
+        return { label: "Medium Confidence", color: "var(--amber)", bg: "var(--bg)" };
       case "low":
-        return { label: "Low Confidence", color: "var(--gray)", bg: "var(--line)" };
+        return { label: "Low Confidence", color: "var(--white)", bg: "var(--line)" };
       default:
-        return { label: "Insufficient Data", color: "var(--down)", bg: "var(--gray)" };
+        return { label: "Insufficient Data", color: "var(--down)", bg: "var(--bg)" };
     }
   };
 
@@ -165,8 +164,8 @@ export default function StockDecisionEngineTab({
         sx={{
           p: "var(--space-3)",
           borderRadius: "var(--radius)",
-          bgcolor: COLORS.deepCharcoal,
-          color: COLORS.warmIvory,
+          bgcolor: "var(--bg)",
+          color: "var(--white)",
           boxShadow: "none",
         }}
       >
@@ -186,11 +185,11 @@ export default function StockDecisionEngineTab({
                 sx={{
                   fontWeight: 600,
                   letterSpacing: 0,
-                  color: COLORS.warmIvory,
+                  color: "var(--amber)",
                   fontFamily: "var(--font-data)",
                 }}
               >
-                STOCK DECISION ENGINE
+                Stock decisions
               </Typography>
               <Chip
                 label="3-Factor ML Synthesis"
@@ -205,7 +204,7 @@ export default function StockDecisionEngineTab({
             </Box>
             <Typography
               variant="body2"
-              sx={{ color: COLORS.sandBeige, mt: "var(--space-1)", fontSize: "var(--text-title)" }}
+              sx={{ color: "var(--gray)", mt: "var(--space-1)", fontSize: "var(--text-data)" }}
             >
               Actionable flags (SELL / HOLD / WAIT & WATCH) combining Five-Factor
               Fundamental Strength (60%), Sector Divergence (25%), and News Sentiment (15%).
@@ -220,6 +219,8 @@ export default function StockDecisionEngineTab({
               loading ? <CircularProgress size={16} color="inherit" /> : <span>↻</span>
             }
             sx={{
+              flexShrink: 0,
+              whiteSpace: "nowrap",
               bgcolor: "var(--up)", color: "var(--line)",
               borderRadius: "var(--radius)",
               textTransform: "none",
@@ -695,8 +696,9 @@ export default function StockDecisionEngineTab({
                         }}
                       >
                         <Typography
+                          component="span"
                           variant="subtitle2"
-                          sx={{ fontWeight: 600, letterSpacing: 0, fontSize: "var(--text-title)" }}
+                          sx={{ color: "inherit", fontWeight: 600, letterSpacing: 0, fontSize: "var(--text-title)" }}
                         >
                           {badge.label}
                         </Typography>

@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import joblib  # type: ignore[import-untyped]
+import joblib
 
 DEFAULT_MODELS_DIR = Path("data/models")
 READY_STATUSES = {"ready", "baseline_selected"}

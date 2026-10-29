@@ -9,8 +9,17 @@ ALLOWED_DATA_FILES = {
     "data/raw/.gitkeep",
     "data/processed/.gitkeep",
     "data/models/.gitkeep",
+    "data/evaluation/news_sentiment_label_template.csv",
 }
-FORBIDDEN_PARTS = {".venv", "node_modules", "dist", "__pycache__", ".pytest_cache"}
+FORBIDDEN_PARTS = {
+    ".venv",
+    "node_modules",
+    "dist",
+    "__pycache__",
+    ".pytest_cache",
+    ".pytest_tmp",
+    "pytest_tmp",
+}
 SECRET_PATTERNS = {
     "private key": re.compile(r"BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY"),
     "OpenAI-style secret": re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
@@ -30,6 +39,8 @@ def tracked_files() -> list[Path]:
 def main() -> None:
     violations: list[str] = []
     for path in tracked_files():
+        if not path.exists():
+            continue
         normalized = path.as_posix()
         if normalized == ".env" or (
             normalized.startswith(".env.") and normalized != ".env.example"
@@ -39,7 +50,8 @@ def main() -> None:
             violations.append(f"generated/dependency path is tracked: {normalized}")
         if normalized.startswith("data/") and normalized not in ALLOWED_DATA_FILES:
             violations.append(f"data artifact is tracked: {normalized}")
-        if not path.exists():
+        if not path.is_file():
+            violations.append(f"tracked path is not a regular file: {normalized}")
             continue
         if path.stat().st_size > MAX_TRACKED_FILE_BYTES:
             violations.append(f"tracked file exceeds 5 MiB: {normalized}")

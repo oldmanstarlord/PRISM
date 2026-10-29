@@ -7,7 +7,7 @@
   --amber: #ff9f1a;
   --amber-dim: #b36b00;
   --white: #e6e6e6;
-  --gray: #8a8a8a;
+  --gray: #a3a3a3;
   --yellow: #ffe24a;
   --cyan: #3fd0ff;
   --up: #3ddc5a;
@@ -15,28 +15,28 @@
   --input-bg: #0b1a33;
   --font-data: "IBM Plex Mono", Consolas, Menlo, monospace;
   --font-label: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
-  --text-tag: 10px;
-  --text-data: 11px;
-  --text-label: 12px;
-  --text-title: 14px;
+  --text-tag: 11px;
+  --text-data: 12px;
+  --text-label: 13px;
+  --text-title: 15px;
   --weight-data: 400;
   --weight-label: 500;
   --weight-title: 600;
-  --leading: 16px;
+  --leading: 18px;
   --space-1: 2px;
   --space-2: 4px;
   --space-3: 6px;
   --space-4: 8px;
   --border-width: 1px;
   --radius: 0;
-  --row-height: 18px;
-  --control-height: 22px;
-  --panel-title-height: 20px;
-  --status-height: 18px;
+  --row-height: 22px;
+  --control-height: 26px;
+  --panel-title-height: 24px;
+  --status-height: 20px;
   --scrollbar-size: 8px;
   --indicator-size: 6px;
   --icon-size: 12px;
-  --nav-width: 108px;
+  --nav-width: 116px;
   --detail-width: 290px;
   --search-width: 220px;
   --network-offset: 320px;
@@ -356,6 +356,12 @@ a {
   text-align: left;
   border-bottom: var(--border-width) solid var(--line-strong);
 }
+.terminal-page th.MuiTableCell-alignRight {
+  text-align: right;
+}
+.terminal-page th.MuiTableCell-alignRight .MuiTableSortLabel-root {
+  flex-direction: row-reverse;
+}
 .terminal-page tr {
   height: var(--row-height) !important;
   background: var(--bg);
@@ -518,16 +524,38 @@ a {
   background: var(--bg) !important;
 }
 .MuiCircularProgress-root {
-  width: auto !important;
+  display: inline-flex;
+  align-items: center;
+  width: 28px !important;
   height: var(--leading) !important;
   color: var(--amber);
+  animation: none !important;
+  transform: none !important;
 }
 .MuiCircularProgress-root svg {
   display: none;
 }
+.MuiCircularProgress-root::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 16px;
+  background-image: linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor), linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 2px center, 12px center, 22px center;
+  background-size: 4px 5px, 4px 14px, 4px 8px;
+  animation: prism-loading-signal 900ms ease-in-out infinite;
+}
 .MuiCircularProgress-root::after {
-  content: "LOADING...";
-  font: var(--text-data)/var(--leading) var(--font-data);
+  content: none;
+}
+@keyframes prism-loading-signal {
+  0%, 100% { background-size: 4px 5px, 4px 14px, 4px 8px; opacity: 0.75; }
+  33% { background-size: 4px 14px, 4px 8px, 4px 5px; opacity: 1; }
+  66% { background-size: 4px 8px, 4px 5px, 4px 14px; opacity: 0.85; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .MuiCircularProgress-root::before { animation: none; }
 }
 .MuiSkeleton-root {
   background: var(--bg-raised) !important;

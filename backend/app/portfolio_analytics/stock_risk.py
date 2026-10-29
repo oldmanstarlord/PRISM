@@ -143,10 +143,30 @@ def get_benchmark_returns(session: Session | None = None) -> pd.Series:
                 )
             )
             if alias is not None:
-                rows = session.execute(
-                    select(PriceDailyAdjusted.trade_date, PriceDailyAdjusted.adjusted_close)
+                # Each date can have multiple adjustment revisions. Select the latest
+                # before calculating returns so dates stay unique and revisions never
+                # become spurious extra trading observations.
+                revisions = (
+                    select(
+                        PriceDailyAdjusted.trade_date,
+                        PriceDailyAdjusted.adjusted_close,
+                        func.row_number()
+                        .over(
+                            partition_by=PriceDailyAdjusted.trade_date,
+                            order_by=(
+                                PriceDailyAdjusted.computed_at.desc(),
+                                PriceDailyAdjusted.id.desc(),
+                            ),
+                        )
+                        .label("revision_rank"),
+                    )
                     .where(PriceDailyAdjusted.security_id == alias.security_id)
-                    .order_by(PriceDailyAdjusted.trade_date.asc())
+                    .subquery()
+                )
+                rows = session.execute(
+                    select(revisions.c.trade_date, revisions.c.adjusted_close)
+                    .where(revisions.c.revision_rank == 1)
+                    .order_by(revisions.c.trade_date.asc())
                 ).all()
                 if len(rows) > 1:
                     dates = [r.trade_date for r in rows]

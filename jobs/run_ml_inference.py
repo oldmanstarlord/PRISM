@@ -7,6 +7,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import desc, select
+from sqlalchemy.orm import Session
 
 from backend.app.db.models import ModelPrediction, ModelRun
 from backend.app.db.session import SessionLocal
@@ -21,7 +22,7 @@ def _number(value: float | None) -> Decimal | None:
     return Decimal(str(value)).quantize(Decimal("0.000001")) if value is not None else None
 
 
-def _latest_run(session: Any, name: str) -> ModelRun | None:
+def _latest_run(session: Session, name: str) -> ModelRun | None:
     return session.scalar(
         select(ModelRun)
         .where(ModelRun.model_name == name, ModelRun.status.in_(("ready", "baseline_selected")))
@@ -30,7 +31,7 @@ def _latest_run(session: Any, name: str) -> ModelRun | None:
     )
 
 
-def _upsert_prediction(session: Any, **values: Any) -> None:
+def _upsert_prediction(session: Session, **values: Any) -> None:
     row = session.scalar(
         select(ModelPrediction).where(
             ModelPrediction.run_id == values["run_id"],
@@ -123,19 +124,21 @@ def run_daily_inference(
                             else:
                                 if bundle.pooled is None:
                                     raise RuntimeError("pooled_volatility_artifact_unavailable")
-                                prediction = bundle.pooled.predict(
+                                pooled_prediction = bundle.pooled.predict(
                                     symbol,
                                     data.prices[symbol].dropna(),
                                     data.volumes[symbol].dropna(),
                                     benchmark_returns,
                                 )
                                 point, lower, upper, baseline, selected = (
-                                    prediction.value,
-                                    prediction.lower,
-                                    prediction.upper,
-                                    prediction.trailing,
-                                    prediction.model_selected,
+                                    pooled_prediction.value,
+                                    pooled_prediction.lower,
+                                    pooled_prediction.upper,
+                                    pooled_prediction.trailing,
+                                    pooled_prediction.model_selected,
                                 )
+                            if selected is None:
+                                raise RuntimeError("volatility_model_selection_unavailable")
                             values.update(
                                 status=(
                                     "baseline_selected"
@@ -232,7 +235,7 @@ def run_daily_inference(
                 )
                 if not isinstance(artifact, AnomalyDetector):
                     raise TypeError("unexpected_anomaly_artifact_type")
-                result = artifact.predict(
+                anomaly_result = artifact.predict(
                     data.prices,
                     benchmark_returns,
                     data.volumes,
@@ -240,10 +243,10 @@ def run_daily_inference(
                     as_of=data.data_cutoff,
                 )
                 result_by_symbol = {
-                    str(item["symbol"]): item for item in result.all_evaluated_holdings
+                    str(item["symbol"]): item for item in anomaly_result.all_evaluated_holdings
                 }
                 unavailable = {
-                    item["symbol"]: item["reason"] for item in result.unavailable_holdings
+                    item["symbol"]: item["reason"] for item in anomaly_result.unavailable_holdings
                 }
                 for symbol in sorted(data.universe_security_ids):
                     values = _base(
@@ -275,8 +278,8 @@ def run_daily_inference(
                     _upsert_prediction(session, **values)
                 anomaly_run.metrics = {
                     **anomaly_run.metrics,
-                    "latest_flag_rate_pct": result.flag_rate_percent,
-                    "temporal_stability_jaccard": result.window_stability_jaccard,
+                    "latest_flag_rate_pct": anomaly_result.flag_rate_percent,
+                    "temporal_stability_jaccard": anomaly_result.window_stability_jaccard,
                 }
             except Exception as exc:
                 reason = f"{type(exc).__name__}: {exc}"

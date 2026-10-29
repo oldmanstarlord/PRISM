@@ -57,8 +57,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Decision thresholds (per spec — initial assumptions, not backtested)
 # ---------------------------------------------------------------------------
-HOLD_THRESHOLD = 70.0       # >= HOLD
-WATCH_THRESHOLD = 45.0      # >= WAIT & WATCH, < HOLD
+HOLD_THRESHOLD = 70.0  # >= HOLD
+WATCH_THRESHOLD = 45.0  # >= WAIT & WATCH, < HOLD
 # < WATCH_THRESHOLD -> SELL
 
 # ---------------------------------------------------------------------------
@@ -94,6 +94,7 @@ ANOMALY_MODEL_NAME = "anomaly_isolation_forest"
 # ---------------------------------------------------------------------------
 # 1. Fundamental Adapter
 # ---------------------------------------------------------------------------
+
 
 def _fetch_fundamental_score(session: Session, symbol: str) -> FundamentalScorePayload:
     """Read the persisted five-factor risk score from StockMetricDaily.
@@ -175,11 +176,14 @@ def _fetch_fundamental_score(session: Session, symbol: str) -> FundamentalScoreP
             if anomaly_run is not None:
                 anomaly_model_version = anomaly_run.model_version
                 pred: ModelPrediction | None = session.scalar(
-                    select(ModelPrediction).where(
+                    select(ModelPrediction)
+                    .where(
                         ModelPrediction.run_id == anomaly_run.id,
                         ModelPrediction.target_type == "anomaly_score",
                         ModelPrediction.symbol == symbol,
-                    ).order_by(desc(ModelPrediction.prediction_date)).limit(1)
+                    )
+                    .order_by(desc(ModelPrediction.prediction_date))
+                    .limit(1)
                 )
                 if pred is not None and pred.explanation:
                     details = dict(pred.explanation)
@@ -216,6 +220,7 @@ def _fetch_fundamental_score(session: Session, symbol: str) -> FundamentalScoreP
 # ---------------------------------------------------------------------------
 # 2. Sector Divergence Adapter
 # ---------------------------------------------------------------------------
+
 
 def _fetch_sector_strength(
     session: Session,
@@ -278,6 +283,7 @@ def _fetch_sector_strength(
 # 3. News Sentiment Adapter
 # ---------------------------------------------------------------------------
 
+
 def _fetch_news_score(
     holdings: list[dict[str, Any]],
 ) -> dict[str, NewsScorePayload]:
@@ -305,7 +311,6 @@ def _fetch_news_score(
         for summary in intel.holding_summaries:
             sym = summary.symbol.upper()
             score = summary.mean_sentiment_score
-            confidence = float(summary.heuristic_news_risk_multiplier)  # proxy for confidence
             n_articles = summary.article_count_7d
 
             # True confidence from the sentiment analyzer output is not available
@@ -339,7 +344,9 @@ def _fetch_news_score(
     return results
 
 
-def _neutral_news_payload(symbol: str, reason: str = "news_service_unavailable") -> NewsScorePayload:
+def _neutral_news_payload(
+    symbol: str, reason: str = "news_service_unavailable"
+) -> NewsScorePayload:
     return NewsScorePayload(
         symbol=symbol,
         news_score=50.0,
@@ -355,6 +362,7 @@ def _neutral_news_payload(symbol: str, reason: str = "news_service_unavailable")
 # ---------------------------------------------------------------------------
 # 4. Dynamic Weight Selection
 # ---------------------------------------------------------------------------
+
 
 def _select_weights(
     news_payload: NewsScorePayload,
@@ -393,7 +401,7 @@ def _select_weights(
         fundamental=w["fundamental"],
         sector=w["sector"],
         news=w["news"],
-        regime=regime,  # type: ignore[arg-type]
+        regime=regime,
         regime_reason=reason,
     )
 
@@ -401,6 +409,7 @@ def _select_weights(
 # ---------------------------------------------------------------------------
 # 5. Score Calculation and Decision Classification
 # ---------------------------------------------------------------------------
+
 
 def _calculate_final_score(
     fundamental_score: float,
@@ -451,9 +460,7 @@ def _classify_decision(
             f"cross-sectional risk score = {fundamental.raw_risk_score:.1f}/100)."
         )
     elif fs >= 50:
-        reasons.append(
-            f"Moderate fundamental health signal ({fs:.0f}/100 strength)."
-        )
+        reasons.append(f"Moderate fundamental health signal ({fs:.0f}/100 strength).")
     else:
         reasons.append(
             f"Weak fundamental health signal ({fs:.0f}/100 strength; "
@@ -491,8 +498,7 @@ def _classify_decision(
         )
     elif ns >= 40:
         reasons.append(
-            f"Recent news sentiment is neutral ({ns:.0f}/100, "
-            f"articles={news.articles_analyzed})."
+            f"Recent news sentiment is neutral ({ns:.0f}/100, articles={news.articles_analyzed})."
         )
     else:
         reasons.append(
@@ -531,16 +537,16 @@ def _classify_decision(
 
     if decision == "HOLD" and len(risk_alerts) >= 2:
         decision = "WAIT & WATCH"
-        reasons.append(
-            "Decision escalated to WAIT & WATCH due to multiple concurrent risk alerts."
-        )
+        reasons.append("Decision escalated to WAIT & WATCH due to multiple concurrent risk alerts.")
 
     # --- Confidence assessment ---
-    data_sources_available = sum([
-        fundamental.availability == "available",
-        sector.availability == "available",
-        not news.is_fallback_neutral,
-    ])
+    data_sources_available = sum(
+        [
+            fundamental.availability == "available",
+            sector.availability == "available",
+            not news.is_fallback_neutral,
+        ]
+    )
     if data_sources_available == 3:
         confidence: ConfidenceLevel = "high"
     elif data_sources_available == 2:
@@ -572,6 +578,7 @@ def _classify_decision(
 # ---------------------------------------------------------------------------
 # 6. Portfolio-level analysis orchestrator
 # ---------------------------------------------------------------------------
+
 
 def analyze_portfolio_decisions(
     holdings: list[dict[str, Any]],
@@ -647,8 +654,11 @@ def analyze_portfolio_decisions(
                     sector_strength=sector,
                     news=news,
                     applied_weights=AppliedWeights(
-                        fundamental=0.60, sector=0.25, news=0.15,
-                        regime="normal", regime_reason="not_computed",
+                        fundamental=0.60,
+                        sector=0.25,
+                        news=0.15,
+                        regime="normal",
+                        regime_reason="not_computed",
                     ),
                     final_score=50.0,
                     decision="WAIT & WATCH",
@@ -702,7 +712,9 @@ def analyze_portfolio_decisions(
 
     # Portfolio summary
     hold_count = sum(1 for d in decisions if d.decision == "HOLD" and d.status == "analyzed")
-    watch_count = sum(1 for d in decisions if d.decision == "WAIT & WATCH" and d.status == "analyzed")
+    watch_count = sum(
+        1 for d in decisions if d.decision == "WAIT & WATCH" and d.status == "analyzed"
+    )
     sell_count = sum(1 for d in decisions if d.decision == "SELL" and d.status == "analyzed")
     unavail_count = sum(1 for d in decisions if d.status == "unavailable")
 
@@ -712,14 +724,10 @@ def analyze_portfolio_decisions(
     sell_weight = sum(
         float(nh.get("weight") or 0.0) for nh in normalized_holdings if nh["symbol"] in sell_symbols
     )
-    weighted_risk = round(
-        (sell_weight / total_weight * 100.0) if total_weight > 0 else 0.0, 2
-    )
+    weighted_risk = round((sell_weight / total_weight * 100.0) if total_weight > 0 else 0.0, 2)
 
     analyzed = [d for d in decisions if d.status == "analyzed"]
-    avg_score = (
-        round(sum(d.final_score for d in analyzed) / len(analyzed), 2) if analyzed else None
-    )
+    avg_score = round(sum(d.final_score for d in analyzed) / len(analyzed), 2) if analyzed else None
 
     summary = PortfolioDecisionSummary(
         total_stocks=len(decisions),

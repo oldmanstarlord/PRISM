@@ -120,7 +120,8 @@ def load_validated_market_data(
             excluded[instrument.symbol] = "quality_not_evaluated"
             continue
         if quality_row.status == "fail":
-            codes = quality_row.reasons.get("codes", [])
+            raw_codes = quality_row.reasons.get("codes", [])
+            codes = raw_codes if isinstance(raw_codes, list) else [raw_codes]
             excluded[instrument.symbol] = "quality_failed: " + ",".join(map(str, codes))
             continue
         series = _adjusted_series(session, instrument.security_id, effective_cutoff)

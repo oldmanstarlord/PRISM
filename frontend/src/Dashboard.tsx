@@ -318,7 +318,10 @@ export default function Dashboard() {
                         { field: "percentile", label: "Industry percentile" },
                       ] as const
                     ).map((column) => (
-                      <TableCell key={column.field}>
+                      <TableCell
+                        key={column.field}
+                        align={column.field === "divergence" || column.field === "percentile" ? "right" : "left"}
+                      >
                         <TableSortLabel
                           active={sort === column.field}
                           direction={ascending ? "asc" : "desc"}
