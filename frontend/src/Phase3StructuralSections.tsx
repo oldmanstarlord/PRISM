@@ -5,13 +5,8 @@ import {
   Card,
   CardContent,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   InputLabel,
-  LinearProgress,
   MenuItem,
   Paper,
   Select,
@@ -22,7 +17,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Tooltip,
   Typography,
   SvgIcon,
@@ -30,21 +24,7 @@ import {
 } from "@mui/material";
 import { RiskReviewInboxPanel } from "./RiskReviewInboxPanel";
 
-function HubIcon(props: SvgIconProps) {
-  return (
-    <SvgIcon {...props}>
-      <path d="M12 2a3 3 0 0 0-3 3c0 .34.06.67.16.97l-3.2 2.13A3 3 0 0 0 4 8a3 3 0 1 0 3 3c0-.34-.06-.67-.16-.97l3.2-2.13c.3.1.63.16.96.16.34 0 .67-.06.97-.16l3.2 2.13c-.1.3-.17.63-.17.97a3 3 0 1 0 3-3c-.34 0-.67.06-.97.16l-3.2-2.13c.1-.3.17-.63.17-.97a3 3 0 0 0-3-3z" />
-    </SvgIcon>
-  );
-}
 
-function InfoIcon(props: SvgIconProps) {
-  return (
-    <SvgIcon {...props}>
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
-    </SvgIcon>
-  );
-}
 
 function NewsIcon(props: SvgIconProps) {
   return (
@@ -54,22 +34,8 @@ function NewsIcon(props: SvgIconProps) {
   );
 }
 
-function TimelineIcon(props: SvgIconProps) {
-  return (
-    <SvgIcon {...props}>
-      <path d="M23 8c0 1.1-.9 2-2 2-.18 0-.35-.02-.51-.07l-3.56 3.55c.05.16.07.34.07.52 0 1.1-.9 2-2 2s-2-.9-2-2c0-.18.02-.36.07-.52l-2.55-2.55c-.16.05-.34.07-.52.07s-.36-.02-.52-.07l-4.55 4.56c.05.16.07.33.07.51 0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2c.18 0 .35.02.51.07l4.56-4.55C8.02 9.36 8 9.18 8 9c0-1.1.9-2 2-2s2 .9 2 2c0 .18-.02.36-.07.52l2.55 2.55c.16-.05.34-.07.52-.07s.36.02.52.07l3.55-3.56A1.97 1.97 0 0 1 19 8c0-1.1.9-2 2-2s2 .9 2 2z" />
-    </SvgIcon>
-  );
-}
 
 
-function WarningIcon(props: SvgIconProps) {
-  return (
-    <SvgIcon {...props}>
-      <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
-    </SvgIcon>
-  );
-}
 
 import type {
   PortfolioAnalysisResponse,
@@ -95,12 +61,8 @@ export interface StructuralOverviewFinancials {
 export function StructuralMonitoringDashboard({
   monitoring,
   analysis,
-  onRefresh,
   portfolioId,
   financials,
-  marketRegime,
-  newsSummary,
-  onNavigateTab,
 }: {
   monitoring: StructuralMonitoringSnapshot | null;
   analysis?: PortfolioAnalysisResponse | null;
@@ -140,11 +102,6 @@ export function StructuralMonitoringDashboard({
     : analysis?.performance?.max_drawdown != null
       ? analysis.performance.max_drawdown * 100
       : null;
-  const freshness = financials?.dataFreshness ?? monitoring.data_freshness;
-  const asOf = financials?.asOfDate ?? analysis?.envelope.data_cutoff ?? null;
-  const period = financials?.period ?? (
-    analysis ? `${analysis.envelope.lookback_start} to ${analysis.envelope.data_cutoff}` : null
-  );
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>

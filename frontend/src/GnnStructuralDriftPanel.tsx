@@ -3,7 +3,7 @@ import { Alert, Box, Chip, CircularProgress, Paper, Stack, Typography } from "@m
 import { Link } from "react-router-dom";
 
 import { fetchJson, postJson } from "./api";
-import { COLORS, SHADOWS } from "./theme";
+import { COLORS } from "./theme";
 
 interface GnnRun {
   status: "ready" | "research_only" | "stale" | "unavailable";

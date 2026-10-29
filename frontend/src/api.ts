@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 
-export const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
+export const apiBase = import.meta.env.VITE_API_URL ?? "/api/v1";
 
 async function apiFetch(url: string, init: RequestInit): Promise<Response> {
   try {
@@ -8,7 +8,7 @@ async function apiFetch(url: string, init: RequestInit): Promise<Response> {
   } catch (error) {
     if (error instanceof TypeError) {
       throw new Error(
-        `Cannot reach the PRISM API at ${apiBase}. Start both services with ./run.sh from the project root. If the API is already running, check VITE_API_URL and the API's allowed origins.`,
+        `Cannot reach the PRISM API at ${apiBase}. Please try again shortly.`,
         { cause: error },
       );
     }

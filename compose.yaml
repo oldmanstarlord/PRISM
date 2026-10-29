@@ -1,0 +1,35 @@
+x-prism: &prism
+  image: prism:local
+  build:
+    context: .
+    args:
+      VITE_SUPABASE_URL: ${PRISM_SUPABASE_URL:?Set PRISM_SUPABASE_URL in .env}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${PRISM_SUPABASE_PUBLISHABLE_KEY:?Set PRISM_SUPABASE_PUBLISHABLE_KEY in .env}
+  env_file: ${PRISM_ENV_FILE:-.env}
+  environment:
+    PRISM_ENVIRONMENT: production
+    PRISM_LOCAL_AUTH_ENABLED: "false"
+    PORT: "8000"
+
+services:
+  migrate:
+    <<: *prism
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    healthcheck:
+      disable: true
+  app:
+    <<: *prism
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${PRISM_HTTP_PORT:-8080}:8000"
+    volumes:
+      - prism-data:/app/data
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+
+volumes:
+  prism-data:

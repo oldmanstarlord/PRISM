@@ -31,7 +31,9 @@ SECRET_PATTERNS = {
 
 def tracked_files() -> list[Path]:
     output = subprocess.run(
-        ["git", "ls-files", "-z"], check=True, capture_output=True
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+        check=True,
+        capture_output=True,
     ).stdout.decode()
     return [Path(item) for item in output.split("\0") if item]
 

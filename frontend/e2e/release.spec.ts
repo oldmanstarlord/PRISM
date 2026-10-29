@@ -24,6 +24,7 @@ const transaction = {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(
     ({ seededHolding, seededTransaction }) => {
+      sessionStorage.setItem("prism.intro.entered", "true");
       localStorage.setItem("prism_portfolio_holdings", JSON.stringify([seededHolding]));
       localStorage.setItem("prism_portfolio_transactions", JSON.stringify([seededTransaction]));
     },
@@ -60,39 +61,37 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("ten-tab shell, ledger reconciliation, and browser persistence survive reload", async ({
+test("grouped navigation, ledger reconciliation, and browser persistence survive reload", async ({
   page,
 }) => {
   await page.goto("/portfolio");
 
-  const tabNames = [
-    "Structural Overview",
-    "Holdings Dashboard",
-    "Stock Risk Analysis",
-    "Portfolio Risk & History",
-    "Sector Exposure",
-    "Diversification",
-    "Network & Stress (MST)",
-    "News Intelligence",
-    "Transaction Ledger",
-    "AI Insights",
-  ];
-  for (const tabName of tabNames) {
-    await expect(page.getByRole("button", { name: tabName })).toBeVisible();
+  await expect(page.getByRole("button", { name: "1. Holdings", exact: true })).toBeVisible({ timeout: 15_000 });
+  for (const name of ["Overview", "Activity"]) {
+    await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
   }
-
-  await page.getByRole("button", { name: "Transaction Ledger" }).click();
-  await expect(page.getByText(/1 Ledger Events/)).toBeVisible();
+  await page.getByRole("button", { name: "2. Review risk", exact: true }).click();
+  for (const name of ["Summary", "Company risk", "Portfolio risk", "Sectors", "Diversification"]) {
+    await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "3. Research", exact: true }).click();
+  for (const name of ["Portfolio network", "Performance", "Stress testing", "Decision review", "AI insights", "News"]) {
+    await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "1. Holdings", exact: true }).click();
+  await page.getByRole("button", { name: "Activity", exact: true }).click();
+  await expect(page.getByText(/1 transactions · 1 holdings/)).toBeVisible();
   await expect(page.getByText(/Ledger Reconciled/)).toBeVisible();
 
   await page.reload();
-  await page.getByRole("button", { name: "Transaction Ledger" }).click();
-  await expect(page.getByText(/1 Ledger Events/)).toBeVisible();
+  await page.getByRole("button", { name: "Activity", exact: true }).click();
+  await expect(page.getByText(/1 transactions · 1 holdings/)).toBeVisible();
 });
 
 test("snapshot capture persists in IndexedDB and comparison becomes available", async ({ page }) => {
   await page.goto("/portfolio");
-  await page.getByRole("button", { name: "Portfolio Risk & History" }).click();
+  await page.getByRole("button", { name: "2. Review risk", exact: true }).click();
+  await page.getByRole("button", { name: "Portfolio risk", exact: true }).click();
 
   await page.getByRole("button", { name: /Save Snapshot Now/ }).click();
   await page.getByLabel("Snapshot Name").fill("E2E baseline");
@@ -100,18 +99,20 @@ test("snapshot capture persists in IndexedDB and comparison becomes available", 
   await expect(page.getByText("E2E baseline")).toBeVisible();
 
   await page.reload();
-  await page.getByRole("button", { name: "Portfolio Risk & History" }).click();
+  await page.getByRole("button", { name: "2. Review risk", exact: true }).click();
+  await page.getByRole("button", { name: "Portfolio risk", exact: true }).click();
   await expect(page.getByText("E2E baseline")).toBeVisible();
 });
 
 test("provider outages show explicit news and AI availability states", async ({ page }) => {
   await page.goto("/portfolio");
-  await page.getByRole("button", { name: "News Intelligence" }).click();
+  await page.getByRole("button", { name: "3. Research", exact: true }).click();
+  await page.getByRole("button", { name: "News", exact: true }).click();
   await expect(
     page.getByText(/not configured|not loaded|no verified news|unavailable/i).first(),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "AI Insights" }).click();
+  await page.getByRole("button", { name: "AI insights", exact: true }).click();
   await expect(page.getByText(/Inference Notice|unavailable|authentication/i).first()).toBeVisible();
 });
 

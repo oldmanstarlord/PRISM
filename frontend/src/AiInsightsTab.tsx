@@ -20,7 +20,7 @@ import { Link } from "react-router-dom";
 
 import { postJson } from "./api";
 import type { PortfolioHolding } from "./PortfolioManager";
-import { COLORS, SHADOWS } from "./theme";
+import { COLORS } from "./theme";
 import { GnnPortfolioDriftPanel } from "./GnnStructuralDriftPanel";
 
 type OutputStatus =

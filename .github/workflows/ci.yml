@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
 permissions:
@@ -38,8 +37,8 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked --all-groups
-      - run: uv run ruff check backend jobs tests
-      - run: uv run mypy backend jobs
+      - run: uv run ruff check backend jobs tests deploy
+      - run: uv run mypy backend jobs deploy
       - run: uv run alembic upgrade head
       - run: uv run pytest
       - run: uv run alembic upgrade head --sql > migration.sql
@@ -63,3 +62,17 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate Compose configuration
+        env:
+          PRISM_SUPABASE_URL: https://example.supabase.co
+          PRISM_SUPABASE_PUBLISHABLE_KEY: public-test-key
+        run: |
+          cp deploy/compose.env.example .env
+          docker compose config --quiet
+      - name: Build production image
+        run: docker build -t prism:ci .

@@ -68,7 +68,7 @@ interface StockRiskSectionProps {
   loading: boolean;
   onRefresh: () => void;
   decisionMap?: Map<string, StockDecision>;
-  onSelectTab?: (tab: any) => void;
+  onSelectTab?: (tab: "stock-decisions") => void;
 }
 
 export function StockRiskSection({

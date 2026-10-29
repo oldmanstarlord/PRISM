@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
 test('workspace tabs preserve research and adapt to a narrow screen', async ({ page }) => {
   await page.route('**/api/v1/**', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Preview: data service unavailable' }) }));
+  await page.addInitScript(() => sessionStorage.setItem('prism.intro.entered', 'true'));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Explore the market', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Network', exact: true }).click();
-  await expect(page.getByText('Market network', {exact:true})).toBeVisible();
-  await expect(page.getByText('ERR: NETWORK UNAVAILABLE')).toBeVisible();
+  await expect(page.getByRole('tabpanel', { name: 'Network', exact: true }).getByRole('banner')).toBeVisible();
+  await expect(page.getByText(/ERR: NETWORK UNAVAILABLE/)).toBeVisible();
   await page.getByRole('link', { name: 'News', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'News', exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Network', exact: true }).click();

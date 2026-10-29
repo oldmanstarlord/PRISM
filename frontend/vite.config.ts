@@ -10,6 +10,7 @@ export default defineConfig({
     },
   },
   test: {
+    maxWorkers: 2,
     css: { include: /terminal\.css/ },
     environment: "jsdom",
     setupFiles: [],

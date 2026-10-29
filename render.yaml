@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: prism
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: standard
+    healthCheckPath: /api/v1/ready
+    preDeployCommand: alembic upgrade head
+    disk:
+      name: prism-data
+      mountPath: /app/data
+      sizeGB: 10
+    envVars:
+      - key: PRISM_ENVIRONMENT
+        value: production
+      - key: PRISM_LOCAL_AUTH_ENABLED
+        value: "false"
+      - key: PRISM_DATABASE_URL
+        sync: false
+      - key: PRISM_MIGRATION_DATABASE_URL
+        sync: false
+      - key: PRISM_SUPABASE_URL
+        sync: false
+      - key: PRISM_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: PRISM_FIRECRAWL_API_KEY
+        sync: false

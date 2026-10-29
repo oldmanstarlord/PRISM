@@ -721,9 +721,9 @@ export default function StockDecisionEngineTab({
                   </Grid>
 
                   {/* Final Health Score Meter */}
-                  <Grid size={{ xs: 6, sm: 2.5 }}>
+                  <Grid size={{ xs: 6, sm: 2.5 }} sx={{ minWidth: 0, paddingInlineEnd: { sm: "24px" } }}>
                     <Stack spacing={0.5}>
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)", justifyContent: "space-between", alignItems: "baseline" }}>
                         <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontWeight: 600 }}>
                           HEALTH SCORE
                         </Typography>
@@ -757,7 +757,7 @@ export default function StockDecisionEngineTab({
                           },
                         }}
                       />
-                      <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontSize: "var(--text-title)" }}>
+                      <Typography variant="caption" sx={{ color: COLORS.mutedGrey, fontSize: "var(--text-title)", overflowWrap: "anywhere" }}>
                         Regime: {stock.applied_weights.regime} (
                         {Math.round(stock.applied_weights.fundamental * 100)}/
                         {Math.round(stock.applied_weights.sector * 100)}/

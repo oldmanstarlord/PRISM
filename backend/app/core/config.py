@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote, unquote
@@ -22,7 +23,13 @@ class Settings(BaseSettings):
     api_port: int = 8000
     database_url: str
     migration_database_url: str | None = None
-    cors_origins: list[str] = ["http://localhost:5173"]
+    cors_origins: list[str] = Field(
+        default_factory=lambda: (
+            [f"https://{os.environ['RENDER_EXTERNAL_HOSTNAME']}"]
+            if os.getenv("RENDER_EXTERNAL_HOSTNAME")
+            else ["http://localhost:5173"]
+        )
+    )
     supabase_url: str | None = None
     supabase_publishable_key: str | None = None
     local_auth_enabled: bool = False
@@ -42,7 +49,13 @@ class Settings(BaseSettings):
     news_refresh_minutes: int = Field(default=60, ge=5, le=1440)
     news_auto_refresh: bool = True
     sector_auto_refresh: bool = True
-    trusted_hosts: list[str] = ["localhost", "127.0.0.1", "testserver"]
+    trusted_hosts: list[str] = Field(
+        default_factory=lambda: (
+            [os.environ["RENDER_EXTERNAL_HOSTNAME"], "localhost", "127.0.0.1"]
+            if os.getenv("RENDER_EXTERNAL_HOSTNAME")
+            else ["localhost", "127.0.0.1", "testserver"]
+        )
+    )
     max_request_bytes: int = Field(default=1_048_576, ge=1_024, le=10_485_760)
     request_timeout_seconds: float = Field(default=60.0, ge=1.0, le=300.0)
     expensive_rate_limit_requests: int = Field(default=20, ge=1, le=1_000)

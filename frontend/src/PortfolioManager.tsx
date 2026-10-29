@@ -1,5 +1,5 @@
 import { GuidedSteps, ReviewDetails } from "./GuidedReview";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useEffectEvent, useMemo, useState } from "react";
 import { NewsIntelligencePanel } from "./NewsIntelligence";
 import {
   Alert,
@@ -772,6 +772,8 @@ export default function PortfolioManager() {
   useEffect(() => { saveHoldings(holdings); }, [holdings]);
   useEffect(() => { saveTransactions(transactions); }, [transactions]);
 
+  const portfolioSnapshot = useEffectEvent(() => ({ holdings, securities }));
+
   /* ─── Server-Side Persistence & Multi-User Isolation ─── */
   useEffect(() => {
     if (!session?.access_token) {
@@ -789,7 +791,7 @@ export default function PortfolioManager() {
         const ensurePayload = {
           name: "Primary Portfolio",
           input_mode: "quantities",
-          initial_holdings: holdings.map((h) => ({
+          initial_holdings: portfolioSnapshot().holdings.map((h) => ({
             symbol: h.symbol,
             quantity: h.quantity,
             buy_price: h.buyPrice,
@@ -842,7 +844,7 @@ export default function PortfolioManager() {
             realizedPnl: t.realized_pnl !== null ? Number(t.realized_pnl) : undefined,
           }));
           setTransactions(mappedTxs);
-          const derived = deriveHoldingsFromLedger(mappedTxs, securities);
+          const derived = deriveHoldingsFromLedger(mappedTxs, portfolioSnapshot().securities);
           if (derived.holdings.length > 0) {
             setHoldings(derived.holdings);
           }
@@ -864,7 +866,7 @@ export default function PortfolioManager() {
     return () => {
       isMounted = false;
     };
-  }, [session?.access_token]);
+  }, [session?.access_token, refreshNotesCountMap]);
 
   /* Fetch NIFTY 200 universe for autocomplete */
   useEffect(() => {
