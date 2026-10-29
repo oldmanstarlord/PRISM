@@ -22,13 +22,13 @@ it("polls published rankings and reports a paused market without hiding the last
     },
   }));
   vi.stubGlobal("fetch", fetch);
-  await act(async () => { render(<MemoryRouter><Dashboard /></MemoryRouter>); });
+  await act(async () => { render(<MemoryRouter initialEntries={["/?step=companies&horizon=20"]}><Dashboard /></MemoryRouter>); });
   expect(screen.getByText(/Market open · recalculates every 30 minutes/)).toBeInTheDocument();
-  expect(screen.getByText("TCS")).toBeInTheDocument();
+  expect(screen.getByRole("link", {name:"Compare TCS"})).toBeInTheDocument();
   closed = true;
   await act(async () => { vi.advanceTimersByTime(60_000); });
   expect(screen.getByText(/Market closed · signals paused/)).toBeInTheDocument();
   expect(screen.getByText("Provider unavailable; keeping the previous signal")).toBeInTheDocument();
-  expect(screen.getByText("TCS")).toBeInTheDocument();
+  expect(screen.getByRole("link", {name:"Compare TCS"})).toBeInTheDocument();
   expect(fetch.mock.calls.filter(([url]) => url.includes("/rankings"))).toHaveLength(2);
 });

@@ -47,16 +47,16 @@ function formatPercent(val: number | null | undefined, digits = 2): string {
 }
 
 const riskLevelColors: Record<RiskLevel, { bg: string; text: string }> = {
-  Low: { bg: "#DCE9DE", text: "#046A38" },
-  Moderate: { bg: "#E3D7C4", text: "#8A5A00" },
-  High: { bg: "#F6D9CC", text: "#B8321A" },
-  "Very High": { bg: "#F6D9CC", text: "#E34222" },
+  Low: { bg: "var(--line)", text: "var(--up)" },
+  Moderate: { bg: "var(--line)", text: "var(--amber)" },
+  High: { bg: "var(--gray)", text: "var(--down)" },
+  "Very High": { bg: "var(--gray)", text: "var(--down)" },
 };
 
 const trendIcons: Record<string, { icon: string; label: string; color: "success" | "warning" | "error" | "default" }> = {
-  increasing: { icon: "↗ Rising", label: "Rising risk", color: "error" },
+  increasing: { icon: "/ Rising", label: "Rising risk", color: "error" },
   decreasing: { icon: "↘ Cooling", label: "Cooling risk", color: "success" },
-  stable: { icon: "→ Stable", label: "Stable risk", color: "default" },
+  stable: { icon: "/ Stable", label: "Stable risk", color: "default" },
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -83,15 +83,15 @@ export function StockRiskSection({
 
   if (!comprehensiveRisk) {
     return (
-      <Paper sx={{ p: 3, textAlign: "center" }}>
+      <Paper sx={{ p: "var(--space-3)", textAlign: "center" }}>
         <Typography variant="h6" color="text.secondary" gutterBottom>
           Stock Risk Assessment
         </Typography>
-        <Typography color="text.secondary" sx={{ mb: 2 }}>
+        <Typography color="text.secondary" sx={{ mb: "var(--space-2)" }}>
           Multi-window volatility, downside semi-deviation, max drawdown, and explainable scoring for your holdings.
         </Typography>
         <Button variant="contained" onClick={onRefresh} disabled={loading}>
-          {loading ? <CircularProgress size={20} sx={{ color: "#F9EBD7" }} /> : "Calculate Stock Risk"}
+          {loading ? <CircularProgress size={20} sx={{ color: "var(--white)" }} /> : "Calculate Stock Risk"}
         </Button>
       </Paper>
     );
@@ -102,17 +102,17 @@ export function StockRiskSection({
   return (
     <Stack spacing={2}>
       {/* Header & Horizon Controls */}
-      <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}>
+      <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: "var(--space-2)" }}>
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, fontSize: "1.2rem" }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, fontSize: "var(--text-title)" }}>
             Stock-Level Risk Assessment
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.78rem" }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: "var(--text-title)" }}>
             Multi-horizon volatility, market sensitivity (Beta), and explainable 0–100 risk scoring.
           </Typography>
         </Box>
         <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary", fontSize: "0.72rem" }}>
+          <Typography variant="caption" sx={{ fontWeight: 600, color: "text.secondary", fontSize: "var(--text-title)" }}>
             LOOKBACK:
           </Typography>
           {(["1M", "3M", "6M", "1Y"] as const).map((h) => (
@@ -121,7 +121,7 @@ export function StockRiskSection({
               size="small"
               variant={selectedHorizon === h ? "contained" : "outlined"}
               onClick={() => setSelectedHorizon(h)}
-              sx={{ minWidth: 36, py: 0.25, px: 0.8, fontSize: "0.72rem" }}
+              sx={{ minWidth: 36, py: "var(--space-1)", px: "var(--space-1)", fontSize: "var(--text-title)" }}
             >
               {h}
             </Button>
@@ -130,7 +130,7 @@ export function StockRiskSection({
       </Stack>
 
       {/* Main Stock Risk Table */}
-      <Paper sx={{ p: 1.5, overflowX: "auto" }}>
+      <Paper sx={{ p: "var(--space-2)", overflowX: "auto" }}>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -152,15 +152,15 @@ export function StockRiskSection({
           <TableBody>
             {stock_profiles.map((s) => {
               const win = s.windows[selectedHorizon] || s.windows["1Y"];
-              const riskColor = riskLevelColors[s.risk_classification] || { bg: "#E3D7C4", text: "#686B64" };
+              const riskColor = riskLevelColors[s.risk_classification] || { bg: "var(--line)", text: "var(--gray)" };
               const trendInfo = trendIcons[s.recent_risk_change] || trendIcons.stable;
 
               return (
                 <TableRow key={s.symbol} hover>
-                  <TableCell>
+                  <TableCell align="right">
                     <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                      <Typography sx={{ fontWeight: 700 }}>
-                        <Link to={`/companies/${s.symbol}`} style={{ textDecoration: "none", color: "#046A38" }}>
+                      <Typography sx={{ fontWeight: 600 }}>
+                        <Link to={`/companies/${s.symbol}`} style={{ textDecoration: "none", color: "var(--up)" }}>
                           {s.symbol}
                         </Link>
                       </Typography>
@@ -171,11 +171,11 @@ export function StockRiskSection({
                             label="Model: Unusual"
                             sx={{
                               height: 18,
-                              borderRadius: 0,
-                              fontSize: "0.65rem",
-                              fontWeight: 700,
-                              bgcolor: "#F6D9CC",
-                              color: "#B8321A",
+                              borderRadius: "var(--radius)",
+                              fontSize: "var(--text-title)",
+                              fontWeight: 600,
+                              bgcolor: "var(--gray)",
+                              color: "var(--down)",
                               border: "none",
                             }}
                           />
@@ -193,19 +193,19 @@ export function StockRiskSection({
                         const dec = decisionMap.get(s.symbol.toUpperCase())!;
                         const isHold = dec.decision === "HOLD";
                         const isSell = dec.decision === "SELL";
-                        const bg = isHold ? "#046A38" : isSell ? "#E34222" : "#8A5A00";
-                        const icon = isHold ? "✓" : isSell ? "⚠" : "⏳";
+                        const bg = isHold ? "var(--up)" : isSell ? "var(--down)" : "var(--amber)";
+
                         return (
                           <Tooltip
                             title={
-                              <Box sx={{ p: 0.5 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 800, display: "block" }}>
+                              <Box sx={{ p: "var(--space-1)" }}>
+                                <Typography variant="caption" sx={{ fontWeight: 600, display: "block" }}>
                                   {dec.decision} — Health: {dec.final_score.toFixed(1)}/100
                                 </Typography>
                                 <Typography variant="caption" sx={{ display: "block" }}>
                                   Fundamental: {dec.fundamental.fundamental_strength_score.toFixed(0)} | Sector: {dec.sector_strength.sector_strength_score.toFixed(0)} | News: {dec.news.news_score.toFixed(0)}
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: "#E3D7C4", display: "block", mt: 0.5 }}>
+                                <Typography variant="caption" sx={{ color: "var(--line)", display: "block", mt: "var(--space-1)" }}>
                                   Click to view full 3-factor breakdown & analysis
                                 </Typography>
                               </Box>
@@ -214,7 +214,7 @@ export function StockRiskSection({
                           >
                             <Chip
                               size="small"
-                              label={`${icon} ${dec.decision}`}
+                              label={dec.decision}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -223,13 +223,13 @@ export function StockRiskSection({
                               sx={{
                                 cursor: onSelectTab ? "pointer" : "default",
                                 height: 24,
-                                borderRadius: 0,
-                                fontWeight: 800,
-                                fontSize: "0.75rem",
+                                borderRadius: "var(--radius)",
+                                fontWeight: 600,
+                                fontSize: "var(--text-title)",
                                 bgcolor: bg,
-                                color: "#F9EBD7",
-                                boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
-                                "&:hover": { opacity: 0.85 },
+                                color: "var(--white)",
+                                boxShadow: "none",
+                                "&:hover": { opacity: 1 },
                               }}
                             />
                           </Tooltip>
@@ -247,9 +247,9 @@ export function StockRiskSection({
                         sx={{
                           cursor: onSelectTab ? "pointer" : "default",
                           height: 20,
-                          borderRadius: 0,
-                          fontSize: "0.68rem",
-                          bgcolor: "#E3D7C4",
+                          borderRadius: "var(--radius)",
+                          fontSize: "var(--text-title)",
+                          bgcolor: "var(--line)",
                         }}
                       />
                     )}
@@ -261,7 +261,7 @@ export function StockRiskSection({
                       sx={{
                         bgcolor: riskColor.bg,
                         color: riskColor.text,
-                        fontWeight: 700,
+                        fontWeight: 600,
                         border: `1px solid ${riskColor.text}44`,
                       }}
                     />
@@ -289,7 +289,7 @@ export function StockRiskSection({
                         <Typography
                           variant="body2"
                           sx={{
-                            fontWeight: 700,
+                            fontWeight: 600,
                             color: s.unrealized_return >= 0 ? "success.main" : "error.main",
                           }}
                         >
@@ -306,7 +306,7 @@ export function StockRiskSection({
                     )}
                   </TableCell>
                   <TableCell align="center">
-                    <Chip size="small" label={trendInfo.icon} color={trendInfo.color} sx={{ fontSize: "0.72rem" }} />
+                    <Chip size="small" label={trendInfo.icon} color={trendInfo.color} sx={{ fontSize: "var(--text-title)" }} />
                   </TableCell>
                   <TableCell align="center">
                     {s.sector_divergence_20d !== null ? (
@@ -314,7 +314,7 @@ export function StockRiskSection({
                         size="small"
                         label={`${s.sector_divergence_20d > 0 ? "+" : ""}${s.sector_divergence_20d.toFixed(2)}σ`}
                         color={Math.abs(s.sector_divergence_20d) > 2.0 ? "warning" : "default"}
-                        sx={{ fontSize: "0.75rem" }}
+                        sx={{ fontSize: "var(--text-title)" }}
                       />
                     ) : (
                       "—"
@@ -325,13 +325,13 @@ export function StockRiskSection({
                       size="small"
                       onClick={() => setSelectedStock(s)}
                       sx={{
-                        borderRadius: 0,
+                        borderRadius: "var(--radius)",
                         border: "none",
-                        bgcolor: "#E3D7C4",
-                        color: "#292D2A",
+                        bgcolor: "var(--line)",
+                        color: "var(--white)",
                         fontWeight: 600,
-                        boxShadow: "0 2px 4px rgba(41,45,42,0.08)",
-                        "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                        boxShadow: "none",
+                        "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                       }}
                     >
                       Explain
@@ -347,54 +347,54 @@ export function StockRiskSection({
       {/* Deep-Dive Explainable Stock Modal */}
       {selectedStock && (
         <Dialog open onClose={() => setSelectedStock(null)} maxWidth="md" fullWidth>
-          <DialogTitle sx={{ bgcolor: "#E3D7C4", color: "#292D2A", borderBottom: "1px solid rgba(41,45,42,0.08)" }}>
+          <DialogTitle sx={{ bgcolor: "var(--line)", color: "var(--white)", borderBottom: "var(--border-width) solid var(--gray)" }}>
             <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center" }}>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A", fontSize: "1.05rem" }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--white)", fontSize: "var(--text-title)" }}>
                   {selectedStock.symbol} — Explainable Risk Breakdown
                 </Typography>
-                <Typography variant="caption" sx={{ color: "#686B64" }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)" }}>
                   {selectedStock.company_name} · {selectedStock.sector} · {selectedStock.data_coverage}
                 </Typography>
               </Box>
               <Chip
                 label={`${selectedStock.overall_score.toFixed(0)}/100 · ${selectedStock.risk_classification}`}
                 sx={{
-                  bgcolor: riskLevelColors[selectedStock.risk_classification]?.bg || "#E3D7C4",
-                  color: riskLevelColors[selectedStock.risk_classification]?.text || "#292D2A",
-                  fontWeight: 700,
-                  borderRadius: 0,
+                  bgcolor: riskLevelColors[selectedStock.risk_classification]?.bg || "var(--line)",
+                  color: riskLevelColors[selectedStock.risk_classification]?.text || "var(--white)",
+                  fontWeight: 600,
+                  borderRadius: "var(--radius)",
                 }}
               />
             </Stack>
           </DialogTitle>
 
-          <DialogContent sx={{ mt: 2 }}>
+          <DialogContent sx={{ mt: "var(--space-2)" }}>
             <Stack spacing={3}>
               {/* Dynamic Narrative Explanation */}
-              <Alert severity="info" icon={false} sx={{ borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A", border: "none", boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5, color: "#292D2A" }}>
+              <Alert severity="info" icon={false} sx={{ borderRadius: "var(--radius)", bgcolor: "var(--bg)", color: "var(--white)", border: "none", boxShadow: "none" }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: "var(--space-1)", color: "var(--white)" }}>
                   Dynamic Quantitative Explanation
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#292D2A" }}>{selectedStock.narrative_explanation}</Typography>
+                <Typography variant="body2" sx={{ color: "var(--white)" }}>{selectedStock.narrative_explanation}</Typography>
               </Alert>
 
               {/* Primary Risk Drivers */}
               <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: "#292D2A" }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: "var(--space-1)", color: "var(--white)" }}>
                   Primary Identified Risk Drivers:
                 </Typography>
-                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: "var(--space-1)" }}>
                   {selectedStock.primary_drivers.map((d) => (
                     <Chip
                       key={d}
                       label={d}
                       size="small"
                       sx={{
-                        borderRadius: 0,
+                        borderRadius: "var(--radius)",
                         fontWeight: 600,
-                        bgcolor: "#DCE9DE",
-                        color: "#046A38",
+                        bgcolor: "var(--line)",
+                        color: "var(--up)",
                       }}
                     />
                   ))}
@@ -403,7 +403,7 @@ export function StockRiskSection({
 
               {/* 5 Normalized Factor Scores */}
               <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: "var(--space-1)" }}>
                   Configurable Risk Factor Contributions (Sum = {selectedStock.overall_score.toFixed(1)}/100)
                 </Typography>
                 <Table size="small">
@@ -427,14 +427,14 @@ export function StockRiskSection({
                             size="small"
                             label={f.normalized_score.toFixed(1)}
                             color={f.normalized_score > 65 ? "error" : f.normalized_score > 40 ? "warning" : "success"}
-                            sx={{ height: 20, fontSize: "0.75rem" }}
+                            sx={{ height: 20, fontSize: "var(--text-title)" }}
                           />
                         </TableCell>
                         <TableCell align="right">{(f.weight * 100).toFixed(0)}%</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>
                           +{f.contribution.toFixed(2)} pts
                         </TableCell>
-                        <TableCell sx={{ color: "text.secondary", fontSize: "0.85rem" }}>
+                        <TableCell sx={{ color: "text.secondary", fontSize: "var(--text-title)" }}>
                           {f.interpretation}
                         </TableCell>
                       </TableRow>
@@ -445,7 +445,7 @@ export function StockRiskSection({
 
               {/* Multi-Window Comparison Matrix */}
               <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: "var(--space-1)" }}>
                   Multi-Horizon Risk & Performance Matrix (1M, 3M, 6M, 1Y)
                 </Typography>
                 <Table size="small">
@@ -468,7 +468,7 @@ export function StockRiskSection({
                       if (!m) return null;
                       return (
                         <TableRow key={wKey}>
-                          <TableCell sx={{ fontWeight: 700 }}>{wKey}</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>{wKey}</TableCell>
                           <TableCell align="right">{m.observations}</TableCell>
                           <TableCell
                             align="right"
@@ -504,22 +504,22 @@ export function StockRiskSection({
               {/* Since-Purchase Analysis */}
               <Box
                 sx={{
-                  bgcolor: "#F9EBD7",
-                  p: 2,
-                  borderRadius: 0,
+                  bgcolor: "var(--bg)",
+                  p: "var(--space-2)",
+                  borderRadius: "var(--radius)",
                   border: "none",
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                  boxShadow: "none",
                 }}
               >
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: "#292D2A" }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: "var(--space-1)", color: "var(--white)" }}>
                   Position-Level Performance Since Purchase
                 </Typography>
-                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, 1fr)" }, gap: 2 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, 1fr)" }, gap: "var(--space-2)" }}>
                   <Box>
-                    <Typography variant="caption" sx={{ color: "#686B64" }}>
+                    <Typography variant="caption" sx={{ color: "var(--gray)" }}>
                       Purchase Price
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 700, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>
                       {formatCurrency(selectedStock.purchase_price, 2)}
                     </Typography>
                   </Box>
@@ -527,7 +527,7 @@ export function StockRiskSection({
                     <Typography variant="caption" color="text.secondary">
                       Current Price
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
                       {formatCurrency(selectedStock.current_price, 2)}
                     </Typography>
                   </Box>
@@ -538,7 +538,7 @@ export function StockRiskSection({
                     <Typography
                       variant="body1"
                       sx={{
-                        fontWeight: 700,
+                        fontWeight: 600,
                         color:
                           selectedStock.unrealized_return !== null && selectedStock.unrealized_return >= 0
                             ? "success.main"
@@ -552,21 +552,21 @@ export function StockRiskSection({
                     <Typography variant="caption" color="text.secondary">
                       Drawdown Since Purchase
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 700, color: "error.main" }}>
+                    <Typography variant="body1" sx={{ fontWeight: 600, color: "error.main" }}>
                       {selectedStock.drawdown_since_purchase !== null
                         ? `-${selectedStock.drawdown_since_purchase.toFixed(1)}%`
                         : "—"}
                     </Typography>
                   </Box>
                 </Box>
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: "var(--space-1)", display: "block" }}>
                   * Purchase-price comparisons describe your investment position, while volatility, downside risk, and market sensitivity determine the stock's objective risk score.
                 </Typography>
               </Box>
             </Stack>
           </DialogContent>
 
-          <DialogActions sx={{ p: 2 }}>
+          <DialogActions sx={{ p: "var(--space-2)" }}>
             <Button onClick={() => setSelectedStock(null)}>Close</Button>
           </DialogActions>
         </Dialog>
@@ -594,27 +594,27 @@ export function PortfolioRiskSection({
 }: PortfolioRiskSectionProps) {
   if (!comprehensiveRisk) {
     return (
-      <Paper sx={{ p: 3, textAlign: "center" }}>
+      <Paper sx={{ p: "var(--space-3)", textAlign: "center" }}>
         <Typography variant="h6" color="text.secondary" gutterBottom>
           Portfolio Risk Analytics
         </Typography>
-        <Typography color="text.secondary" sx={{ mb: 2 }}>
+        <Typography color="text.secondary" sx={{ mb: "var(--space-2)" }}>
           Annualized covariance volatility, historical drawdown, portfolio beta, and Euler risk decomposition.
         </Typography>
         <Button variant="contained" onClick={onRefresh} disabled={loading}>
-          {loading ? <CircularProgress size={20} sx={{ color: "#F9EBD7" }} /> : "Calculate Portfolio Risk"}
+          {loading ? <CircularProgress size={20} sx={{ color: "var(--white)" }} /> : "Calculate Portfolio Risk"}
         </Button>
       </Paper>
     );
   }
 
   const { portfolio_profile } = comprehensiveRisk;
-  const pRiskColor = riskLevelColors[portfolio_profile.portfolio_classification] || { bg: "#E3D7C4", text: "#686B64" };
+  const pRiskColor = riskLevelColors[portfolio_profile.portfolio_classification] || { bg: "var(--line)", text: "var(--gray)" };
 
   return (
     <Stack spacing={3}>
       <Box>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+        <Typography variant="h4" sx={{ fontWeight: 600 }}>
           Portfolio-Level Risk Analysis
         </Typography>
         <Typography color="text.secondary">
@@ -625,29 +625,29 @@ export function PortfolioRiskSection({
       {/* Top Metric KPI Cards */}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
         {/* Card 1: Portfolio Risk Score */}
-        <Paper sx={{ p: 2.5, flex: "1 1 200px" }}>
+        <Paper sx={{ p: "var(--space-3)", flex: "1 1 200px" }}>
           <Typography variant="overline" color="text.secondary">
             Overall Portfolio Risk
           </Typography>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mt: 0.5 }}>
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mt: "var(--space-1)" }}>
             <Box
               sx={{
                 width: 52,
                 height: 52,
-                borderRadius: 0,
+                borderRadius: "var(--radius)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 bgcolor: pRiskColor.bg,
-                boxShadow: "0 2px 6px rgba(41,45,42,0.10)",
+                boxShadow: "none",
               }}
             >
-              <Typography sx={{ fontWeight: 800, color: pRiskColor.text, fontSize: "1.2rem" }}>
+              <Typography sx={{ fontWeight: 600, color: pRiskColor.text, fontSize: "var(--text-title)" }}>
                 {portfolio_profile.portfolio_risk_score.toFixed(0)}
               </Typography>
             </Box>
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: pRiskColor.text }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: pRiskColor.text }}>
                 {portfolio_profile.portfolio_classification} Risk
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -658,11 +658,11 @@ export function PortfolioRiskSection({
         </Paper>
 
         {/* Card 2: Annualized Volatility */}
-        <Paper sx={{ p: 2.5, flex: "1 1 180px" }}>
+        <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px" }}>
           <Typography variant="overline" color="text.secondary">
             Portfolio Volatility
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {portfolio_profile.annualized_volatility.toFixed(1)}%
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -671,11 +671,11 @@ export function PortfolioRiskSection({
         </Paper>
 
         {/* Card 3: Downside Volatility */}
-        <Paper sx={{ p: 2.5, flex: "1 1 180px" }}>
+        <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px" }}>
           <Typography variant="overline" color="text.secondary">
             Downside Volatility
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {portfolio_profile.downside_volatility.toFixed(1)}%
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -684,11 +684,11 @@ export function PortfolioRiskSection({
         </Paper>
 
         {/* Card 4: Historical Maximum Drawdown */}
-        <Paper sx={{ p: 2.5, flex: "1 1 180px" }}>
+        <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px" }}>
           <Typography variant="overline" color="text.secondary">
             Max Drawdown
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: "error.main" }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, color: "error.main" }}>
             -{portfolio_profile.max_drawdown.toFixed(1)}%
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -697,11 +697,11 @@ export function PortfolioRiskSection({
         </Paper>
 
         {/* Card 5: Portfolio Beta */}
-        <Paper sx={{ p: 2.5, flex: "1 1 180px" }}>
+        <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px" }}>
           <Typography variant="overline" color="text.secondary">
             Portfolio Beta (vs NIFTY 50)
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {portfolio_profile.portfolio_beta.toFixed(2)}
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -713,10 +713,10 @@ export function PortfolioRiskSection({
 
 
       {/* Holding Euler Risk Contributions Table */}
-      <Paper sx={{ p: 3, overflowX: "auto" }}>
-        <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, mb: 1, gap: 1 }}>
+      <Paper sx={{ p: "var(--space-3)", overflowX: "auto" }}>
+        <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, mb: "var(--space-1)", gap: "var(--space-1)" }}>
           <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            <Typography variant="h5" sx={{ fontWeight: 600 }}>
               Holding Risk Contribution (Euler Decomposition)
             </Typography>
             <Typography color="text.secondary" variant="body2">
@@ -725,7 +725,7 @@ export function PortfolioRiskSection({
           </Box>
         </Stack>
 
-        <Table size="small" sx={{ mt: 1 }}>
+        <Table size="small" sx={{ mt: "var(--space-1)" }}>
           <TableHead>
             <TableRow>
               <TableCell>Symbol</TableCell>
@@ -745,36 +745,36 @@ export function PortfolioRiskSection({
                 const isHedge = (rc.component_risk !== undefined && rc.component_risk < 0) || rc.risk_contribution_share < 0;
                 return (
                   <TableRow key={rc.symbol} hover>
-                    <TableCell sx={{ fontWeight: 700 }}>
-                      <Link to={`/companies/${rc.symbol}`} style={{ textDecoration: "none", color: "#046A38" }}>
+                    <TableCell sx={{ fontWeight: 600 }}>
+                      <Link to={`/companies/${rc.symbol}`} style={{ textDecoration: "none", color: "var(--up)" }}>
                         {rc.symbol}
                       </Link>
                       {isHedge && (
                         <Chip
                           label="HEDGE"
                           size="small"
-                          sx={{ ml: 1, bgcolor: "#DCE9DE", color: "#046A38", fontWeight: 700, height: 18, fontSize: "0.65rem", borderRadius: 0 }}
+                          sx={{ ml: "var(--space-1)", bgcolor: "var(--line)", color: "var(--up)", fontWeight: 600, height: 18, fontSize: "var(--text-title)", borderRadius: "var(--radius)" }}
                         />
                       )}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontFamily: "JetBrains Mono, monospace" }}>{(rc.weight * 100).toFixed(1)}%</TableCell>
-                    <TableCell align="right" sx={{ fontFamily: "JetBrains Mono, monospace" }}>{(rc.annualized_volatility * 100).toFixed(1)}%</TableCell>
-                    <TableCell align="right" sx={{ fontFamily: "JetBrains Mono, monospace" }}>{(rc.marginal_risk * 100).toFixed(1)}%</TableCell>
-                    <TableCell align="right" sx={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 600 }}>
+                    <TableCell align="right" sx={{ fontFamily: "var(--font-data)" }}>{(rc.weight * 100).toFixed(1)}%</TableCell>
+                    <TableCell align="right" sx={{ fontFamily: "var(--font-data)" }}>{(rc.annualized_volatility * 100).toFixed(1)}%</TableCell>
+                    <TableCell align="right" sx={{ fontFamily: "var(--font-data)" }}>{(rc.marginal_risk * 100).toFixed(1)}%</TableCell>
+                    <TableCell align="right" sx={{ fontFamily: "var(--font-data)", fontWeight: 600 }}>
                       {rc.component_risk !== undefined ? `${(rc.component_risk * 100).toFixed(2)}%` : "—"}
                     </TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, fontFamily: "JetBrains Mono, monospace" }}>
+                    <TableCell align="right" sx={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                       {rc.risk_contribution_share.toFixed(1)}%
                     </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <TableCell align="right">
+                      <Box sx={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
                         <LinearProgress
                           variant="determinate"
                           value={Math.min(Math.max(rc.risk_contribution_share, 0), 100)}
                           color={rc.risk_contribution_share > 35 ? "error" : rc.risk_contribution_share > 20 ? "warning" : "primary"}
-                          sx={{ flex: 1, height: 8, borderRadius: 0 }}
+                          sx={{ flex: 1, height: 8, borderRadius: "var(--radius)" }}
                         />
-                        <Typography variant="caption" sx={{ minWidth: 35, fontWeight: 700, fontFamily: "JetBrains Mono, monospace" }}>
+                        <Typography variant="caption" sx={{ minWidth: 35, fontWeight: 600, fontFamily: "var(--font-data)" }}>
                           {rc.risk_contribution_share.toFixed(0)}%
                         </Typography>
                       </Box>
@@ -796,12 +796,12 @@ export function PortfolioRiskSection({
           const sumShares = portfolio_profile.risk_contributions.reduce((acc, r) => acc + r.risk_contribution_share, 0);
 
           return (
-            <Box sx={{ mt: 2, p: 1.5, bgcolor: "#E3D7C4", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 1 }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
+            <Box sx={{ mt: "var(--space-2)", p: "var(--space-2)", bgcolor: "var(--line)", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "var(--space-1)" }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>
                 Euler Reconciliation: Σ Component Volatilities = {sumCompVol.toFixed(2)}% vs Portfolio Volatility = {portVol.toFixed(2)}%
                 {" "}(Residual: {residual < 1e-4 ? "< 0.0001%" : `${residual.toFixed(4)}%`})
               </Typography>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>
                 Total Risk Share: {sumShares.toFixed(1)}% / 100.0%
               </Typography>
             </Box>
@@ -811,39 +811,39 @@ export function PortfolioRiskSection({
 
       {/* Historical Performance & Drawdown Chart if analysis is available */}
       {analysis?.performance && analysis.performance.points.length > 0 && (
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+        <Paper sx={{ p: "var(--space-3)" }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
             Simulated 250-Day Portfolio Performance & Drawdown
           </Typography>
           <Typography color="text.secondary" gutterBottom>
             Constant-weight daily-rebalanced equity curve (base = 100) and historical drawdown profile.
           </Typography>
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: "var(--space-2)" }}>
             <PortfolioPerformanceMiniChart points={analysis.performance.points} />
           </Box>
         </Paper>
       )}
 
       {/* Methodology & Documentation rendered from Methodology Registry */}
-      <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+      <Paper sx={{ p: "var(--space-3)", borderRadius: "var(--radius)", border: "none", bgcolor: "var(--bg)", boxShadow: "none" }}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: "var(--space-1)" }}>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Methodology & Mathematical Invariants
           </Typography>
-          <Chip label="Methodology v1.0.0" size="small" sx={{ bgcolor: "#E3D7C4", color: "#292D2A", fontWeight: 700, borderRadius: 0 }} />
+          <Chip label="Methodology v1.0.0" size="small" sx={{ bgcolor: "var(--line)", color: "var(--white)", fontWeight: 600, borderRadius: "var(--radius)" }} />
         </Stack>
 
-        <Typography variant="body2" sx={{ mb: 2, color: "#686B64" }}>
+        <Typography variant="body2" sx={{ mb: "var(--space-2)", color: "var(--gray)" }}>
           PRISM risk calculations adhere to strict quantitative specifications. All metrics below are rendered directly from the authoritative methodology registry:
         </Typography>
 
         <Stack spacing={2}>
           {/* Return Construction Note */}
-          <Box sx={{ p: 2, bgcolor: "#E3D7C4" }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
+          <Box sx={{ p: "var(--space-2)", bgcolor: "var(--line)" }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)" }}>
               Return Construction: Daily-Rebalanced vs Buy-and-Hold
             </Typography>
-            <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5 }}>
+            <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)" }}>
               • <strong>Constant-Weight Daily Rebalanced:</strong> Used for covariance matrices, volatility, beta, and historical VaR/CVaR (r_p,t = Σ w_i r_i,t).
               <br />
               • <strong>Buy-and-Hold Wealth Series:</strong> Used for drawdown and actual performance equity curves (W_t = Σ N_i P_i,t).
@@ -866,23 +866,23 @@ export function PortfolioRiskSection({
             .map((k) => METRIC_REGISTRY[k])
             .filter(Boolean)
             .map((metric) => (
-              <Box key={metric.name} sx={{ pb: 1.5, borderBottom: "1px solid rgba(41,45,42,0.08)" }}>
+              <Box key={metric.name} sx={{ pb: "var(--space-2)", borderBottom: "var(--border-width) solid var(--gray)" }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)" }}>
                     {metric.label ?? metric.name}
                   </Typography>
-                  <Chip label={metric.units} size="small" sx={{ bgcolor: "#F6D9CC", color: "#B8321A", fontSize: "0.65rem", height: 18, borderRadius: 0 }} />
+                  <Chip label={metric.units} size="small" sx={{ bgcolor: "var(--gray)", color: "var(--down)", fontSize: "var(--text-title)", height: 18, borderRadius: "var(--radius)" }} />
                   <Typography variant="caption" color="text.secondary">
                     Window: {metric.window ?? metric.defaultWindow} (min {metric.min_observations ?? metric.minObservations} obs)
                   </Typography>
                 </Stack>
-                <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)" }}>
                   {metric.definition}
                 </Typography>
-                <Typography variant="caption" sx={{ fontFamily: "JetBrains Mono, monospace", color: "#686B64", display: "block", mt: 0.5 }}>
+                <Typography variant="caption" sx={{ fontFamily: "var(--font-data)", color: "var(--gray)", display: "block", mt: "var(--space-1)" }}>
                   Formula: {metric.formula ?? metric.formulaPlain}
                 </Typography>
-                <Typography variant="caption" sx={{ color: "#8A5A00", display: "block", mt: 0.25 }}>
+                <Typography variant="caption" sx={{ color: "var(--amber)", display: "block", mt: "var(--space-1)" }}>
                   Limitations: {Array.isArray(metric.limitations) ? metric.limitations.join("; ") : metric.limitations}
                 </Typography>
               </Box>
@@ -906,15 +906,15 @@ interface SectorExposureSectionProps {
 export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }: SectorExposureSectionProps) {
   if (!comprehensiveRisk) {
     return (
-      <Paper sx={{ p: 6, textAlign: "center" }}>
+      <Paper sx={{ p: "var(--space-4)", textAlign: "center" }}>
         <Typography variant="h5" color="text.secondary" gutterBottom>
           Sector Exposure & Concentration
         </Typography>
-        <Typography color="text.secondary" sx={{ mb: 2 }}>
+        <Typography color="text.secondary" sx={{ mb: "var(--space-2)" }}>
           Sector allocation weights, benchmark limits, and sector-related risk contribution shares.
         </Typography>
         <Button variant="contained" onClick={onRefresh} disabled={loading}>
-          {loading ? <CircularProgress size={20} sx={{ color: "#F9EBD7" }} /> : "Analyze Sector Exposure"}
+          {loading ? <CircularProgress size={20} sx={{ color: "var(--white)" }} /> : "Analyze Sector Exposure"}
         </Button>
       </Paper>
     );
@@ -926,7 +926,7 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
   return (
     <Stack spacing={3}>
       <Box>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+        <Typography variant="h4" sx={{ fontWeight: 600 }}>
           Sector Exposure & Concentration Analysis
         </Typography>
         <Typography color="text.secondary">
@@ -936,11 +936,11 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
 
       {/* Sector KPI Summary Cards */}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-        <Paper sx={{ p: 2.5, flex: 1 }}>
+        <Paper sx={{ p: "var(--space-3)", flex: 1 }}>
           <Typography variant="overline" color="text.secondary">
             Effective Number of Sectors
           </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          <Typography variant="h4" sx={{ fontWeight: 600 }}>
             {portfolio_profile.effective_sectors.toFixed(1)}
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -948,11 +948,11 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
           </Typography>
         </Paper>
 
-        <Paper sx={{ p: 2.5, flex: 1 }}>
+        <Paper sx={{ p: "var(--space-3)", flex: 1 }}>
           <Typography variant="overline" color="text.secondary">
             Sector HHI Index
           </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          <Typography variant="h4" sx={{ fontWeight: 600 }}>
             {portfolio_profile.sector_hhi.toFixed(3)}
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -960,14 +960,14 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
           </Typography>
         </Paper>
 
-        <Paper sx={{ p: 2.5, flex: 1 }}>
+        <Paper sx={{ p: "var(--space-3)", flex: 1 }}>
           <Typography variant="overline" color="text.secondary">
             Top Sector Allocation
           </Typography>
           <Typography
             variant="h4"
             sx={{
-              fontWeight: 700,
+              fontWeight: 600,
               color: sectors[0]?.weight > 35 ? "error.main" : sectors[0]?.weight > 25 ? "warning.main" : "text.primary",
             }}
           >
@@ -980,15 +980,15 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
       </Stack>
 
       {/* Sector Breakdown Table */}
-      <Paper sx={{ p: 3, overflowX: "auto" }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+      <Paper sx={{ p: "var(--space-3)", overflowX: "auto" }}>
+        <Typography variant="h5" sx={{ fontWeight: 600 }}>
           Industry Weights vs Risk Contribution Share
         </Typography>
         <Typography color="text.secondary" gutterBottom>
           Compares capital allocation with actual Euler risk contribution. Disproportionate risk shares indicate high-volatility sectors.
         </Typography>
 
-        <Table size="small" sx={{ mt: 1 }}>
+        <Table size="small" sx={{ mt: "var(--space-1)" }}>
           <TableHead>
             <TableRow>
               <TableCell>Industry Sector</TableCell>
@@ -1012,8 +1012,8 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
 
               return (
                 <TableRow key={sec.sector} hover>
-                  <TableCell sx={{ fontWeight: 700 }}>{sec.sector}</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  <TableCell sx={{ fontWeight: 600 }}>{sec.sector}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
                     {sec.weight.toFixed(1)}%
                   </TableCell>
                   <TableCell align="right" sx={{ color: "text.secondary" }}>
@@ -1025,7 +1025,7 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
                   <TableCell
                     align="right"
                     sx={{
-                      fontWeight: 700,
+                      fontWeight: 600,
                       color: sec.risk_contribution_share > sec.weight * 1.25 ? "error.main" : "inherit",
                     }}
                   >
@@ -1033,7 +1033,7 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
                   </TableCell>
                   <TableCell align="center">{sec.stock_count}</TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: 0.5 }}>
+                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: "var(--space-1)" }}>
                       {sec.stocks.map((sym: string) => (
                         <Chip
                           key={sym}
@@ -1044,12 +1044,12 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
                           clickable
                           sx={{
                             textDecoration: "none",
-                            borderRadius: 0,
+                            borderRadius: "var(--radius)",
                             border: "none",
-                            bgcolor: "#F9EBD7",
-                            color: "#292D2A",
+                            bgcolor: "var(--bg)",
+                            color: "var(--white)",
                             fontWeight: 600,
-                            "&:hover": { bgcolor: "#E3D7C4" },
+                            "&:hover": { bgcolor: "var(--line)" },
                           }}
                         />
                       ))}
@@ -1061,7 +1061,7 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
                         size="small"
                         label={`${sec.average_sector_divergence > 0 ? "+" : ""}${sec.average_sector_divergence.toFixed(2)}σ`}
                         color={Math.abs(sec.average_sector_divergence) > 1.5 ? "warning" : "default"}
-                        sx={{ fontSize: "0.75rem" }}
+                        sx={{ fontSize: "var(--text-title)" }}
                       />
                     ) : (
                       "—"
@@ -1075,14 +1075,14 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
       </Paper>
 
       {/* Visual Weight vs Risk Contribution Comparison */}
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }} gutterBottom>
+      <Paper sx={{ p: "var(--space-3)" }}>
+        <Typography variant="h6" sx={{ fontWeight: 600 }} gutterBottom>
           Capital Allocation vs Risk Contribution by Sector
         </Typography>
-        <Stack spacing={2} sx={{ mt: 2 }}>
+        <Stack spacing={2} sx={{ mt: "var(--space-2)" }}>
           {sectors.map((sec: SectorExposureItem) => (
             <Box key={sec.sector}>
-              <Stack direction="row" sx={{ justifyContent: "space-between", mb: 0.5 }}>
+              <Stack direction="row" sx={{ justifyContent: "space-between", mb: "var(--space-1)" }}>
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>
                   {sec.sector}
                 </Typography>
@@ -1090,26 +1090,26 @@ export function SectorExposureSection({ comprehensiveRisk, loading, onRefresh }:
                   Weight: {sec.weight.toFixed(1)}% | Risk Share: {sec.risk_contribution_share.toFixed(1)}%
                 </Typography>
               </Stack>
-              <Box sx={{ display: "flex", gap: 1 }}>
+              <Box sx={{ display: "flex", gap: "var(--space-1)" }}>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" sx={{ fontSize: "0.68rem", color: "#686B64" }}>
+                  <Typography variant="caption" sx={{ fontSize: "var(--text-title)", color: "var(--gray)" }}>
                     Capital:
                   </Typography>
                   <LinearProgress
                     variant="determinate"
                     value={Math.min(sec.weight, 100)}
-                    sx={{ height: 6, borderRadius: 0 }}
+                    sx={{ height: 6, borderRadius: "var(--radius)" }}
                     color="primary"
                   />
                 </Box>
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="caption" sx={{ fontSize: "0.68rem", color: "#686B64" }}>
+                  <Typography variant="caption" sx={{ fontSize: "var(--text-title)", color: "var(--gray)" }}>
                     Risk Contribution:
                   </Typography>
                   <LinearProgress
                     variant="determinate"
                     value={Math.min(Math.max(sec.risk_contribution_share, 0), 100)}
-                    sx={{ height: 6, borderRadius: 0 }}
+                    sx={{ height: 6, borderRadius: "var(--radius)" }}
                     color={sec.risk_contribution_share > sec.weight ? "warning" : "success"}
                   />
                 </Box>
@@ -1139,15 +1139,15 @@ export function DiversificationSection({
 }: DiversificationSectionProps) {
   if (!comprehensiveRisk) {
     return (
-      <Paper sx={{ p: 6, textAlign: "center" }}>
+      <Paper sx={{ p: "var(--space-4)", textAlign: "center" }}>
         <Typography variant="h5" color="text.secondary" gutterBottom>
           Diversification Index & Correlation Matrix
         </Typography>
-        <Typography color="text.secondary" sx={{ mb: 2 }}>
+        <Typography color="text.secondary" sx={{ mb: "var(--space-2)" }}>
           Comprehensive multi-asset diversification scoring, HHI effective holdings, and co-movement matrix.
         </Typography>
         <Button variant="contained" onClick={onRefresh} disabled={loading}>
-          {loading ? <CircularProgress size={20} sx={{ color: "#F9EBD7" }} /> : "Compute Diversification Index"}
+          {loading ? <CircularProgress size={20} sx={{ color: "var(--white)" }} /> : "Compute Diversification Index"}
         </Button>
       </Paper>
     );
@@ -1155,19 +1155,19 @@ export function DiversificationSection({
 
   const { portfolio_profile } = comprehensiveRisk;
   const gradeColors: Record<string, { bg: string; text: string }> = {
-    A: { bg: "#DCE9DE", text: "#046A38" },
-    B: { bg: "#E3D7C4", text: "#046A38" },
-    C: { bg: "#F9EBD7", text: "#8A5A00" },
-    D: { bg: "#F6D9CC", text: "#B8321A" },
+    A: { bg: "var(--line)", text: "var(--up)" },
+    B: { bg: "var(--line)", text: "var(--up)" },
+    C: { bg: "var(--bg)", text: "var(--amber)" },
+    D: { bg: "var(--gray)", text: "var(--down)" },
   };
-  const gColor = gradeColors[portfolio_profile.diversification_grade] || { bg: "#E3D7C4", text: "#292D2A" };
+  const gColor = gradeColors[portfolio_profile.diversification_grade] || { bg: "var(--line)", text: "var(--white)" };
 
   const symbols = Object.keys(portfolio_profile.correlation_matrix);
 
   return (
     <Stack spacing={3}>
       <Box>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+        <Typography variant="h4" sx={{ fontWeight: 600 }}>
           Portfolio Diversification Assessment
         </Typography>
         <Typography color="text.secondary">
@@ -1178,29 +1178,29 @@ export function DiversificationSection({
       {/* Diversification Score & Metrics Cards */}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
         {/* Card 1: Diversification Score */}
-        <Paper sx={{ p: 2.5, flex: "1 1 240px" }}>
+        <Paper sx={{ p: "var(--space-3)", flex: "1 1 240px" }}>
           <Typography variant="overline" color="text.secondary">
             Diversification Score (0–100)
           </Typography>
-          <Stack direction="row" spacing={2} sx={{ alignItems: "center", mt: 0.5 }}>
+          <Stack direction="row" spacing={2} sx={{ alignItems: "center", mt: "var(--space-1)" }}>
             <Box
               sx={{
                 width: 56,
                 height: 56,
-                borderRadius: 0,
+                borderRadius: "var(--radius)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 bgcolor: gColor.bg,
-                boxShadow: "0 2px 6px rgba(41,45,42,0.10)",
+                boxShadow: "none",
               }}
             >
-              <Typography sx={{ fontWeight: 800, color: gColor.text, fontSize: "1.3rem" }}>
+              <Typography sx={{ fontWeight: 600, color: gColor.text, fontSize: "var(--text-title)" }}>
                 {portfolio_profile.diversification_grade}
               </Typography>
             </Box>
             <Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: gColor.text }}>
+              <Typography variant="h5" sx={{ fontWeight: 600, color: gColor.text }}>
                 {portfolio_profile.diversification_score.toFixed(0)} / 100
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -1211,11 +1211,11 @@ export function DiversificationSection({
         </Paper>
 
         {/* Card 2: Effective Holdings */}
-        <Paper sx={{ p: 2.5, flex: "1 1 180px" }}>
+        <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px" }}>
           <Typography variant="overline" color="text.secondary">
             Effective Holdings
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {portfolio_profile.effective_holdings.toFixed(2)}
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -1224,11 +1224,11 @@ export function DiversificationSection({
         </Paper>
 
         {/* Card 3: Effective Sectors */}
-        <Paper sx={{ p: 2.5, flex: "1 1 180px" }}>
+        <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px" }}>
           <Typography variant="overline" color="text.secondary">
             Effective Sectors
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {portfolio_profile.effective_sectors.toFixed(2)}
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -1237,11 +1237,11 @@ export function DiversificationSection({
         </Paper>
 
         {/* Card 4: Diversification Ratio */}
-        <Paper sx={{ p: 2.5, flex: "1 1 180px" }}>
+        <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px" }}>
           <Typography variant="overline" color="text.secondary">
             Diversification Ratio
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: "primary.main" }}>
+          <Typography variant="h5" sx={{ fontWeight: 600, color: "primary.main" }}>
             {portfolio_profile.diversification_ratio.toFixed(2)}x
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -1252,28 +1252,28 @@ export function DiversificationSection({
 
       {/* Qualitative Interpretation */}
       <Alert severity={portfolio_profile.diversification_score >= 60 ? "success" : "warning"} icon={false}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: "var(--space-1)" }}>
           Diversification Rating: {portfolio_profile.diversification_grade} Grade ({portfolio_profile.diversification_score.toFixed(0)}/100)
         </Typography>
         <Typography variant="body2">{portfolio_profile.diversification_interpretation}</Typography>
       </Alert>
 
       {/* Pairwise Holdings Correlation Matrix Heatmap */}
-      <Paper sx={{ p: 3, overflowX: "auto" }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+      <Paper sx={{ p: "var(--space-3)", overflowX: "auto" }}>
+        <Typography variant="h5" sx={{ fontWeight: 600 }}>
           Holdings Return Correlation Matrix
         </Typography>
         <Typography color="text.secondary" gutterBottom>
           Pearson correlation coefficients of daily adjusted closing returns over trailing 252 trading days.
         </Typography>
 
-        <Box sx={{ mt: 2, overflowX: "auto" }}>
+        <Box sx={{ mt: "var(--space-2)", overflowX: "auto" }}>
           <Table size="small" sx={{ minWidth: 400 }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700, bgcolor: "#E3D7C4", color: "#292D2A", borderBottom: "none" }}>Symbol</TableCell>
+                <TableCell sx={{ fontWeight: 600, bgcolor: "var(--line)", color: "var(--white)", borderBottom: "none" }}>Symbol</TableCell>
                 {symbols.map((sym) => (
-                  <TableCell key={sym} align="center" sx={{ fontWeight: 700, bgcolor: "#E3D7C4", color: "#292D2A", borderBottom: "none" }}>
+                  <TableCell key={sym} align="center" sx={{ fontWeight: 600, bgcolor: "var(--line)", color: "var(--white)", borderBottom: "none" }}>
                     {sym}
                   </TableCell>
                 ))}
@@ -1281,25 +1281,25 @@ export function DiversificationSection({
             </TableHead>
             <TableBody>
               {symbols.map((rowSym) => (
-                <TableRow key={rowSym} hover sx={{ "&:hover": { bgcolor: "#E3D7C4" } }}>
-                  <TableCell sx={{ fontWeight: 700, bgcolor: "#E3D7C4", color: "#292D2A", borderBottom: "none" }}>{rowSym}</TableCell>
+                <TableRow key={rowSym} hover sx={{ "&:hover": { bgcolor: "var(--line)" } }}>
+                  <TableCell sx={{ fontWeight: 600, bgcolor: "var(--line)", color: "var(--white)", borderBottom: "none" }}>{rowSym}</TableCell>
                   {symbols.map((colSym) => {
                     const corr = portfolio_profile.correlation_matrix[rowSym]?.[colSym] ?? 0;
                     // Color gradient: 1.0 (self) is Sand Beige; high correlation (>0.6) is Pale Terracotta/Vermilion, low/negative (<0.3) is Pale Sage/Emerald
-                    let cellBg = "#F9EBD7";
-                    let cellColor = "#292D2A";
+                    let cellBg = "var(--bg)";
+                    let cellColor = "var(--white)";
                     if (rowSym === colSym) {
-                      cellBg = "#E3D7C4";
-                      cellColor = "#686B64";
+                      cellBg = "var(--line)";
+                      cellColor = "var(--gray)";
                     } else if (corr > 0.65) {
-                      cellBg = "#F6D9CC";
-                      cellColor = "#B8321A";
+                      cellBg = "var(--gray)";
+                      cellColor = "var(--down)";
                     } else if (corr > 0.45) {
-                      cellBg = "#E3D7C4";
-                      cellColor = "#8A5A00";
+                      cellBg = "var(--line)";
+                      cellColor = "var(--amber)";
                     } else if (corr < 0.25) {
-                      cellBg = "#DCE9DE";
-                      cellColor = "#046A38";
+                      cellBg = "var(--line)";
+                      cellColor = "var(--up)";
                     }
 
                     return (
@@ -1309,8 +1309,8 @@ export function DiversificationSection({
                         sx={{
                           bgcolor: cellBg,
                           color: cellColor,
-                          fontWeight: 700,
-                          fontSize: "0.82rem",
+                          fontWeight: 600,
+                          fontSize: "var(--text-title)",
                           border: "none",
                         }}
                       >
@@ -1326,14 +1326,14 @@ export function DiversificationSection({
       </Paper>
 
       {/* Normalization & Disclaimer Card */}
-      <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }} gutterBottom>
+      <Paper sx={{ p: "var(--space-3)", borderRadius: "var(--radius)", border: "none", bgcolor: "var(--bg)", boxShadow: "none" }}>
+        <Typography variant="h6" sx={{ fontWeight: 600 }} gutterBottom>
           Diversification Index Formula & Interpretation Notice
         </Typography>
-        <Typography variant="body2" sx={{ mb: 1.5 }}>
+        <Typography variant="body2" sx={{ mb: "var(--space-2)" }}>
           The PRISM 0–100 Diversification Index measures the structural resilience of your portfolio across three dimensions:
         </Typography>
-        <Box component="ul" sx={{ m: 0, pl: 2, mb: 1.5 }}>
+        <Box component="ul" sx={{ m: "var(--space-1)", pl: "var(--space-2)", mb: "var(--space-2)" }}>
           <li>
             <Typography variant="body2">
               <strong>Holding Weight Dispersion (35% weight):</strong> Effective holdings ratio (N_eff / N_total). Penalizes portfolio domination by 1 or 2 mega-positions.
@@ -1397,15 +1397,14 @@ function PortfolioPerformanceMiniChart({
       aria-label="Simulated portfolio index and drawdown history"
       sx={{ width: "100%", height: "auto", display: "block" }}
     >
-      <polyline fill="none" stroke="#046A38" strokeWidth="2.5" points={indexPoly} />
-      <polyline fill="none" stroke="#E34222" strokeWidth="1.8" points={ddPoly} />
-      <text x={left} y={top + 12} fontSize="11" fill="#046A38" fontWeight="bold">
+      <polyline fill="none" stroke="var(--up)" strokeWidth="var(--border-width)" points={indexPoly} />
+      <polyline fill="none" stroke="var(--down)" strokeWidth="var(--border-width)" points={ddPoly} />
+      <text x={left} y={top + 12} fontSize="var(--text-tag)" fill="var(--up)" fontWeight="400">
         Index (Base 100)
       </text>
-      <text x={left} y={mid + 32} fontSize="11" fill="#B8321A" fontWeight="bold">
+      <text x={left} y={mid + 32} fontSize="var(--text-tag)" fill="var(--down)" fontWeight="400">
         Drawdown Profile
       </text>
     </Box>
   );
 }
-

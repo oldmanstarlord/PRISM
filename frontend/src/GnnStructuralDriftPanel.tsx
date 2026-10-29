@@ -52,16 +52,16 @@ interface ExplanationPayload {
 
 function PortfolioEvidence({ data }: { data: ExplanationPayload }) {
   const d = data.diversification;
-  return <Box sx={{ p: 2, bgcolor: "#F9EBD7" }}>
-    <Typography sx={{ fontWeight: 800 }}>Are these holdings moving more alike?</Typography>
+  return <Box sx={{ p: "var(--space-2)", bgcolor: "var(--bg)" }}>
+    <Typography sx={{ fontWeight: 600 }}>Are these holdings moving more alike?</Typography>
     <Typography variant="body2">{d.status === "available"
       ? `Average return correlation moved from ${d.prior!.toFixed(2)} to ${d.current!.toFixed(2)} (${d.change! >= 0 ? "+" : ""}${d.change!.toFixed(2)}). ${d.change! > 0 ? "The covered pairs moved more alike in the recent window." : d.change! < 0 ? "The covered pairs moved less alike in the recent window." : "Average correlation was unchanged."} This alone does not measure total portfolio risk.`
       : "Not enough overlapping price history to compare diversification."}</Typography>
     <Typography variant="caption">Coverage: {d.pairs} of {d.requested_pairs} holding pairs. Equal weight per pair.</Typography>
-    <Box component="details" sx={{ mt: 1 }}><summary>See correlation evidence and method</summary>
+    <Box component="details" sx={{ mt: "var(--space-1)" }}><summary>See correlation evidence and method</summary>
       <Typography variant="body2">{d.method}</Typography>
       {d.status === "available" && <Typography variant="body2">Earlier: {d.prior_start} to {d.prior_end}. Recent: {d.current_start} to {d.current_end}.</Typography>}
-      {d.largest_changes?.map(pair => <Typography variant="body2" key={pair.symbols.join("/")}>{pair.symbols.join(" / ")}: {pair.prior.toFixed(2)} → {pair.current.toFixed(2)}</Typography>)}
+      {d.largest_changes?.map(pair => <Typography variant="body2" key={pair.symbols.join("/")}>{pair.symbols.join(" / ")}: {pair.prior.toFixed(2)} / {pair.current.toFixed(2)}</Typography>)}
       <Typography variant="body2">{data.method}</Typography>
     </Box>
   </Box>;
@@ -70,7 +70,7 @@ function PortfolioEvidence({ data }: { data: ExplanationPayload }) {
 function StockExplanation({ evidence }: { evidence: StockEvidence }) {
   const p = evidence.peer_comparison;
   const h = evidence.persistence;
-  return <Box sx={{ mt: 1 }}>
+  return <Box sx={{ mt: "var(--space-1)" }}>
     <Typography variant="body2">{p.status === "available"
       ? `Five-session return: ${(p.stock_return! * 100).toFixed(2)}%, versus ${(p.peer_median_return! * 100).toFixed(2)}% for the median of ${p.count} industry peers. Gap: ${p.gap! >= 0 ? "+" : ""}${(p.gap! * 100).toFixed(2)} percentage points.`
       : `Peer comparison unavailable: requires this stock's prices and at least three industry peers (${p.count} covered).`}</Typography>
@@ -107,7 +107,7 @@ const alertColors = (level: DriftResult["alert_level"]) =>
   level === "high"
     ? { background: COLORS.paleTerracotta, foreground: COLORS.vermilionText }
     : level === "elevated"
-      ? { background: "#F4E6BC", foreground: "#8A5A00" }
+      ? { background: "var(--amber)", foreground: "var(--amber)" }
       : { background: COLORS.paleSage, foreground: COLORS.emerald };
 
 function RunNotice({ run }: { run: GnnRun }) {
@@ -126,22 +126,22 @@ function RunNotice({ run }: { run: GnnRun }) {
 function DriftCard({ item, linked = true, evidence }: { item: DriftResult; linked?: boolean; evidence?: StockEvidence }) {
   const colors = alertColors(item.alert_level);
   return (
-    <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", borderLeft: `4px solid ${colors.foreground}` }}>
+    <Box sx={{ p: "var(--space-2)", bgcolor: "var(--bg)", borderLeft: `4px solid ${colors.foreground}` }}>
       <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
         <Typography
           component={linked ? Link : "span"}
           to={linked ? `/companies/${item.symbol}` : undefined}
-          sx={{ fontWeight: 800, color: COLORS.deepCharcoal, textDecoration: "none" }}
+          sx={{ fontWeight: 600, color: COLORS.deepCharcoal, textDecoration: "none" }}
         >
           {item.symbol}
         </Typography>
         <Chip
           size="small"
           label={`${item.alert_level.toUpperCase()} · ${(item.drift_percentile * 100).toFixed(1)}th percentile`}
-          sx={{ borderRadius: 0, fontWeight: 800, bgcolor: colors.background, color: colors.foreground }}
+          sx={{ borderRadius: "var(--radius)", fontWeight: 600, bgcolor: colors.background, color: colors.foreground }}
         />
       </Stack>
-      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, mt: 0.5 }}>
+      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, mt: "var(--space-1)" }}>
         Largest observed input-change score: {driverLabel(item.primary_driver)} ({item.driver_scope ?? "unclassified"} context). This is not a causal attribution.
       </Typography>
       {evidence && <StockExplanation evidence={evidence} />}
@@ -176,11 +176,11 @@ export function GnnPortfolioDriftPanel({ symbols }: { symbols: string[] }) {
     return () => controller.abort();
   }, [symbolsKey]);
   return (
-    <Paper sx={{ p: 2.5, bgcolor: COLORS.sandBeige, borderRadius: 0, boxShadow: SHADOWS.card }}>
-      <Typography variant="h6" sx={{ fontWeight: 800, color: COLORS.deepCharcoal }}>
+    <Paper sx={{ p: "var(--space-3)", bgcolor: COLORS.sandBeige, borderRadius: "var(--radius)", boxShadow: "none" }}>
+      <Typography variant="h6" sx={{ fontWeight: 600, color: COLORS.deepCharcoal }}>
         Market-Network Structural Change
       </Typography>
-      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, mb: 2 }}>
+      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, mb: "var(--space-2)" }}>
         Weekly changes in each holding&apos;s learned market, peer and industry representation. This is not a loss probability, price forecast or trade signal.
       </Typography>
       {error && <Alert severity="error">{error}</Alert>}
@@ -198,11 +198,11 @@ export function GnnPortfolioDriftPanel({ symbols }: { symbols: string[] }) {
             <Alert severity="info">No current GNN observations match these holdings.</Alert>
           ) : null}
           {market && market.history.length > 1 && (
-            <Box sx={{ pt: 1 }}>
+            <Box sx={{ pt: "var(--space-1)" }}>
               <Typography variant="caption" sx={{ color: COLORS.mutedGrey }}>
                 Market-wide share above the training-period 95th percentile
               </Typography>
-              <Stack direction="row" spacing={0.4} sx={{ height: 56, alignItems: "flex-end", mt: 0.5 }}>
+              <Stack direction="row" spacing={0.4} sx={{ height: 56, alignItems: "flex-end", mt: "var(--space-1)" }}>
                 {market.history.map((item) => (
                   <Box
                     key={item.date}
@@ -241,11 +241,11 @@ export function GnnCompanyDriftPanel({ symbol }: { symbol: string }) {
   if (!payload) return null;
   const visible = payload.history.slice(-20);
   return (
-    <Paper sx={{ p: 2.5, bgcolor: COLORS.sandBeige, borderRadius: 0, boxShadow: SHADOWS.card }}>
-      <Typography variant="h6" sx={{ fontWeight: 800, color: COLORS.deepCharcoal }}>
+    <Paper sx={{ p: "var(--space-3)", bgcolor: COLORS.sandBeige, borderRadius: "var(--radius)", boxShadow: "none" }}>
+      <Typography variant="h6" sx={{ fontWeight: 600, color: COLORS.deepCharcoal }}>
         Market-Network Structural Change
       </Typography>
-      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, mb: 2 }}>
+      <Typography variant="body2" sx={{ color: COLORS.mutedGrey, mb: "var(--space-2)" }}>
         Descriptive weekly embedding drift. It does not infer direction, causality or an investment action.
       </Typography>
       <Stack spacing={1.5}>
@@ -254,7 +254,7 @@ export function GnnCompanyDriftPanel({ symbol }: { symbol: string }) {
         {visible.length > 1 && (
           <Box>
             <Typography variant="caption" sx={{ color: COLORS.mutedGrey }}>Recent drift percentile</Typography>
-            <Stack direction="row" spacing={0.4} sx={{ height: 70, alignItems: "flex-end", mt: 0.5 }}>
+            <Stack direction="row" spacing={0.4} sx={{ height: 70, alignItems: "flex-end", mt: "var(--space-1)" }}>
               {visible.map((item) => {
                 const colors = alertColors(item.alert_level);
                 return (

@@ -196,9 +196,9 @@ export default function StockResearchNotes({
       elevation={0}
       sx={{
         p: { xs: 2, sm: 2.5 },
-        bgcolor: "#F9EBD7",
-        borderRadius: 0,
-        boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+        bgcolor: "var(--bg)",
+        borderRadius: "var(--radius)",
+        boxShadow: "none",
       }}
     >
       {/* Header with expand toggle and action button */}
@@ -212,18 +212,18 @@ export default function StockResearchNotes({
         onClick={() => setExpanded(!expanded)}
       >
         <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1.05rem", color: "#292D2A" }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: "var(--text-title)", color: "var(--white)" }}>
             Research Notes & Thesis
           </Typography>
           <Chip
             size="small"
             label={`${notes.length} ${notes.length === 1 ? "note" : "notes"}`}
             sx={{
-              bgcolor: notes.length > 0 ? "#DCE9DE" : "#E3D7C4",
-              color: notes.length > 0 ? "#046A38" : "#292D2A",
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              borderRadius: 0,
+              bgcolor: notes.length > 0 ? "var(--line)" : "var(--line)",
+              color: notes.length > 0 ? "var(--up)" : "var(--white)",
+              fontWeight: 600,
+              fontSize: "var(--text-title)",
+              borderRadius: "var(--radius)",
             }}
           />
         </Stack>
@@ -238,31 +238,30 @@ export default function StockResearchNotes({
               handleOpenCreate();
             }}
             sx={{
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
-              fontSize: "0.8rem",
-              py: 0.5,
-              px: 1.5,
-              borderRadius: 0,
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-              "&:hover": { bgcolor: "#03532c" },
+              bgcolor: "var(--up)", color: "var(--line)",
+              fontSize: "var(--text-title)",
+              py: "var(--space-1)",
+              px: "var(--space-2)",
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--up)" },
             }}
           >
             + New Note
           </Button>
-          <IconButton size="small" sx={{ color: "#686B64", borderRadius: 0 }}>
+          <IconButton aria-label={expanded ? "Hide research notes" : "Show research notes"} aria-expanded={expanded} size="small" sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             {expanded ? "▲" : "▼"}
           </IconButton>
         </Stack>
       </Stack>
 
       <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <Box sx={{ mt: 2.5 }}>
+        <Box sx={{ mt: "var(--space-3)" }}>
           {/* Search bar and Tag Filters */}
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={1.5}
-            sx={{ mb: 2, alignItems: { xs: "stretch", sm: "center" } }}
+            sx={{ mb: "var(--space-2)", alignItems: { xs: "stretch", sm: "center" } }}
           >
             {externalSearchQuery === undefined && (
               <TextField
@@ -270,13 +269,13 @@ export default function StockResearchNotes({
                 placeholder={`Search notes for ${normSymbol}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
+                sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "var(--text-title)" } }}
               />
             )}
 
             {availableTags.length > 0 && (
               <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", alignItems: "center" }}>
-                <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 600, mr: 0.5 }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600, mr: "var(--space-1)" }}>
                   Tag:
                 </Typography>
                 <Chip
@@ -285,11 +284,11 @@ export default function StockResearchNotes({
                   clickable
                   onClick={() => setSelectedTag(null)}
                   sx={{
-                    fontSize: "0.72rem",
-                    borderRadius: 0,
+                    fontSize: "var(--text-title)",
+                    borderRadius: "var(--radius)",
                     fontWeight: 600,
-                    bgcolor: selectedTag === null ? "#046A38" : "#E3D7C4",
-                    color: selectedTag === null ? "#F9EBD7" : "#292D2A",
+                    bgcolor: selectedTag === null ? "var(--up)" : "var(--line)",
+                    color: selectedTag === null ? "var(--bg)" : "var(--white)",
                   }}
                 />
                 {availableTags.map((tag) => (
@@ -300,11 +299,11 @@ export default function StockResearchNotes({
                     clickable
                     onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
                     sx={{
-                      fontSize: "0.72rem",
-                      borderRadius: 0,
+                      fontSize: "var(--text-title)",
+                      borderRadius: "var(--radius)",
                       fontWeight: 600,
-                      bgcolor: selectedTag === tag ? "#046A38" : "#E3D7C4",
-                      color: selectedTag === tag ? "#F9EBD7" : "#292D2A",
+                      bgcolor: selectedTag === tag ? "var(--up)" : "var(--line)",
+                      color: selectedTag === tag ? "var(--bg)" : "var(--white)",
                     }}
                   />
                 ))}
@@ -314,20 +313,20 @@ export default function StockResearchNotes({
 
           {/* Notes List */}
           {loading ? (
-            <Typography variant="body2" sx={{ color: "#686B64", py: 2 }}>
+            <Typography variant="body2" sx={{ color: "var(--gray)", py: "var(--space-2)" }}>
               Loading research notes...
             </Typography>
           ) : filteredNotes.length === 0 ? (
             <Box
               sx={{
-                p: 3,
+                p: "var(--space-3)",
                 textAlign: "center",
-                bgcolor: "#F9EBD7",
-                borderRadius: 0,
-                boxShadow: "0 2px 6px rgba(41,45,42,0.08)",
+                bgcolor: "var(--bg)",
+                borderRadius: "var(--radius)",
+                boxShadow: "none",
               }}
             >
-              <Typography variant="body2" sx={{ color: "#686B64", mb: 1 }}>
+              <Typography variant="body2" sx={{ color: "var(--gray)", mb: "var(--space-1)" }}>
                 {notes.length === 0
                   ? `No research notes recorded for ${normSymbol} yet.`
                   : "No notes match the current search or tag filter."}
@@ -337,7 +336,7 @@ export default function StockResearchNotes({
                   size="small"
                   variant="contained"
                   onClick={handleOpenCreate}
-                  sx={{ fontSize: "0.8rem", mt: 0.5, bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
+                  sx={{ fontSize: "var(--text-title)", mt: "var(--space-1)", bgcolor: "var(--up)", color: "var(--line)", borderRadius: "var(--radius)", boxShadow: "none" }}
                 >
                   Write First Thesis Note
                 </Button>
@@ -350,22 +349,22 @@ export default function StockResearchNotes({
                   key={note.id}
                   elevation={0}
                   sx={{
-                    p: 2,
-                    bgcolor: "#F9EBD7",
-                    borderRadius: 0,
-                    boxShadow: "0 3px 8px rgba(41,45,42,0.08)",
-                    transition: "box-shadow 0.15s",
+                    p: "var(--space-2)",
+                    bgcolor: "var(--bg)",
+                    borderRadius: "var(--radius)",
+                    boxShadow: "none",
+                    transition: "none",
                     "&:hover": {
-                      boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+                      boxShadow: "none",
                     },
                   }}
                 >
                   <Stack
                     direction="row"
-                    sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}
+                    sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: "var(--space-1)" }}
                   >
                     {/* Tags */}
-                    <Stack direction="row" spacing={0.6} sx={{ flexWrap: "wrap", gap: 0.5 }}>
+                    <Stack direction="row" spacing={0.6} sx={{ flexWrap: "wrap", gap: "var(--space-1)" }}>
                       {note.tags.length > 0 ? (
                         note.tags.map((tag) => (
                           <Chip
@@ -373,17 +372,17 @@ export default function StockResearchNotes({
                             size="small"
                             label={tag}
                             sx={{
-                              fontSize: "0.72rem",
+                              fontSize: "var(--text-title)",
                               height: 22,
-                              borderRadius: 0,
-                              bgcolor: "#DCE9DE",
-                              color: "#046A38",
+                              borderRadius: "var(--radius)",
+                              bgcolor: "var(--line)",
+                              color: "var(--up)",
                               fontWeight: 600,
                             }}
                           />
                         ))
                       ) : (
-                        <Typography variant="caption" sx={{ color: "#686B64" }}>
+                        <Typography variant="caption" sx={{ color: "var(--gray)" }}>
                           No tags
                         </Typography>
                       )}
@@ -392,7 +391,7 @@ export default function StockResearchNotes({
                     {/* Actions: Edit & Delete */}
                     <Stack direction="row" spacing={0.5}>
                       <Tooltip title="Edit note">
-                        <IconButton size="small" onClick={() => handleOpenEdit(note)} sx={{ borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}>
+                        <IconButton size="small" onClick={() => handleOpenEdit(note)} sx={{ borderRadius: "var(--radius)", fontSize: "var(--text-title)", fontWeight: 600 }}>
                           Edit
                         </IconButton>
                       </Tooltip>
@@ -400,7 +399,7 @@ export default function StockResearchNotes({
                         <IconButton
                           size="small"
                           onClick={() => setDeleteConfirmId(note.id)}
-                          sx={{ color: "#B8321A", borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}
+                          sx={{ color: "var(--down)", borderRadius: "var(--radius)", fontSize: "var(--text-title)", fontWeight: 600 }}
                         >
                           Delete
                         </IconButton>
@@ -413,10 +412,10 @@ export default function StockResearchNotes({
                     variant="body2"
                     sx={{
                       whiteSpace: "pre-wrap",
-                      color: "#292D2A",
-                      lineHeight: 1.6,
-                      fontSize: "0.9rem",
-                      mb: 1.5,
+                      color: "var(--white)",
+                      lineHeight: "var(--leading)",
+                      fontSize: "var(--text-title)",
+                      mb: "var(--space-2)",
                     }}
                   >
                     {note.content}
@@ -427,9 +426,9 @@ export default function StockResearchNotes({
                     direction="row"
                     spacing={2}
                     sx={{
-                      fontSize: "0.75rem",
-                      color: "#686B64",
-                      pt: 0.5,
+                      fontSize: "var(--text-title)",
+                      color: "var(--gray)",
+                      pt: "var(--space-1)",
                     }}
                   >
                     <span>Created: {formatTimestamp(note.createdAt)}</span>
@@ -453,25 +452,25 @@ export default function StockResearchNotes({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
-              color: "#292D2A",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
+              color: "var(--white)",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1, color: "#292D2A" }}>
+        <DialogTitle sx={{ fontWeight: 600, pb: "var(--space-1)", color: "var(--white)" }}>
           {editingNote ? `Edit Note: ${normSymbol}` : `New Research Note: ${normSymbol}`}
           {companyName && (
-            <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
+            <Typography variant="caption" sx={{ display: "block", color: "var(--gray)" }}>
               {companyName}
             </Typography>
           )}
         </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
+        <DialogContent sx={{ pt: "var(--space-1)" }}>
           {errorMsg && (
-            <Alert severity="error" sx={{ mb: 2, borderRadius: 0 }} onClose={() => setErrorMsg(null)}>
+            <Alert severity="error" sx={{ mb: "var(--space-2)", borderRadius: "var(--radius)" }} onClose={() => setErrorMsg(null)}>
               {errorMsg}
             </Alert>
           )}
@@ -486,19 +485,19 @@ export default function StockResearchNotes({
             value={contentInput}
             onChange={(e) => setContentInput(e.target.value)}
             sx={{
-              mb: 2.5,
+              mb: "var(--space-3)",
               "& .MuiInputBase-input": {
-                fontSize: "0.92rem",
-                lineHeight: 1.6,
+                fontSize: "var(--text-title)",
+                lineHeight: "var(--leading)",
               },
             }}
           />
 
           {/* Tags Selection */}
-          <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, color: "#292D2A" }}>
+          <Typography variant="subtitle2" sx={{ mb: "var(--space-1)", fontWeight: 600, color: "var(--white)" }}>
             Select or Suggest Tags
           </Typography>
-          <Stack direction="row" spacing={0.6} sx={{ flexWrap: "wrap", gap: 0.6, mb: 2 }}>
+          <Stack direction="row" spacing={0.6} sx={{ flexWrap: "wrap", gap: "var(--space-1)", mb: "var(--space-2)" }}>
             {PRESET_TAG_SUGGESTIONS.map((tag) => {
               const selected = activeTags.includes(tag);
               return (
@@ -509,11 +508,11 @@ export default function StockResearchNotes({
                   clickable
                   onClick={() => handleToggleTag(tag)}
                   sx={{
-                    fontSize: "0.78rem",
-                    borderRadius: 0,
+                    fontSize: "var(--text-title)",
+                    borderRadius: "var(--radius)",
                     fontWeight: 600,
-                    bgcolor: selected ? "#046A38" : "#E3D7C4",
-                    color: selected ? "#F9EBD7" : "#292D2A",
+                    bgcolor: selected ? "var(--up)" : "var(--line)",
+                    color: selected ? "var(--bg)" : "var(--white)",
                   }}
                 />
               );
@@ -533,14 +532,14 @@ export default function StockResearchNotes({
                   handleAddCustomTag();
                 }
               }}
-              sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
+              sx={{ flex: 1, "& .MuiInputBase-input": { fontSize: "var(--text-title)" } }}
             />
             <Button
               size="small"
               variant="contained"
               onClick={handleAddCustomTag}
               disabled={!customTagInput.trim()}
-              sx={{ textTransform: "none", fontSize: "0.8rem", bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
+              sx={{ textTransform: "none", fontSize: "var(--text-title)", bgcolor: "var(--up)", color: "var(--line)", borderRadius: "var(--radius)", boxShadow: "none" }}
             >
               Add Tag
             </Button>
@@ -548,11 +547,11 @@ export default function StockResearchNotes({
 
           {/* Active Tags Preview */}
           {activeTags.length > 0 && (
-            <Box sx={{ mt: 1.5 }}>
-              <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 600 }}>
+            <Box sx={{ mt: "var(--space-2)" }}>
+              <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600 }}>
                 Selected tags:
               </Typography>
-              <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: 0.5, mt: 0.5 }}>
+              <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: "var(--space-1)", mt: "var(--space-1)" }}>
                 {activeTags.map((tag) => (
                   <Chip
                     key={tag}
@@ -560,11 +559,11 @@ export default function StockResearchNotes({
                     size="small"
                     onDelete={() => handleToggleTag(tag)}
                     sx={{
-                      fontSize: "0.75rem",
+                      fontSize: "var(--text-title)",
                       height: 24,
-                      borderRadius: 0,
-                      bgcolor: "#DCE9DE",
-                      color: "#046A38",
+                      borderRadius: "var(--radius)",
+                      bgcolor: "var(--line)",
+                      color: "var(--up)",
                       fontWeight: 600,
                     }}
                   />
@@ -573,19 +572,18 @@ export default function StockResearchNotes({
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} sx={{ color: "#686B64", borderRadius: 0 }}>
+        <DialogActions sx={{ px: "var(--space-3)", py: "var(--space-2)" }}>
+          <Button onClick={() => setDialogOpen(false)} sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={handleSave}
             sx={{
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
-              borderRadius: 0,
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-              "&:hover": { bgcolor: "#03532c" },
+              bgcolor: "var(--up)", color: "var(--line)",
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--up)" },
             }}
           >
             {editingNote ? "Save Changes" : "Create Note"}
@@ -602,34 +600,34 @@ export default function StockResearchNotes({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
-              color: "#292D2A",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
+              color: "var(--white)",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, color: "#292D2A" }}>Delete Research Note?</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 600, color: "var(--white)" }}>Delete Research Note?</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ color: "#686B64" }}>
+          <Typography variant="body2" sx={{ color: "var(--gray)" }}>
             Are you sure you want to delete this research note? This action cannot be undone.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 2.5, pb: 2 }}>
-          <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: "#686B64", borderRadius: 0 }}>
+        <DialogActions sx={{ px: "var(--space-3)", pb: "var(--space-2)" }}>
+          <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
             sx={{
-              bgcolor: "#E34222",
-              color: "#F9EBD7",
-              fontWeight: 700,
-              borderRadius: 0,
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-              "&:hover": { bgcolor: "#b8321a" },
+              bgcolor: "var(--down)",
+              color: "var(--white)",
+              fontWeight: 600,
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--down)" },
             }}
           >
             Delete

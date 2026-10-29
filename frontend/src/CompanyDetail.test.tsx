@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -45,6 +45,7 @@ describe("CompanyDetail", () => {
     expect(screen.getByText(/20-day actual performance/i)).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /TEST indexed performance/i })).toBeInTheDocument();
     expect(screen.getByText(/TEST was excluded from its own comparison/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("GNN research signal"));
     expect(await screen.findByText("No GNN history is available for TEST.")).toBeVisible();
   });
 });

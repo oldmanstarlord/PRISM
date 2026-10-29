@@ -1,3 +1,4 @@
+import { GuidedSteps, ReviewDetails } from "./GuidedReview";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { NewsIntelligencePanel } from "./NewsIntelligence";
 import {
@@ -13,7 +14,6 @@ import {
   DialogTitle,
   FormControl,
   IconButton,
-  InputAdornment,
   InputLabel,
   LinearProgress,
   Link as MuiLink,
@@ -65,17 +65,12 @@ import {
   type DecisionType,
 } from "./journalStorage";
 import {
-  DEFAULT_CURATED_HOLDINGS,
-  DEFAULT_CURATED_TRANSACTIONS,
-} from "./demoPortfolioData";
-import {
   exportTransactionsToCsv,
   parseTransactionCsv,
   type CsvTransactionRow,
 } from "./portfolioCsv";
 import type {
   BatchQuotesResponse,
-  BenchmarkQuote,
   ComprehensiveRiskResponse,
   LiveQuote,
   PortfolioAnalysisResponse,
@@ -324,16 +319,17 @@ function loadHoldings(): PortfolioHolding[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as PortfolioHolding[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
-    return DEFAULT_CURATED_HOLDINGS;
+    return [];
   } catch {
-    return DEFAULT_CURATED_HOLDINGS;
+    return [];
   }
 }
 
 function saveHoldings(holdings: PortfolioHolding[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(holdings));
+  window.dispatchEvent(new Event("prism:holdings"));
 }
 
 function loadTransactions(): TransactionRecord[] {
@@ -341,11 +337,11 @@ function loadTransactions(): TransactionRecord[] {
     const raw = localStorage.getItem(TX_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as TransactionRecord[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
-    return DEFAULT_CURATED_TRANSACTIONS;
+    return [];
   } catch {
-    return DEFAULT_CURATED_TRANSACTIONS;
+    return [];
   }
 }
 
@@ -471,56 +467,24 @@ function formatDecimal(val: number | null | undefined, digits = 2): string {
 
 function riskScoreFromVolatility(vol: number): { score: number; label: string; color: string } {
   const annualVol = vol * 100;
-  if (annualVol < 15) return { score: 1, label: "Low", color: "#046A38" };
-  if (annualVol < 25) return { score: 2, label: "Moderate", color: "#8A5A00" };
-  if (annualVol < 35) return { score: 3, label: "High", color: "#8A5A00" };
-  return { score: 4, label: "Very High", color: "#B8321A" };
+  if (annualVol < 15) return { score: 1, label: "Low", color: "var(--up)" };
+  if (annualVol < 25) return { score: 2, label: "Moderate", color: "var(--amber)" };
+  if (annualVol < 35) return { score: 3, label: "High", color: "var(--amber)" };
+  return { score: 4, label: "Very High", color: "var(--down)" };
 }
 
 function portfolioRiskScore(holdings: PortfolioHoldingAnalytics[]): { score: number; label: string; color: string } {
-  if (!holdings.length) return { score: 0, label: "N/A", color: "#686B64" };
+  if (!holdings.length) return { score: 0, label: "N/A", color: "var(--gray)" };
   const weightedVol = holdings.reduce((sum, h) => sum + h.weight * h.annualized_volatility, 0);
   return riskScoreFromVolatility(weightedVol);
 }
 
 function diversityGrade(effectiveHoldings: number, effectiveIndustries: number, totalHoldings: number): { grade: string; label: string; color: string } {
   const holdingRatio = totalHoldings > 0 ? effectiveHoldings / totalHoldings : 0;
-  if (holdingRatio > 0.75 && effectiveIndustries >= 3) return { grade: "A", label: "Well diversified", color: "#046A38" };
-  if (holdingRatio > 0.5 && effectiveIndustries >= 2) return { grade: "B", label: "Moderately diversified", color: "#8A5A00" };
-  if (holdingRatio > 0.3) return { grade: "C", label: "Concentrated", color: "#8A5A00" };
-  return { grade: "D", label: "Highly concentrated", color: "#B8321A" };
-}
-
-/* ─── Insight generator ─── */
-
-function generateInsights(analysis: PortfolioAnalysisResponse): string[] {
-  const insights: string[] = [];
-  const { concentration, diversification, performance, holdings } = analysis;
-
-  if (concentration.largest_holding_weight > 0.3) {
-    insights.push(`${concentration.largest_holding_symbol} represents ${(concentration.largest_holding_weight * 100).toFixed(1)}%, exceeding the diagnostic concentration threshold.`);
-  }
-  if (diversification.effective_bets_risk < 2) {
-    insights.push("The portfolio behaves almost like a single risk exposure under the observed covariance structure.");
-  } else if (diversification.effective_bets_risk < 3) {
-    insights.push("Low observed diversification benefit — most holdings move together in the estimation window.");
-  } else {
-    insights.push(`Good diversification with ${diversification.effective_bets_risk.toFixed(1)} effective independent bets across your portfolio.`);
-  }
-  if (performance.max_drawdown < -0.2) {
-    insights.push(`Maximum drawdown of ${(performance.max_drawdown * 100).toFixed(1)}% is significant. Stress test your portfolio to understand tail risks.`);
-  }
-  if (performance.annualized_volatility > 0.3) {
-    insights.push(`Annual volatility of ${(performance.annualized_volatility * 100).toFixed(1)}% is elevated relative to the reference range.`);
-  }
-  const topRisk = [...holdings].sort((a, b) => b.risk_contribution - a.risk_contribution)[0];
-  if (topRisk && topRisk.risk_contribution > 0.4) {
-    insights.push(`${topRisk.symbol} contributes ${(topRisk.risk_contribution * 100).toFixed(1)}% of total risk — it's your portfolio's risk anchor.`);
-  }
-  if (concentration.effective_industries < 2) {
-    insights.push("High single-sector concentration creates common exposure to sector-wide shocks.");
-  }
-  return insights;
+  if (holdingRatio > 0.75 && effectiveIndustries >= 3) return { grade: "A", label: "Well diversified", color: "var(--up)" };
+  if (holdingRatio > 0.5 && effectiveIndustries >= 2) return { grade: "B", label: "Moderately diversified", color: "var(--amber)" };
+  if (holdingRatio > 0.3) return { grade: "C", label: "Concentrated", color: "var(--amber)" };
+  return { grade: "D", label: "Highly concentrated", color: "var(--down)" };
 }
 
 const bandColor = { normal: "default", moderate: "warning", strong: "error", extreme: "error" } as const;
@@ -556,10 +520,18 @@ type PortfolioTab =
   | "portfolio-risk"
   | "sector-exposure"
   | "diversification"
+  | "network"
   | "analysis"
+  | "stress"
   | "news-preview"
   | "transactions"
   | "ai-insights";
+
+const portfolioGroups: { label: string; description: string; tabs: { id: PortfolioTab; label: string }[] }[] = [
+  { label: "Holdings", description: "Start with your holdings, then review your activity.", tabs: [{ id: "dashboard", label: "Overview" }, { id: "transactions", label: "Activity" }] },
+  { label: "Review risk", description: "Review portfolio health and investigate individual risks.", tabs: [{ id: "monitoring", label: "Summary" }, { id: "stock-risk", label: "Company risk" }, { id: "portfolio-risk", label: "Portfolio risk" }, { id: "sector-exposure", label: "Sectors" }, { id: "diversification", label: "Diversification" }] },
+  { label: "Research", description: "Explore the evidence behind your portfolio decisions.", tabs: [{ id: "network", label: "Portfolio network" }, { id: "analysis", label: "Performance" }, { id: "stress", label: "Stress testing" }, { id: "stock-decisions", label: "Decision review" }, { id: "ai-insights", label: "AI insights" }, { id: "news-preview", label: "News" }] },
+];
 
 /* ─── Main Portfolio Manager Component ─── */
 
@@ -568,7 +540,6 @@ export default function PortfolioManager() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>(loadTransactions);
   const [securities, setSecurities] = useState<SecurityInfo[]>([]);
   const [quotes, setQuotes] = useState<Record<string, LiveQuote>>({});
-  const [benchmark, setBenchmark] = useState<BenchmarkQuote | null>(null);
   const [quotesLoading, setQuotesLoading] = useState(false);
   const [lastQuotesUpdated, setLastQuotesUpdated] = useState<string | null>(null);
 
@@ -603,7 +574,9 @@ export default function PortfolioManager() {
           "portfolio-risk",
           "sector-exposure",
           "diversification",
+          "network",
           "analysis",
+          "stress",
           "news-preview",
           "transactions",
           "ai-insights",
@@ -614,7 +587,7 @@ export default function PortfolioManager() {
     } catch {
       // fallback
     }
-    return "stock-risk";
+    return "dashboard";
   });
 
   const handleSelectTab = (tabId: typeof activeTab) => {
@@ -726,7 +699,7 @@ export default function PortfolioManager() {
           })),
         });
         setSyncStatus("saved");
-      } catch (err) {
+      } catch {
         setIsPersistingTx(false);
         setSnackbar("Failed to persist CSV transactions to server. Import aborted.");
         return;
@@ -913,7 +886,6 @@ export default function PortfolioManager() {
         controller.signal,
       );
       setQuotes((prev) => ({ ...prev, ...res.quotes }));
-      if (res.benchmark) setBenchmark(res.benchmark);
       setLastQuotesUpdated(new Date().toLocaleTimeString("en-IN"));
     } catch {
       // Graceful fallback: UI displays available prices or fallback markers
@@ -1296,7 +1268,7 @@ export default function PortfolioManager() {
           ],
         });
         setSyncStatus("saved");
-      } catch (err) {
+      } catch {
         setIsPersistingTx(false);
         setSnackbar("Failed to record transaction on server. Action cancelled.");
         return;
@@ -1366,7 +1338,7 @@ export default function PortfolioManager() {
           ],
         });
         setSyncStatus("saved");
-      } catch (err) {
+      } catch {
         setIsPersistingTx(false);
         setSnackbar("Failed to record sell transaction on server. Action cancelled.");
         return;
@@ -1440,7 +1412,12 @@ export default function PortfolioManager() {
         analysis.holdings.length,
       )
     : null;
-  const insights = analysis ? generateInsights(analysis) : [];
+
+  const activeGroup = Math.max(0, portfolioGroups.findIndex(group => group.tabs.some(tab => tab.id === activeTab)));
+  const selectView = (id: PortfolioTab) => {
+    handleSelectTab(id);
+    if (!["dashboard", "transactions", "ai-insights", "news-preview"].includes(id) && !structuralMonitoring && holdings.length > 0) void runAnalysis();
+  };
 
   return (
     <Page>
@@ -1448,13 +1425,13 @@ export default function PortfolioManager() {
         {/* ─── Header Banner with NIFTY 50 Benchmark ─── */}
         <Stack
           direction={{ xs: "column", sm: "row" }}
-          sx={{ justifyContent: "space-between", gap: 2, alignItems: { sm: "center" } }}
+          sx={{ justifyContent: "space-between", gap: "var(--space-2)", alignItems: { sm: "center" } }}
           className="no-print"
         >
           <Box>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, fontSize: "1.25rem" }}>
-                Portfolio Holdings
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: "var(--space-1)" }}>
+              <Typography variant="h1">
+                My portfolio
               </Typography>
               {session?.user ? (
                 <Chip
@@ -1463,43 +1440,63 @@ export default function PortfolioManager() {
                     syncStatus === "loading" || isPersistingTx
                       ? "Saving..."
                       : syncStatus === "error"
-                      ? "Sync Error"
-                      : "Cloud Persisted"
+                      ? "Could not save"
+                      : "Saved to account"
                   }
                   color={syncStatus === "error" ? "error" : "success"}
                   variant="outlined"
-                  sx={{ height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }}
+                  sx={{ height: 20, fontSize: "var(--text-title)", borderRadius: "var(--radius)", fontWeight: 600 }}
                 />
               ) : (
                 <Chip
                   size="small"
-                  label="Local Mode"
+                  label="Saved on this device"
                   variant="outlined"
-                  sx={{ height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }}
+                  sx={{ height: 20, fontSize: "var(--text-title)", borderRadius: "var(--radius)", fontWeight: 600 }}
                 />
               )}
             </Stack>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.78rem" }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: "var(--text-title)" }}>
               {holdings.length} stock{holdings.length !== 1 ? "s" : ""} · Currency: <strong>INR (₹)</strong>
               {lastQuotesUpdated && ` · Market quotes updated at ${lastQuotesUpdated}`}
             </Typography>
           </Box>
 
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: 1 }}>
-            {benchmark && benchmark.latest_price && (
-              <Chip
-                label={`NIFTY 50: ${benchmark.latest_price.toLocaleString("en-IN", { maximumFractionDigits: 1 })} (${formatPercent(benchmark.change_percent)})`}
-                sx={{
-                  borderRadius: 0,
-                  fontWeight: 700,
-                  fontFamily: "JetBrains Mono, monospace",
-                  bgcolor: benchmark.change && benchmark.change >= 0 ? "#DCE9DE" : "#F6D9CC",
-                  color: benchmark.change && benchmark.change >= 0 ? "#046A38" : "#B8321A",
-                }}
-                size="small"
-              />
-            )}
-            {import.meta.env.DEV && (
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: "var(--space-1)" }}>
+            <Button
+              variant="contained"
+              onClick={() => setAddDialogOpen(true)}
+              sx={{
+                borderRadius: "var(--radius)",
+                bgcolor: "var(--up)", color: "var(--line)",
+                fontWeight: 600,
+                boxShadow: "none",
+                "&:hover": { bgcolor: "var(--up)" },
+              }}
+            >
+              Add holding
+            </Button>
+            <Button
+              onClick={() => setSellDialogOpen(true)}
+              disabled={!holdings.length}
+              sx={{
+                borderRadius: "var(--radius)",
+                border: "none",
+                bgcolor: "var(--line)",
+                color: "var(--white)",
+                fontWeight: 600,
+                boxShadow: "none",
+                "&:hover": { bgcolor: "var(--white)" },
+              }}
+            >
+              Record sale
+            </Button>
+
+          </Stack>
+        </Stack>
+
+        <ReviewDetails title="More portfolio actions"><Stack direction="row" sx={{ gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
+            {import.meta.env.DEV && <ReviewDetails title="Demo data">
             <Tooltip title="DEMO fixture: load a synthetic 18-stock portfolio for local interface testing only">
               <Button
                 size="small"
@@ -1519,154 +1516,62 @@ export default function PortfolioManager() {
                   );
                 }}
                 sx={{
-                  borderRadius: 0,
+                  borderRadius: "var(--radius)",
                   border: "none",
-                  bgcolor: "#E3D7C4",
-                  color: "#292D2A",
+                  bgcolor: "var(--line)",
+                  color: "var(--white)",
                   fontWeight: 600,
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                  "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                  boxShadow: "none",
+                  "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                 }}
               >
                 DEMO Portfolio
               </Button>
             </Tooltip>
-            )}
-            <Tooltip title="Refresh market prices via yfinance">
+            </ReviewDetails>}
+            <Tooltip title="Refresh market prices">
               <span>
                 <Button
                   size="small"
                   onClick={() => void refreshQuotes(undefined, true)}
                   disabled={quotesLoading || !holdings.length}
                   sx={{
-                    borderRadius: 0,
+                    borderRadius: "var(--radius)",
                     border: "none",
-                    bgcolor: "#E3D7C4",
-                    color: "#292D2A",
+                    bgcolor: "var(--line)",
+                    color: "var(--white)",
                     fontWeight: 600,
-                    boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                    "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                    boxShadow: "none",
+                    "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                   }}
                 >
-                  {quotesLoading ? <CircularProgress size={16} sx={{ color: "#046A38" }} /> : "Refresh Quotes"}
+                  {quotesLoading ? <CircularProgress size={16} sx={{ color: "var(--up)" }} /> : "Refresh prices"}
                 </Button>
               </span>
             </Tooltip>
             <Button
               variant="contained"
-              onClick={() => setAddDialogOpen(true)}
-              sx={{
-                borderRadius: 0,
-                bgcolor: "#046A38",
-                color: "#F9EBD7",
-                fontWeight: 700,
-                boxShadow: "0 3px 8px rgba(4,106,56,0.20)",
-                "&:hover": { bgcolor: "#03532c" },
-              }}
-            >
-              + Buy Stock
-            </Button>
-            <Button
-              onClick={() => setSellDialogOpen(true)}
-              disabled={!holdings.length}
-              sx={{
-                borderRadius: 0,
-                border: "none",
-                bgcolor: "#E34222",
-                color: "#F9EBD7",
-                fontWeight: 700,
-                boxShadow: "0 3px 8px rgba(227,66,34,0.20)",
-                "&:hover": { bgcolor: "#b8321a" },
-              }}
-            >
-              − Sell Stock
-            </Button>
-            <Button
-              variant="contained"
               onClick={() => void runAnalysis()}
               disabled={analysisLoading || !holdings.length}
               sx={{
-                borderRadius: 0,
-                bgcolor: "#046A38",
-                color: "#F9EBD7",
-                fontWeight: 700,
-                boxShadow: "0 3px 8px rgba(4,106,56,0.20)",
-                "&:hover": { bgcolor: "#03532c" },
+                borderRadius: "var(--radius)",
+                bgcolor: "var(--up)", color: "var(--line)",
+                fontWeight: 600,
+                boxShadow: "none",
+                "&:hover": { bgcolor: "var(--up)" },
               }}
             >
-              {analysisLoading ? <CircularProgress size={20} sx={{ color: "#F9EBD7" }} /> : "Run Risk Analysis"}
-            </Button>
-          </Stack>
-        </Stack>
+              {analysisLoading ? <CircularProgress size={20} sx={{ color: "var(--white)" }} /> : "Refresh analysis"}
+            </Button>        </Stack></ReviewDetails>
 
         {error && <Alert severity="error">{error}</Alert>}
 
-        {/* ─── Navigation Tabs ─── */}
-        <Stack
-          direction="row"
-          spacing={0.5}
-          className="no-print"
-          sx={{
-            p: 0.5,
-            bgcolor: "#F9EBD7",
-            boxShadow: "0 4px 12px rgba(41,45,42,0.12)",
-            overflowX: "auto",
-            borderRadius: 0,
-          }}
-        >
-          {[
-            { id: "monitoring" as const, label: "Structural Overview" },
-            { id: "dashboard" as const, label: "Holdings Dashboard" },
-            {
-              id: "stock-decisions" as const,
-              label: decisionResponse
-                ? `Decision Engine (${decisionResponse.summary.hold_count} HOLD · ${decisionResponse.summary.wait_and_watch_count} WATCH${decisionResponse.summary.sell_count > 0 ? ` · ${decisionResponse.summary.sell_count} SELL` : ""})`
-                : "Decision Engine (HOLD / SELL)",
-            },
-            { id: "stock-risk" as const, label: "Stock Risk Analysis" },
-            { id: "portfolio-risk" as const, label: "Portfolio Risk & History" },
-            { id: "sector-exposure" as const, label: "Sector Exposure" },
-            { id: "diversification" as const, label: "Diversification" },
-            { id: "analysis" as const, label: "Network & Stress (MST)" },
-            { id: "news-preview" as const, label: "News Intelligence" },
-            { id: "transactions" as const, label: "Transaction Ledger" },
-            { id: "ai-insights" as const, label: "AI Insights" },
-          ].map((tab) => (
-            <Button
-              key={tab.id}
-              size="small"
-              onClick={() => {
-                handleSelectTab(tab.id);
-                if (
-                  tab.id !== "dashboard" &&
-                  tab.id !== "transactions" &&
-                  tab.id !== "ai-insights" &&
-                  !structuralMonitoring &&
-                  holdings.length > 0
-                ) {
-                  void runAnalysis();
-                }
-              }}
-              sx={{
-                px: 1.25,
-                py: 0.4,
-                whiteSpace: "nowrap",
-                borderRadius: 0,
-                textTransform: "none",
-                fontSize: "0.78rem",
-                color: activeTab === tab.id ? "#F9EBD7" : "#292D2A",
-                bgcolor: activeTab === tab.id ? "#046A38" : "transparent",
-                fontWeight: activeTab === tab.id ? 700 : 500,
-                boxShadow: activeTab === tab.id ? "0 2px 6px rgba(4,106,56,0.20)" : "none",
-                "&:hover": {
-                  bgcolor: activeTab === tab.id ? "#03532c" : "#E3D7C4",
-                },
-              }}
-            >
-              {tab.label}
-            </Button>
-          ))}
-        </Stack>
+        <Box className="no-print">
+          <GuidedSteps label="Portfolio review" steps={portfolioGroups.map(group => ({ label: group.label }))} activeStep={activeGroup} onChange={index => selectView(portfolioGroups[index].tabs[0].id)} />
+          <Stack component="nav" aria-label={`${portfolioGroups[activeGroup].label} views`} direction="row" sx={{ gap: "var(--space-1)", flexWrap: "wrap" }}>
+            {portfolioGroups[activeGroup].tabs.map(tab => <Button key={tab.id} onClick={() => selectView(tab.id)} aria-current={activeTab === tab.id ? "page" : undefined} sx={{ px: "var(--space-2)", color: activeTab === tab.id ? "var(--bg)" : "text.primary", bgcolor: activeTab === tab.id ? "primary.main" : "transparent", "&:hover": { bgcolor: activeTab === tab.id ? "primary.dark" : "var(--line)" } }}>{tab.label}</Button>)}
+          </Stack>
+        </Box>
 
         {/* ═══════════════════════════════════════════════
             TAB 0: STRUCTURAL OVERVIEW & MONITORING
@@ -1701,102 +1606,27 @@ export default function PortfolioManager() {
         {/* ═══════════════════════════════════════════════
             TAB 1: HOLDINGS DASHBOARD
            ═══════════════════════════════════════════════ */}
-        {activeTab === "dashboard" && (
+        {activeTab === "dashboard" && !holdings.length && <Paper sx={{ p: { xs: 3, sm: 5 }, bgcolor: "var(--line)", boxShadow: "none" }}>
+          <Typography variant="h2">NO HOLDINGS</Typography>
+          <Button variant="contained" onClick={() => setAddDialogOpen(true)}>Add your first holding</Button>
+        </Paper>}
+        {activeTab === "dashboard" && holdings.length > 0 && (
           <>
-            {/* Live Data Stream Status & Refresh Controls */}
-            <Paper
-              sx={{
-                p: 2,
-                borderRadius: 0,
-                border: "none",
-                bgcolor: "#292D2A",
-                color: "#F9EBD7",
-                boxShadow: "0 4px 14px rgba(41,45,42,0.12)",
-                mb: 2,
-              }}
-            >
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}
-              >
-                <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-                  <Box
-                    component="span"
-                    sx={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      bgcolor: autoRefreshQuotes ? "#046A38" : "#8A5A00",
-                      boxShadow: autoRefreshQuotes ? "0 0 8px #046A38" : "none",
-                    }}
-                  />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#F9EBD7" }}>
-                    {autoRefreshQuotes ? "Live Market Stream Active" : "Stream Paused"}
-                  </Typography>
-                  <Chip
-                    size="small"
-                    label={autoRefreshQuotes ? `Auto-sync in ${refreshCountdown}s` : "Manual Mode"}
-                    sx={{
-                      height: 20,
-                      fontWeight: 700,
-                      fontSize: "0.70rem",
-                      bgcolor: "rgba(227, 215, 196, 0.15)",
-                      color: "#E3D7C4",
-                      borderRadius: "2px",
-                    }}
-                  />
-                  {lastQuotesUpdated && (
-                    <Typography variant="caption" sx={{ color: "#E3D7C4" }}>
-                      Last quote update: {lastQuotesUpdated}
-                    </Typography>
-                  )}
-                </Stack>
-
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                  <Button
-                    size="small"
-                    onClick={() => setAutoRefreshQuotes(!autoRefreshQuotes)}
-                    sx={{
-                      fontSize: "0.74rem",
-                      color: "#E3D7C4",
-                      bgcolor: "rgba(227, 215, 196, 0.12)",
-                      "&:hover": { bgcolor: "rgba(227, 215, 196, 0.22)" },
-                    }}
-                  >
-                    {autoRefreshQuotes ? "Pause Polling" : "Resume Polling"}
-                  </Button>
-                  <Button
-                    size="small"
-                    onClick={() => {
-                      setRefreshCountdown(20);
-                      void refreshQuotes(undefined, true);
-                    }}
-                    disabled={quotesLoading}
-                    startIcon={quotesLoading ? <CircularProgress size={12} sx={{ color: "#F9EBD7" }} /> : undefined}
-                    sx={{
-                      fontSize: "0.74rem",
-                      fontWeight: 700,
-                      color: "#F9EBD7",
-                      bgcolor: "#046A38",
-                      "&:hover": { bgcolor: "#034d28" },
-                    }}
-                  >
-                    {quotesLoading ? "Syncing Quotes…" : "Sync Live Quotes Now"}
-                  </Button>
-                </Stack>
+            <ReviewDetails title="Price update settings">
+              <Stack direction={{ xs: "column", sm: "row" }} sx={{ gap: "var(--space-2)", alignItems: { sm: "center" } }}>
+                <Typography variant="body2">{autoRefreshQuotes ? `Prices refresh in ${refreshCountdown}s.` : "Automatic price updates are paused."} {lastQuotesUpdated && `Last update: ${lastQuotesUpdated}.`}</Typography>
+                <Button onClick={() => setAutoRefreshQuotes(!autoRefreshQuotes)}>{autoRefreshQuotes ? "Pause updates" : "Resume updates"}</Button>
               </Stack>
-            </Paper>
-
-
+            </ReviewDetails>
 
             {/* ─── 6 SUMMARY CARDS ─── */}
             <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flexWrap: "wrap" }}>
               {/* Card 1: Total Invested Value */}
-              <Paper sx={{ p: 2.5, flex: "1 1 180px", minWidth: 160 }}>
+              <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px", minWidth: 160 }}>
                 <Typography variant="overline" color="text.secondary">
                   Total Invested Value
                 </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
                   {formatCurrency(totalInvestedValue)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -1805,11 +1635,11 @@ export default function PortfolioManager() {
               </Paper>
 
               {/* Card 2: Current Portfolio Market Value */}
-              <Paper sx={{ p: 2.5, flex: "1 1 180px", minWidth: 160 }}>
+              <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px", minWidth: 160 }}>
                 <Typography variant="overline" color="text.secondary">
                   Current Market Value
                 </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
                   {formatCurrency(totalMarketValue)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -1818,14 +1648,14 @@ export default function PortfolioManager() {
               </Paper>
 
               {/* Card 3: Total Unrealized Profit/Loss */}
-              <Paper sx={{ p: 2.5, flex: "1 1 180px", minWidth: 160 }}>
+              <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px", minWidth: 160 }}>
                 <Typography variant="overline" color="text.secondary">
                   Total Unrealized P&L
                 </Typography>
                 <Typography
                   variant="h5"
                   sx={{
-                    fontWeight: 700,
+                    fontWeight: 600,
                     color:
                       totalUnrealizedPnl === null
                         ? "inherit"
@@ -1844,14 +1674,14 @@ export default function PortfolioManager() {
               </Paper>
 
               {/* Card 4: Total Return Percentage */}
-              <Paper sx={{ p: 2.5, flex: "1 1 180px", minWidth: 160 }}>
+              <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px", minWidth: 160 }}>
                 <Typography variant="overline" color="text.secondary">
                   Total Return
                 </Typography>
                 <Typography
                   variant="h5"
                   sx={{
-                    fontWeight: 700,
+                    fontWeight: 600,
                     color:
                       totalReturnPercent === null
                         ? "inherit"
@@ -1868,14 +1698,14 @@ export default function PortfolioManager() {
               </Paper>
 
               {/* Card 5: Today's Profit/Loss */}
-              <Paper sx={{ p: 2.5, flex: "1 1 180px", minWidth: 160 }}>
+              <Paper sx={{ p: "var(--space-3)", flex: "1 1 180px", minWidth: 160 }}>
                 <Typography variant="overline" color="text.secondary">
                   Today's P&L
                 </Typography>
                 <Typography
                   variant="h5"
                   sx={{
-                    fontWeight: 700,
+                    fontWeight: 600,
                     color:
                       totalTodayPnl === null
                         ? "inherit"
@@ -1905,11 +1735,11 @@ export default function PortfolioManager() {
               </Paper>
 
               {/* Card 6: Number of Holdings */}
-              <Paper sx={{ p: 2.5, flex: "1 1 140px", minWidth: 140 }}>
+              <Paper sx={{ p: "var(--space-3)", flex: "1 1 140px", minWidth: 140 }}>
                 <Typography variant="overline" color="text.secondary">
                   Holdings
                 </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                <Typography variant="h5" sx={{ fontWeight: 600 }}>
                   {holdings.length}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -1921,11 +1751,11 @@ export default function PortfolioManager() {
               {comprehensiveRisk?.portfolio_profile && (
                 <Paper
                   sx={{
-                    p: 2.5,
+                    p: "var(--space-3)",
                     flex: "1 1 180px",
                     minWidth: 180,
                     cursor: "pointer",
-                    "&:hover": { bgcolor: "#E3D7C4" },
+                    "&:hover": { bgcolor: "var(--line)" },
                   }}
                   onClick={() => setActiveTab("portfolio-risk")}
                 >
@@ -1933,7 +1763,7 @@ export default function PortfolioManager() {
                     PRISM Risk Score
                   </Typography>
                   <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                    <Typography variant="h5" sx={{ fontWeight: 700 }}>
+                    <Typography variant="h5" sx={{ fontWeight: 600 }}>
                       {comprehensiveRisk.portfolio_profile.portfolio_risk_score.toFixed(0)}/100
                     </Typography>
                     <Chip
@@ -1942,7 +1772,7 @@ export default function PortfolioManager() {
                       sx={{
                         bgcolor: `${comprehensiveRisk.portfolio_profile.portfolio_color}18`,
                         color: comprehensiveRisk.portfolio_profile.portfolio_color,
-                        fontWeight: 700,
+                        fontWeight: 600,
                         height: 22,
                       }}
                     />
@@ -1957,7 +1787,7 @@ export default function PortfolioManager() {
 
 
             {/* ─── Search & Filter Controls ─── */}
-            <Paper sx={{ p: 2 }}>
+            <Paper sx={{ p: "var(--space-2)" }}>
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={2}
@@ -2003,20 +1833,20 @@ export default function PortfolioManager() {
             </Paper>
 
             {/* ─── HOLDINGS TABLE ─── */}
-            <Paper sx={{ p: 3 }}>
-              <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                <Typography variant="h5">Holdings Table</Typography>
+            <Paper sx={{ p: "var(--space-3)" }}>
+              <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: "var(--space-2)" }}>
+                <Typography variant="h5">Your holdings</Typography>
                 <Typography variant="body2" color="text.secondary">
                   Showing {displayedHoldings.length} of {holdings.length} position{holdings.length !== 1 ? "s" : ""}
                 </Typography>
               </Stack>
 
               {!holdings.length ? (
-                <Box sx={{ py: 6, textAlign: "center" }}>
+                <Box sx={{ py: "var(--space-4)", textAlign: "center" }}>
                   <Typography color="text.secondary" gutterBottom>
                     No holdings in your portfolio yet. Add your first stock to get started.
                   </Typography>
-                  <Button variant="contained" color="success" onClick={() => setAddDialogOpen(true)} sx={{ mt: 1 }}>
+                  <Button variant="contained" color="success" onClick={() => setAddDialogOpen(true)} sx={{ mt: "var(--space-1)" }}>
                     + Add Your First Stock
                   </Button>
                 </Box>
@@ -2168,12 +1998,12 @@ export default function PortfolioManager() {
                         return (
                           <TableRow key={h.id} hover>
                             {/* Stock & Navigation to Details */}
-                            <TableCell>
+                            <TableCell align="right">
                               <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                                 <MuiLink
                                   component={Link}
                                   to={`/companies/${h.symbol}`}
-                                  sx={{ fontWeight: 700, color: "#046A38", textDecoration: "none" }}
+                                  sx={{ fontWeight: 600, color: "var(--up)", textDecoration: "none" }}
                                 >
                                   {h.symbol}
                                 </MuiLink>
@@ -2190,11 +2020,11 @@ export default function PortfolioManager() {
                                       sx={{
                                         cursor: "pointer",
                                         height: 20,
-                                        fontSize: "0.68rem",
-                                        fontWeight: 700,
-                                        bgcolor: "rgba(4, 106, 56, 0.12)",
-                                        color: "#046A38",
-                                        "&:hover": { bgcolor: "rgba(4, 106, 56, 0.2)" },
+                                        fontSize: "var(--text-title)",
+                                        fontWeight: 600,
+                                        bgcolor: "var(--up)",
+                                        color: "var(--up)",
+                                        "&:hover": { bgcolor: "var(--up)" },
                                       }}
                                     />
                                   </Tooltip>
@@ -2217,13 +2047,13 @@ export default function PortfolioManager() {
                                           sx={{
                                             cursor: "pointer",
                                             height: 20,
-                                            borderRadius: 0,
-                                            fontSize: "0.68rem",
-                                            fontWeight: 700,
-                                            bgcolor: isPos ? "#DCE9DE" : isNeg ? "#F6D9CC" : "#E3D7C4",
-                                            color: isPos ? "#046A38" : isNeg ? "#B8321A" : "#292D2A",
+                                            borderRadius: "var(--radius)",
+                                            fontSize: "var(--text-title)",
+                                            fontWeight: 600,
+                                            bgcolor: isPos ? "var(--line)" : isNeg ? "var(--gray)" : "var(--line)",
+                                            color: isPos ? "var(--up)" : isNeg ? "var(--down)" : "var(--white)",
                                             border: "none",
-                                            "&:hover": { bgcolor: "#E3D7C4" },
+                                            "&:hover": { bgcolor: "var(--line)" },
                                           }}
                                         />
                                       </Tooltip>
@@ -2254,13 +2084,13 @@ export default function PortfolioManager() {
                                         sx={{
                                           cursor: "pointer",
                                           height: 20,
-                                          borderRadius: 0,
-                                          fontSize: "0.68rem",
-                                          fontWeight: 700,
-                                          bgcolor: "#F6D9CC",
-                                          color: "#B8321A",
+                                          borderRadius: "var(--radius)",
+                                          fontSize: "var(--text-title)",
+                                          fontWeight: 600,
+                                          bgcolor: "var(--gray)",
+                                          color: "var(--down)",
                                           border: "none",
-                                          "&:hover": { bgcolor: "#ebc6b5" },
+                                          "&:hover": { bgcolor: "var(--amber)" },
                                         }}
                                       />
                                     </Tooltip>
@@ -2274,7 +2104,7 @@ export default function PortfolioManager() {
 
                             {/* Sector */}
                             <TableCell>
-                              <Chip size="small" label={h.sector} sx={{ fontSize: "0.75rem", borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A", border: "none" }} />
+                              <Chip size="small" label={h.sector} sx={{ fontSize: "var(--text-title)", borderRadius: "var(--radius)", bgcolor: "var(--bg)", color: "var(--white)", border: "none" }} />
                             </TableCell>
 
                             {/* Decision Flag (HOLD / WAIT & WATCH / SELL) */}
@@ -2284,19 +2114,19 @@ export default function PortfolioManager() {
                                   const dec = decisionMap.get(h.symbol.toUpperCase())!;
                                   const isHold = dec.decision === "HOLD";
                                   const isSell = dec.decision === "SELL";
-                                  const bg = isHold ? "#046A38" : isSell ? "#E34222" : "#8A5A00";
-                                  const icon = isHold ? "✓" : isSell ? "⚠" : "⏳";
+                                  const bg = isHold ? "var(--up)" : isSell ? "var(--down)" : "var(--amber)";
+
                                   return (
                                     <Tooltip
                                       title={
-                                        <Box sx={{ p: 0.5 }}>
-                                          <Typography variant="caption" sx={{ fontWeight: 800, display: "block" }}>
+                                        <Box sx={{ p: "var(--space-1)" }}>
+                                          <Typography variant="caption" sx={{ fontWeight: 600, display: "block" }}>
                                             {dec.decision} — Health: {dec.final_score.toFixed(1)}/100
                                           </Typography>
                                           <Typography variant="caption" sx={{ display: "block" }}>
                                             Fundamental: {dec.fundamental.fundamental_strength_score.toFixed(0)} | Sector: {dec.sector_strength.sector_strength_score.toFixed(0)} | News: {dec.news.news_score.toFixed(0)}
                                           </Typography>
-                                          <Typography variant="caption" sx={{ color: "#E3D7C4", display: "block", mt: 0.5 }}>
+                                          <Typography variant="caption" sx={{ color: "var(--line)", display: "block", mt: "var(--space-1)" }}>
                                             Click to view full 3-factor breakdown & analysis
                                           </Typography>
                                         </Box>
@@ -2305,7 +2135,7 @@ export default function PortfolioManager() {
                                     >
                                       <Chip
                                         size="small"
-                                        label={`${icon} ${dec.decision}`}
+                                        label={dec.decision}
                                         onClick={(e) => {
                                           e.preventDefault();
                                           e.stopPropagation();
@@ -2314,20 +2144,20 @@ export default function PortfolioManager() {
                                         sx={{
                                           cursor: "pointer",
                                           height: 24,
-                                          borderRadius: 0,
-                                          fontWeight: 800,
-                                          fontSize: "0.75rem",
+                                          borderRadius: "var(--radius)",
+                                          fontWeight: 600,
+                                          fontSize: "var(--text-title)",
                                           bgcolor: bg,
-                                          color: "#F9EBD7",
-                                          boxShadow: "0 2px 6px rgba(0,0,0,0.18)",
-                                          "&:hover": { opacity: 0.85 },
+                                          color: "var(--white)",
+                                          boxShadow: "none",
+                                          "&:hover": { opacity: 1 },
                                         }}
                                       />
                                     </Tooltip>
                                   );
                                 })()
                               ) : decisionLoading ? (
-                                <CircularProgress size={16} sx={{ color: "#046A38" }} />
+                                <CircularProgress size={16} sx={{ color: "var(--up)" }} />
                               ) : (
                                 <Chip
                                   size="small"
@@ -2340,9 +2170,9 @@ export default function PortfolioManager() {
                                   sx={{
                                     cursor: "pointer",
                                     height: 20,
-                                    borderRadius: 0,
-                                    fontSize: "0.68rem",
-                                    bgcolor: "#E3D7C4",
+                                    borderRadius: "var(--radius)",
+                                    fontSize: "var(--text-title)",
+                                    bgcolor: "var(--line)",
                                   }}
                                 />
                               )}
@@ -2367,7 +2197,7 @@ export default function PortfolioManager() {
                             <TableCell align="right">
                               {h.currentPrice !== null ? (
                                 <Box>
-                                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                     {formatCurrency(h.currentPrice, 2)}
                                   </Typography>
                                   <Tooltip
@@ -2381,7 +2211,7 @@ export default function PortfolioManager() {
                                       size="small"
                                       label={h.quote?.data_quality === "fallback" ? "Close" : "Live"}
                                       color={h.quote?.data_quality === "fallback" ? "default" : "success"}
-                                      sx={{ height: 16, fontSize: "0.65rem" }}
+                                      sx={{ height: 16, fontSize: "var(--text-title)" }}
                                     />
                                   </Tooltip>
                                 </Box>
@@ -2393,7 +2223,7 @@ export default function PortfolioManager() {
                             </TableCell>
 
                             {/* Current Market Value */}
-                            <TableCell align="right" sx={{ fontWeight: 700 }}>
+                            <TableCell align="right" sx={{ fontWeight: 600 }}>
                               {h.marketValue !== null ? formatCurrency(h.marketValue) : "—"}
                             </TableCell>
 
@@ -2401,7 +2231,7 @@ export default function PortfolioManager() {
                             <TableCell
                               align="right"
                               sx={{
-                                fontWeight: 700,
+                                fontWeight: 600,
                                 color:
                                   h.unrealizedPnl === null
                                     ? "inherit"
@@ -2419,7 +2249,7 @@ export default function PortfolioManager() {
                             <TableCell
                               align="right"
                               sx={{
-                                fontWeight: 700,
+                                fontWeight: 600,
                                 color:
                                   h.unrealizedPnlPercent === null
                                     ? "inherit"
@@ -2433,14 +2263,14 @@ export default function PortfolioManager() {
 
                             {/* Portfolio Weight */}
                             <TableCell align="right">
-                              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 1 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: "JetBrains Mono, monospace" }}>
+                              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "var(--space-1)" }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                                   {h.weight.toFixed(1)}%
                                 </Typography>
                                 <LinearProgress
                                   variant="determinate"
                                   value={Math.min(h.weight, 100)}
-                                  sx={{ width: 40, height: 6, borderRadius: 0 }}
+                                  sx={{ width: 40, height: 6, borderRadius: "var(--radius)" }}
                                   color={h.weight > 30 ? "warning" : "primary"}
                                 />
                               </Box>
@@ -2455,17 +2285,17 @@ export default function PortfolioManager() {
                                   h.todayPnl === null
                                     ? "inherit"
                                     : isTodayGain
-                                    ? "#046A38"
-                                    : "#B8321A",
+                                    ? "var(--up)"
+                                    : "var(--down)",
                               }}
                             >
                               {h.todayPnl !== null ? (
                                 <Box>
-                                  <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: "JetBrains Mono, monospace" }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                                     {isTodayGain ? "+" : ""}
                                     {formatCurrency(h.todayPnl)}
                                   </Typography>
-                                  <Typography variant="caption" sx={{ fontSize: "0.7rem", fontFamily: "JetBrains Mono, monospace" }}>
+                                  <Typography variant="caption" sx={{ fontSize: "var(--text-title)", fontFamily: "var(--font-data)" }}>
                                     {formatPercent(h.todayChangePercent)}
                                   </Typography>
                                 </Box>
@@ -2481,18 +2311,18 @@ export default function PortfolioManager() {
                                   <IconButton
                                     size="small"
                                     onClick={() => setSelectedNotesStock({ symbol: h.symbol, companyName: h.companyName })}
-                                    sx={{ color: notesCountMap[h.symbol.toUpperCase()] ? "#046A38" : "#686B64", borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}
+                                    sx={{ color: notesCountMap[h.symbol.toUpperCase()] ? "var(--up)" : "var(--gray)", borderRadius: "var(--radius)", fontSize: "var(--text-title)", fontWeight: 600 }}
                                   >
                                     Notes
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Edit holding">
-                                  <IconButton size="small" onClick={() => setEditHolding(h)} sx={{ borderRadius: 0, fontSize: "0.75rem", fontWeight: 600 }}>
+                                  <IconButton size="small" onClick={() => setEditHolding(h)} sx={{ borderRadius: "var(--radius)", fontSize: "var(--text-title)", fontWeight: 600 }}>
                                     Edit
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Remove holding">
-                                  <IconButton size="small" onClick={() => removeHolding(h.id)} sx={{ borderRadius: 0, fontSize: "0.75rem", fontWeight: 600, color: "#B8321A" }}>
+                                  <IconButton size="small" onClick={() => removeHolding(h.id)} sx={{ borderRadius: "var(--radius)", fontSize: "var(--text-title)", fontWeight: 600, color: "var(--down)" }}>
                                     Delete
                                   </IconButton>
                                 </Tooltip>
@@ -2509,11 +2339,11 @@ export default function PortfolioManager() {
 
             {/* ─── Sector Exposure Allocation Breakdown ─── */}
             {holdings.length > 1 && (
-              <Paper sx={{ p: 3, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-                <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: "#292D2A" }}>
+              <Paper sx={{ p: "var(--space-3)", borderRadius: "var(--radius)", border: "none", bgcolor: "var(--bg)", boxShadow: "none" }}>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, color: "var(--white)" }}>
                   Sector Allocation & Weight Distribution
                 </Typography>
-                <Stack spacing={2} sx={{ mt: 1 }}>
+                <Stack spacing={2} sx={{ mt: "var(--space-1)" }}>
                   {uniqueSectors.map((sec) => {
                     const sectorHoldings = holdingsWithWeights.filter((h) => h.sector === sec);
                     const sectorWeight = sectorHoldings.reduce((sum, h) => sum + h.weight, 0);
@@ -2523,18 +2353,18 @@ export default function PortfolioManager() {
                     );
                     return (
                       <Box key={sec}>
-                        <Stack direction="row" sx={{ justifyContent: "space-between", mb: 0.5 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#292D2A" }}>
+                        <Stack direction="row" sx={{ justifyContent: "space-between", mb: "var(--space-1)" }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--white)" }}>
                             {sec} ({sectorHoldings.map((h) => h.symbol).join(", ")})
                           </Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700, color: "#046A38", fontFamily: "JetBrains Mono, monospace" }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--up)", fontFamily: "var(--font-data)" }}>
                             {formatCurrency(sectorValue)} · {sectorWeight.toFixed(1)}%
                           </Typography>
                         </Stack>
                         <LinearProgress
                           variant="determinate"
                           value={Math.min(sectorWeight, 100)}
-                          sx={{ height: 8, borderRadius: 0 }}
+                          sx={{ height: 8, borderRadius: "var(--radius)" }}
                           color={sectorWeight > 40 ? "warning" : "primary"}
                         />
                       </Box>
@@ -2563,7 +2393,7 @@ export default function PortfolioManager() {
             TAB: PORTFOLIO RISK & HISTORY
            ═══════════════════════════════════════════════ */}
         {activeTab === "portfolio-risk" && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
             <PortfolioRiskSection
               comprehensiveRisk={comprehensiveRisk}
               analysis={analysis}
@@ -2603,27 +2433,84 @@ export default function PortfolioManager() {
           />
         )}
 
-        {/* ═══════════════════════════════════════════════
-            TAB 2: RISK & MST ANALYSIS (PRESERVED)
-           ═══════════════════════════════════════════════ */}
+        {activeTab === "network" && (
+          <>
+            {analysis ? (
+              <>
+                <PortfolioMstGraph mst={analysis.mst} holdings={analysis.holdings} />
+                <ReviewDetails title="Network details and methodology">
+                  <Stack spacing={3}>
+                    <MstDiagnostics analysis={analysis} />
+                    <CorrelationMstExplainer />
+                    <MstHoldingsInspector analysis={analysis} />
+                  </Stack>
+                </ReviewDetails>
+              </>
+            ) : analysisLoading ? (
+              <Paper sx={{ p: "var(--space-3)" }}>
+                <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+                  <CircularProgress size={24} />
+                  <Typography>Loading your portfolio network…</Typography>
+                </Stack>
+              </Paper>
+            ) : (
+              <Paper sx={{ p: "var(--space-3)" }}>
+                <Typography variant="h5" gutterBottom>Portfolio network</Typography>
+                <Typography sx={{ mb: "var(--space-2)" }}>
+                  {holdings.length ? "Run your portfolio analysis to see the connections between your holdings." : "Add holdings to see how the companies in your portfolio connect."}
+                </Typography>
+                <Button variant="contained" onClick={() => holdings.length ? void runAnalysis() : setAddDialogOpen(true)}>
+                  {holdings.length ? "Load portfolio network" : "Add holding"}
+                </Button>
+              </Paper>
+            )}
+          </>
+        )}
+
+        {activeTab === "stress" && (
+          <>
+            {analysis ? (
+              <StressPanel analysis={analysis} loading={analysisLoading} onRun={(stress) => void runAnalysis(stress)} />
+            ) : analysisLoading ? (
+              <Paper sx={{ p: "var(--space-3)" }}>
+                <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+                  <CircularProgress size={24} />
+                  <Typography>Loading stress testing…</Typography>
+                </Stack>
+              </Paper>
+            ) : (
+              <Paper sx={{ p: "var(--space-3)" }}>
+                <Typography variant="h5" gutterBottom>Stress testing</Typography>
+                <Typography sx={{ mb: "var(--space-2)" }}>
+                  {holdings.length ? "Run your portfolio analysis to test how a hypothetical shock could affect your holdings." : "Add holdings to test how a hypothetical shock could affect your portfolio."}
+                </Typography>
+                <Button variant="contained" onClick={() => holdings.length ? void runAnalysis() : setAddDialogOpen(true)}>
+                  {holdings.length ? "Load stress testing" : "Add holding"}
+                </Button>
+              </Paper>
+            )}
+          </>
+        )}
+
+        {/* Performance and risk analysis */}
         {activeTab === "analysis" && (
           <>
             {!analysis && !analysisLoading && (
-              <Paper sx={{ p: 6, textAlign: "center" }}>
+              <Paper sx={{ p: "var(--space-4)", textAlign: "center" }}>
                 <Typography variant="h5" color="text.secondary" gutterBottom>
                   No Risk Analysis Calculated Yet
                 </Typography>
                 <Typography color="text.secondary" gutterBottom>
-                  Click "Run Risk Analysis" to calculate covariance risk, minimum spanning tree (MST) paths, and stress testing.
+                  Click "Refresh analysis" to calculate portfolio performance and covariance risk.
                 </Typography>
-                <Button variant="contained" onClick={() => void runAnalysis()} disabled={!holdings.length} sx={{ mt: 1 }}>
+                <Button variant="contained" onClick={() => void runAnalysis()} disabled={!holdings.length} sx={{ mt: "var(--space-1)" }}>
                   Run Risk Analysis
                 </Button>
               </Paper>
             )}
 
             {analysisLoading && (
-              <Paper sx={{ p: 3 }}>
+              <Paper sx={{ p: "var(--space-3)" }}>
                 <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
                   <CircularProgress size={24} />
                   <Typography>Calculating performance, covariance risk and MST paths…</Typography>
@@ -2634,7 +2521,7 @@ export default function PortfolioManager() {
             {analysis && (
               <>
                 {/* Report Header */}
-                <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", gap: 2 }}>
+                <Stack direction={{ xs: "column", sm: "row" }} sx={{ justifyContent: "space-between", gap: "var(--space-2)" }}>
                   <Box>
                     <Typography variant="h4">Portfolio Quantitative Analysis</Typography>
                     <Typography color="text.secondary">
@@ -2653,13 +2540,13 @@ export default function PortfolioManager() {
                         URL.revokeObjectURL(url);
                       }}
                       sx={{
-                        borderRadius: 0,
+                        borderRadius: "var(--radius)",
                         border: "none",
-                        bgcolor: "#E3D7C4",
-                        color: "#292D2A",
+                        bgcolor: "var(--line)",
+                        color: "var(--white)",
                         fontWeight: 600,
-                        boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                        "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                        boxShadow: "none",
+                        "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                       }}
                     >
                       Download report
@@ -2668,12 +2555,11 @@ export default function PortfolioManager() {
                       variant="contained"
                       onClick={() => window.print()}
                       sx={{
-                        borderRadius: 0,
-                        bgcolor: "#046A38",
-                        color: "#F9EBD7",
-                        fontWeight: 700,
-                        boxShadow: "0 3px 8px rgba(4,106,56,0.20)",
-                        "&:hover": { bgcolor: "#03532c" },
+                        borderRadius: "var(--radius)",
+                        bgcolor: "var(--up)", color: "var(--line)",
+                        fontWeight: 600,
+                        boxShadow: "none",
+                        "&:hover": { bgcolor: "var(--up)" },
                       }}
                     >
                       Print / save PDF
@@ -2684,29 +2570,29 @@ export default function PortfolioManager() {
                 {/* Risk + Diversity badges */}
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                   {pRisk && (
-                    <Paper sx={{ p: 2.5, flex: 1 }}>
+                    <Paper sx={{ p: "var(--space-3)", flex: 1 }}>
                       <Typography variant="overline" color="text.secondary">
                         Portfolio Risk Score
                       </Typography>
-                      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mt: 0.5 }}>
+                      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mt: "var(--space-1)" }}>
                         <Box
                           sx={{
                             width: 48,
                             height: 48,
-                            borderRadius: 0,
+                            borderRadius: "var(--radius)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             bgcolor: `${pRisk.color}22`,
-                            boxShadow: "0 2px 6px rgba(41,45,42,0.10)",
+                            boxShadow: "none",
                           }}
                         >
-                          <Typography sx={{ fontWeight: 800, color: pRisk.color, fontSize: "1.1rem" }}>
+                          <Typography sx={{ fontWeight: 600, color: pRisk.color, fontSize: "var(--text-title)" }}>
                             {pRisk.score}
                           </Typography>
                         </Box>
                         <Box>
-                          <Typography variant="h6" sx={{ fontWeight: 700, color: pRisk.color }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: pRisk.color }}>
                             {pRisk.label} Risk
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
@@ -2717,29 +2603,29 @@ export default function PortfolioManager() {
                     </Paper>
                   )}
                   {dGrade && (
-                    <Paper sx={{ p: 2.5, flex: 1 }}>
+                    <Paper sx={{ p: "var(--space-3)", flex: 1 }}>
                       <Typography variant="overline" color="text.secondary">
                         Diversity Index
                       </Typography>
-                      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mt: 0.5 }}>
+                      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mt: "var(--space-1)" }}>
                         <Box
                           sx={{
                             width: 48,
                             height: 48,
-                            borderRadius: 0,
+                            borderRadius: "var(--radius)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             bgcolor: `${dGrade.color}22`,
-                            boxShadow: "0 2px 6px rgba(41,45,42,0.10)",
+                            boxShadow: "none",
                           }}
                         >
-                          <Typography sx={{ fontWeight: 800, color: dGrade.color, fontSize: "1.3rem" }}>
+                          <Typography sx={{ fontWeight: 600, color: dGrade.color, fontSize: "var(--text-title)" }}>
                             {dGrade.grade}
                           </Typography>
                         </Box>
                         <Box>
-                          <Typography variant="h6" sx={{ fontWeight: 700, color: dGrade.color }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, color: dGrade.color }}>
                             {dGrade.label}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
@@ -2775,18 +2661,6 @@ export default function PortfolioManager() {
                 {/* Risk Contribution Table (Euler Decomposition) */}
                 <RiskContributionTable holdings={analysis.holdings} />
 
-                {/* Structural Correlation Drivers & Cluster Explainer */}
-                <CorrelationMstExplainer />
-
-                {/* Holding-level MST Ego-Network Inspector & Methodological Limitations */}
-                <MstHoldingsInspector analysis={analysis} />
-
-                {/* MST Diagnostics Graph */}
-                <MstDiagnostics analysis={analysis} />
-
-                {/* Stress Testing */}
-                <StressPanel analysis={analysis} loading={analysisLoading} onRun={(stress) => void runAnalysis(stress)} />
-
                 {/* Divergence Table */}
                 <HoldingTable holdings={analysis.holdings} />
 
@@ -2801,24 +2675,24 @@ export default function PortfolioManager() {
             TAB: NEWS SIGNALS (PREVIEW)
            ═══════════════════════════════════════════════ */}
         {activeTab === "news-preview" && (
-          <NewsIntelligencePanel />
+          <NewsIntelligencePanel embedded />
         )}
 
         {/* ═══════════════════════════════════════════════
             TAB 3: TRANSACTION LEDGER
            ═══════════════════════════════════════════════ */}
         {activeTab === "transactions" && (
-          <Paper sx={{ p: 3 }}>
-            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: 2, flexWrap: "wrap", gap: 1.5 }}>
+          <Paper sx={{ p: "var(--space-3)" }}>
+            <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: "var(--space-2)", flexWrap: "wrap", gap: "var(--space-2)" }}>
               <Box>
                 <Typography variant="h5" gutterBottom>
-                  Transaction Ledger
+                  Activity
                 </Typography>
                 <Typography color="text.secondary">
-                  Full chronological audit trail. Transactions are the authoritative single source of truth; holdings, cash, and P&L are derived under Weighted-Average Cost (WAC) basis.
+                  Recorded purchases and sales, in date order.
                 </Typography>
               </Box>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: "var(--space-1)" }}>
                 <Button
                   size="small"
                   onClick={() => {
@@ -2828,17 +2702,17 @@ export default function PortfolioManager() {
                     setCsvImportDialogOpen(true);
                   }}
                   sx={{
-                    borderRadius: 0,
+                    borderRadius: "var(--radius)",
                     border: "none",
-                    bgcolor: "#E3D7C4",
-                    color: "#292D2A",
-                    boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                    bgcolor: "var(--line)",
+                    color: "var(--white)",
+                    boxShadow: "none",
                     textTransform: "none",
-                    fontSize: "0.82rem",
-                    py: 0.6,
-                    px: 1.5,
+                    fontSize: "var(--text-title)",
+                    py: "var(--space-1)",
+                    px: "var(--space-2)",
                     fontWeight: 600,
-                    "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                    "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                   }}
                 >
                   Import CSV
@@ -2848,17 +2722,17 @@ export default function PortfolioManager() {
                   onClick={handleExportCsv}
                   disabled={!transactions.length}
                   sx={{
-                    borderRadius: 0,
+                    borderRadius: "var(--radius)",
                     border: "none",
-                    bgcolor: "#E3D7C4",
-                    color: "#292D2A",
-                    boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                    bgcolor: "var(--line)",
+                    color: "var(--white)",
+                    boxShadow: "none",
                     textTransform: "none",
-                    fontSize: "0.82rem",
-                    py: 0.6,
-                    px: 1.5,
+                    fontSize: "var(--text-title)",
+                    py: "var(--space-1)",
+                    px: "var(--space-2)",
                     fontWeight: 600,
-                    "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                    "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                   }}
                 >
                   Export CSV
@@ -2870,17 +2744,17 @@ export default function PortfolioManager() {
                     setBackupDialogOpen(true);
                   }}
                   sx={{
-                    borderRadius: 0,
+                    borderRadius: "var(--radius)",
                     border: "none",
-                    bgcolor: "#E3D7C4",
-                    color: "#292D2A",
-                    boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                    bgcolor: "var(--line)",
+                    color: "var(--white)",
+                    boxShadow: "none",
                     textTransform: "none",
-                    fontSize: "0.82rem",
-                    py: 0.6,
-                    px: 1.5,
+                    fontSize: "var(--text-title)",
+                    py: "var(--space-1)",
+                    px: "var(--space-2)",
                     fontWeight: 600,
-                    "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                    "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                   }}
                 >
                   Journal Backup / Restore
@@ -2891,12 +2765,12 @@ export default function PortfolioManager() {
             {/* ─── Compact Reconciliation Status Card ─── */}
             <Paper
               sx={{
-                p: 2,
-                mb: 3,
-                bgcolor: reconciliation.isReconciled ? "#DCE9DE" : "#F6D9CC",
+                p: "var(--space-2)",
+                mb: "var(--space-3)",
+                bgcolor: reconciliation.isReconciled ? "var(--line)" : "var(--gray)",
                 border: "none",
-                borderRadius: 0,
-                boxShadow: "0 3px 8px rgba(41,45,42,0.08)",
+                borderRadius: "var(--radius)",
+                boxShadow: "none",
               }}
             >
               <Stack
@@ -2904,7 +2778,7 @@ export default function PortfolioManager() {
                 sx={{
                   justifyContent: "space-between",
                   alignItems: { md: "center" },
-                  gap: 1.5,
+                  gap: "var(--space-2)",
                 }}
               >
                 <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
@@ -2912,18 +2786,18 @@ export default function PortfolioManager() {
                     label={reconciliation.isReconciled ? "Ledger Reconciled" : "Discrepancy Detected"}
                     size="small"
                     sx={{
-                      bgcolor: reconciliation.isReconciled ? "#046A38" : "#8A5A00",
-                      color: "#F9EBD7",
-                      fontWeight: 700,
-                      borderRadius: 0,
+                      bgcolor: reconciliation.isReconciled ? "var(--up)" : "var(--amber)",
+                      color: "var(--white)",
+                      fontWeight: 600,
+                      borderRadius: "var(--radius)",
                     }}
                   />
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: "#292D2A" }}>
-                    Source of Truth: {transactions.length} Ledger Events · {derivedLedger.holdings.length} Positions Derived
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--white)" }}>
+                    {transactions.length} transactions · {derivedLedger.holdings.length} holdings
                   </Typography>
                 </Stack>
-                <Stack direction="row" spacing={2.5} sx={{ fontSize: "0.85rem", color: "#292D2A", flexWrap: "wrap", alignItems: "center" }}>
-                  <Box><strong>Derived Cash:</strong> {formatCurrency(derivedLedger.cash)}</Box>
+                <Stack direction="row" spacing={2.5} sx={{ fontSize: "var(--text-title)", color: "var(--white)", flexWrap: "wrap", alignItems: "center" }}>
+                  <Box><strong>Cash:</strong> {formatCurrency(derivedLedger.cash)}</Box>
                   <Box><strong>Realized P&L:</strong> {formatCurrency(derivedLedger.totalRealizedPnl)}</Box>
                   <Box><strong>Invested Cost:</strong> {formatCurrency(derivedLedger.totalInvestedCost)}</Box>
                   {!reconciliation.isReconciled && (
@@ -2935,15 +2809,15 @@ export default function PortfolioManager() {
                         setSnackbar("Holdings re-synchronized to ledger truth.");
                       }}
                       sx={{
-                        py: 0.2,
-                        px: 1,
-                        fontSize: "0.75rem",
-                        bgcolor: "#8A5A00",
-                        color: "#F9EBD7",
-                        borderRadius: 0,
-                        fontWeight: 700,
+                        py: "var(--space-1)",
+                        px: "var(--space-1)",
+                        fontSize: "var(--text-title)",
+                        bgcolor: "var(--amber)",
+                        color: "var(--white)",
+                        borderRadius: "var(--radius)",
+                        fontWeight: 600,
                         textTransform: "none",
-                        "&:hover": { bgcolor: "#6f4800" },
+                        "&:hover": { bgcolor: "var(--amber)" },
                       }}
                     >
                       Sync to Ledger
@@ -2952,9 +2826,9 @@ export default function PortfolioManager() {
                 </Stack>
               </Stack>
               {!reconciliation.isReconciled && (
-                <Box sx={{ mt: 1.5, pt: 1, borderTop: "1px dashed rgba(41,45,42,0.2)" }}>
+                <Box sx={{ mt: "var(--space-2)", pt: "var(--space-1)", borderTop: "var(--border-width) solid var(--gray)" }}>
                   {reconciliation.discrepancies.map((d, i) => (
-                    <Typography key={i} variant="caption" sx={{ display: "block", color: "#B8321A", fontWeight: 600 }}>
+                    <Typography key={i} variant="caption" sx={{ display: "block", color: "var(--down)", fontWeight: 600 }}>
                       • {d}
                     </Typography>
                   ))}
@@ -2962,67 +2836,67 @@ export default function PortfolioManager() {
               )}
             </Paper>
             {!transactions.length ? (
-              <Box sx={{ py: 4, textAlign: "center" }}>
+              <Box sx={{ py: "var(--space-4)", textAlign: "center" }}>
                 <Typography color="text.secondary">No transactions recorded yet.</Typography>
               </Box>
             ) : (
               <Table size="small">
-                <TableHead sx={{ bgcolor: "#E3D7C4" }}>
+                <TableHead sx={{ bgcolor: "var(--line)" }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Type</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Symbol</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Quantity</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Execution Price</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Total Value</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Realized P&L</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Date</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Journal Decision</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Type</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Symbol</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Quantity</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Execution Price</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Total Value</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Realized P&L</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Date</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Journal Decision</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {transactions.slice(0, 100).map((tx) => (
-                    <TableRow key={tx.id} hover sx={{ "&:hover": { bgcolor: "#E3D7C4 !important" } }}>
+                    <TableRow key={tx.id} hover sx={{ "&:hover": { bgcolor: "var(--line) !important" } }}>
                       <TableCell sx={{ borderBottom: "none" }}>
                         <Chip
                           size="small"
                           label={tx.type}
                           sx={{
-                            borderRadius: 0,
-                            fontWeight: 700,
-                            bgcolor: tx.type === "BUY" ? "#DCE9DE" : "#F6D9CC",
-                            color: tx.type === "BUY" ? "#046A38" : "#B8321A",
+                            borderRadius: "var(--radius)",
+                            fontWeight: 600,
+                            bgcolor: tx.type === "BUY" ? "var(--line)" : "var(--gray)",
+                            color: tx.type === "BUY" ? "var(--up)" : "var(--down)",
                           }}
                         />
                       </TableCell>
-                      <TableCell sx={{ fontWeight: 700, borderBottom: "none" }}>
-                        <MuiLink component={Link} to={`/companies/${tx.symbol}`} sx={{ color: "#292D2A", textDecoration: "none" }}>
+                      <TableCell sx={{ fontWeight: 600, borderBottom: "none" }}>
+                        <MuiLink component={Link} to={`/companies/${tx.symbol}`} sx={{ color: "var(--white)", textDecoration: "none" }}>
                           {tx.symbol}
                         </MuiLink>
                       </TableCell>
-                      <TableCell align="right" sx={{ color: "#292D2A", fontFamily: "JetBrains Mono, monospace", borderBottom: "none" }}>{tx.quantity}</TableCell>
-                      <TableCell align="right" sx={{ color: "#292D2A", fontFamily: "JetBrains Mono, monospace", borderBottom: "none" }}>{formatCurrency(tx.price, 2)}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, color: "#292D2A", fontFamily: "JetBrains Mono, monospace", borderBottom: "none" }}>
+                      <TableCell align="right" sx={{ color: "var(--white)", fontFamily: "var(--font-data)", borderBottom: "none" }}>{tx.quantity}</TableCell>
+                      <TableCell align="right" sx={{ color: "var(--white)", fontFamily: "var(--font-data)", borderBottom: "none" }}>{formatCurrency(tx.price, 2)}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)", borderBottom: "none" }}>
                         {formatCurrency(tx.quantity * tx.price)}
                       </TableCell>
                       <TableCell
                         align="right"
                         sx={{
-                          fontWeight: 700,
-                          fontFamily: "JetBrains Mono, monospace",
+                          fontWeight: 600,
+                          fontFamily: "var(--font-data)",
                           borderBottom: "none",
                           color:
                             tx.realizedPnl === undefined
-                              ? "#292D2A"
+                              ? "var(--white)"
                               : tx.realizedPnl >= 0
-                              ? "#046A38"
-                              : "#B8321A",
+                              ? "var(--up)"
+                              : "var(--down)",
                         }}
                       >
                         {tx.realizedPnl !== undefined
                           ? `${tx.realizedPnl >= 0 ? "+" : ""}${formatCurrency(tx.realizedPnl)}`
                           : "—"}
                       </TableCell>
-                      <TableCell sx={{ color: "#292D2A", borderBottom: "none" }}>{tx.date}</TableCell>
+                      <TableCell sx={{ color: "var(--white)", borderBottom: "none" }}>{tx.date}</TableCell>
                       <TableCell align="center" sx={{ borderBottom: "none" }}>
                         <Tooltip title={`Record investment decision for ${tx.symbol} on ${tx.date}`}>
                           <Button
@@ -3036,17 +2910,17 @@ export default function PortfolioManager() {
                               setTxTagInput("");
                             }}
                             sx={{
-                              py: 0.3,
-                              px: 1,
-                              fontSize: "0.75rem",
-                              borderRadius: 0,
+                              py: "var(--space-1)",
+                              px: "var(--space-1)",
+                              fontSize: "var(--text-title)",
+                              borderRadius: "var(--radius)",
                               border: "none",
-                              bgcolor: "#E3D7C4",
-                              color: "#292D2A",
-                              boxShadow: "0 2px 5px rgba(41,45,42,0.08)",
+                              bgcolor: "var(--line)",
+                              color: "var(--white)",
+                              boxShadow: "none",
                               textTransform: "none",
                               fontWeight: 600,
-                              "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                              "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                             }}
                           >
                             Record Decision
@@ -3118,22 +2992,22 @@ export default function PortfolioManager() {
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1, color: "#292D2A" }}>
+        <DialogTitle sx={{ fontWeight: 600, pb: "var(--space-1)", color: "var(--white)" }}>
            Research Notes: {selectedNotesStock?.symbol}
           {selectedNotesStock?.companyName && (
-            <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
+            <Typography variant="caption" sx={{ display: "block", color: "var(--gray)" }}>
               {selectedNotesStock.companyName}
             </Typography>
           )}
         </DialogTitle>
-        <DialogContent sx={{ p: 2 }}>
+        <DialogContent sx={{ p: "var(--space-2)" }}>
           {selectedNotesStock && (
             <StockResearchNotes
               symbol={selectedNotesStock.symbol}
@@ -3143,13 +3017,13 @@ export default function PortfolioManager() {
             />
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 2.5, py: 1.5 }}>
+        <DialogActions sx={{ px: "var(--space-3)", py: "var(--space-2)" }}>
           <Button
             onClick={() => {
               setSelectedNotesStock(null);
               void refreshNotesCountMap();
             }}
-            sx={{ color: "#686B64", borderRadius: 0 }}
+            sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}
           >
             Close
           </Button>
@@ -3165,20 +3039,20 @@ export default function PortfolioManager() {
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1, color: "#292D2A" }}>
+        <DialogTitle sx={{ fontWeight: 600, pb: "var(--space-1)", color: "var(--white)" }}>
           Record Decision: {decisionTxRecord?.symbol} ({decisionTxRecord?.type})
-          <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
+          <Typography variant="caption" sx={{ display: "block", color: "var(--gray)" }}>
             Ledger Date: {decisionTxRecord?.date} · Execution Price: {decisionTxRecord ? formatCurrency(decisionTxRecord.price, 2) : "—"}
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
+        <DialogContent sx={{ pt: "var(--space-2)" }}>
           {decisionTxRecord && (() => {
             const holdingMatch = holdings.find((h) => h.symbol === decisionTxRecord.symbol);
             const totalInv = totalInvestedValue;
@@ -3200,7 +3074,7 @@ export default function PortfolioManager() {
                       label="Decision Type"
                       value={txDecisionType}
                       onChange={(e) => setTxDecisionType(e.target.value as DecisionType)}
-                      sx={{ bgcolor: "#F9EBD7", borderRadius: 0 }}
+                      sx={{ bgcolor: "var(--bg)", borderRadius: "var(--radius)" }}
                     >
                       <MenuItem value="Buy">Buy</MenuItem>
                       <MenuItem value="Hold">Hold</MenuItem>
@@ -3216,7 +3090,7 @@ export default function PortfolioManager() {
                     value={txDecisionDate}
                     onChange={(e) => setTxDecisionDate(e.target.value)}
                     slotProps={{ inputLabel: { shrink: true } }}
-                    sx={{ flex: 1, bgcolor: "#F9EBD7", borderRadius: 0 }}
+                    sx={{ flex: 1, bgcolor: "var(--bg)", borderRadius: "var(--radius)" }}
                   />
                 </Stack>
 
@@ -3228,14 +3102,14 @@ export default function PortfolioManager() {
                   value={txRationale}
                   onChange={(e) => setTxRationale(e.target.value)}
                   sx={{
-                    bgcolor: "#F9EBD7",
-                    borderRadius: 0,
-                    "& .MuiInputBase-input": { fontSize: "0.9rem", lineHeight: 1.6, color: "#292D2A" },
+                    bgcolor: "var(--bg)",
+                    borderRadius: "var(--radius)",
+                    "& .MuiInputBase-input": { fontSize: "var(--text-title)", lineHeight: "var(--leading)", color: "var(--white)" },
                   }}
                 />
 
                 <Box>
-                  <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 700, display: "block", mb: 0.5 }}>
+                  <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600, display: "block", mb: "var(--space-1)" }}>
                     Decision Tags
                   </Typography>
                   <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
@@ -3254,7 +3128,7 @@ export default function PortfolioManager() {
                           }
                         }
                       }}
-                      sx={{ flex: 1, bgcolor: "#F9EBD7", borderRadius: 0 }}
+                      sx={{ flex: 1, bgcolor: "var(--bg)", borderRadius: "var(--radius)" }}
                     />
                     <Button
                       size="small"
@@ -3267,20 +3141,20 @@ export default function PortfolioManager() {
                       }}
                       disabled={!txTagInput.trim()}
                       sx={{
-                        borderRadius: 0,
+                        borderRadius: "var(--radius)",
                         border: "none",
-                        bgcolor: "#E3D7C4",
-                        color: "#292D2A",
+                        bgcolor: "var(--line)",
+                        color: "var(--white)",
                         fontWeight: 600,
-                        boxShadow: "0 2px 4px rgba(41,45,42,0.08)",
-                        "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                        boxShadow: "none",
+                        "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                       }}
                     >
                       Add
                     </Button>
                   </Stack>
                   {txTags.length > 0 && (
-                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: 0.5, mt: 1 }}>
+                    <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: "var(--space-1)", mt: "var(--space-1)" }}>
                       {txTags.map((t) => (
                         <Chip
                           key={t}
@@ -3289,9 +3163,9 @@ export default function PortfolioManager() {
                           onDelete={() => setTxTags((prev) => prev.filter((i) => i !== t))}
                           sx={{
                             height: 24,
-                            borderRadius: 0,
-                            bgcolor: "#DCE9DE",
-                            color: "#046A38",
+                            borderRadius: "var(--radius)",
+                            bgcolor: "var(--line)",
+                            color: "var(--up)",
                             fontWeight: 600,
                           }}
                         />
@@ -3304,38 +3178,38 @@ export default function PortfolioManager() {
                 <Paper
                   elevation={0}
                   sx={{
-                    p: 2,
-                    bgcolor: "#F9EBD7",
+                    p: "var(--space-2)",
+                    bgcolor: "var(--bg)",
                     border: "none",
-                    borderRadius: 0,
-                    boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                    borderRadius: "var(--radius)",
+                    boxShadow: "none",
                   }}
                 >
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 1 }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", display: "block", mb: "var(--space-1)" }}>
                     Captured Context Snapshot (At Decision Time):
                   </Typography>
-                  <Stack spacing={0.5} sx={{ fontSize: "0.8rem", color: "#686B64" }}>
+                  <Stack spacing={0.5} sx={{ fontSize: "var(--text-title)", color: "var(--gray)" }}>
                     <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                       <span>Portfolio Risk Score:</span>
-                      <span style={{ fontWeight: 600, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
+                      <span style={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>
                         {pRiskScore !== null ? `${pRiskScore} (${pRiskLabel || "Active"})` : "Unavailable"}
                       </span>
                     </Stack>
                     <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                       <span>20D Sector Divergence:</span>
-                      <span style={{ fontWeight: 600, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
+                      <span style={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>
                         {divScore !== null ? `${divScore > 0 ? "+" : ""}${divScore.toFixed(2)}σ` : "Unavailable"}
                       </span>
                     </Stack>
                     <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                       <span>Portfolio Weight:</span>
-                      <span style={{ fontWeight: 600, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
+                      <span style={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>
                         {weight !== null ? `${weight.toFixed(2)}%` : "Unavailable"}
                       </span>
                     </Stack>
                     <Stack direction="row" sx={{ justifyContent: "space-between" }}>
                       <span>MST Cluster:</span>
-                      <span style={{ fontWeight: 600, color: "#292D2A" }}>{cluster || "Unavailable"}</span>
+                      <span style={{ fontWeight: 600, color: "var(--white)" }}>{cluster || "Unavailable"}</span>
                     </Stack>
                   </Stack>
                 </Paper>
@@ -3343,8 +3217,8 @@ export default function PortfolioManager() {
             );
           })()}
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDecisionTxRecord(null)} sx={{ color: "#686B64", borderRadius: 0 }}>
+        <DialogActions sx={{ px: "var(--space-3)", py: "var(--space-2)" }}>
+          <Button onClick={() => setDecisionTxRecord(null)} sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             Cancel
           </Button>
           <Button
@@ -3388,12 +3262,11 @@ export default function PortfolioManager() {
               setDecisionTxRecord(null);
             }}
             sx={{
-              borderRadius: 0,
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
-              fontWeight: 700,
-              boxShadow: "0 3px 8px rgba(4,106,56,0.20)",
-              "&:hover": { bgcolor: "#03532c" },
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--up)", color: "var(--line)",
+              fontWeight: 600,
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--up)" },
             }}
           >
             Record Decision
@@ -3410,32 +3283,32 @@ export default function PortfolioManager() {
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1, color: "#292D2A" }}>
+        <DialogTitle sx={{ fontWeight: 600, pb: "var(--space-1)", color: "var(--white)" }}>
           Journal Backup & Restore
-          <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
+          <Typography variant="caption" sx={{ display: "block", color: "var(--gray)" }}>
             Export or restore your research notes, investment decisions, and portfolio snapshots locally in JSON format.
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
+        <DialogContent sx={{ pt: "var(--space-2)" }}>
           <Stack spacing={2.5}>
             {backupStatus && (
-              <Alert severity="info" sx={{ fontSize: "0.82rem", borderRadius: 0 }}>
+              <Alert severity="info" sx={{ fontSize: "var(--text-title)", borderRadius: "var(--radius)" }}>
                 {backupStatus}
               </Alert>
             )}
 
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 0.5 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-1)" }}>
                 1. Export Backup
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: "0.85rem", mb: 1.5, color: "#686B64" }}>
+              <Typography variant="body2" sx={{ fontSize: "var(--text-title)", mb: "var(--space-2)", color: "var(--gray)" }}>
                 Download a JSON backup of all research notes, investment decisions, and portfolio snapshots to your device.
               </Typography>
               <Button
@@ -3459,36 +3332,35 @@ export default function PortfolioManager() {
                   }
                 }}
                 sx={{
-                  borderRadius: 0,
-                  bgcolor: "#046A38",
-                  color: "#F9EBD7",
-                  fontWeight: 700,
-                  boxShadow: "0 3px 8px rgba(4,106,56,0.20)",
-                  "&:hover": { bgcolor: "#03532c" },
+                  borderRadius: "var(--radius)",
+                  bgcolor: "var(--up)", color: "var(--line)",
+                  fontWeight: 600,
+                  boxShadow: "none",
+                  "&:hover": { bgcolor: "var(--up)" },
                 }}
               >
                 Download JSON Backup
               </Button>
             </Box>
 
-            <Box sx={{ pt: 1 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 0.5 }}>
+            <Box sx={{ pt: "var(--space-1)" }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-1)" }}>
                 2. Restore from Backup
               </Typography>
-              <Typography variant="body2" sx={{ fontSize: "0.85rem", mb: 1.5, color: "#686B64" }}>
+              <Typography variant="body2" sx={{ fontSize: "var(--text-title)", mb: "var(--space-2)", color: "var(--gray)" }}>
                 Select a previously exported JSON backup file to import notes and decisions.
               </Typography>
               <Button
                 component="label"
                 fullWidth
                 sx={{
-                  borderRadius: 0,
+                  borderRadius: "var(--radius)",
                   border: "none",
-                  bgcolor: "#E3D7C4",
-                  color: "#292D2A",
+                  bgcolor: "var(--line)",
+                  color: "var(--white)",
                   fontWeight: 600,
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-                  "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                  boxShadow: "none",
+                  "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
                 }}
               >
                 Upload & Restore Backup
@@ -3522,8 +3394,8 @@ export default function PortfolioManager() {
             </Box>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 2.5, py: 1.5 }}>
-          <Button onClick={() => setBackupDialogOpen(false)} sx={{ color: "#686B64", borderRadius: 0 }}>
+        <DialogActions sx={{ px: "var(--space-3)", py: "var(--space-2)" }}>
+          <Button onClick={() => setBackupDialogOpen(false)} sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             Done
           </Button>
         </DialogActions>
@@ -3538,19 +3410,19 @@ export default function PortfolioManager() {
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, color: "#292D2A", pb: 1 }}>
+        <DialogTitle sx={{ fontWeight: 600, color: "var(--white)", pb: "var(--space-1)" }}>
           Import Transactions from CSV
         </DialogTitle>
         <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <Typography variant="body2" sx={{ color: "#686B64" }}>
+          <Stack spacing={2} sx={{ pt: "var(--space-1)" }}>
+            <Typography variant="body2" sx={{ color: "var(--gray)" }}>
               Upload or paste CSV transactions (supported headers: <code>date,type,symbol,quantity,price,amount,fees,notes</code>). Spreadsheet formula cells starting with <code>=, +, -, @</code> are strictly rejected to prevent formula injection.
             </Typography>
 
@@ -3558,13 +3430,13 @@ export default function PortfolioManager() {
               component="label"
               size="small"
               sx={{
-                bgcolor: "#E3D7C4",
-                color: "#292D2A",
+                bgcolor: "var(--line)",
+                color: "var(--white)",
                 fontWeight: 600,
-                borderRadius: 0,
+                borderRadius: "var(--radius)",
                 alignSelf: "flex-start",
-                boxShadow: "0 2px 6px rgba(41,45,42,0.10)",
-                "&:hover": { bgcolor: "#046A38", color: "#F9EBD7" },
+                boxShadow: "none",
+                "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
               }}
             >
               Choose CSV File
@@ -3600,17 +3472,17 @@ export default function PortfolioManager() {
               }}
               sx={{
                 "& .MuiInputBase-root": {
-                  borderRadius: 0,
-                  bgcolor: "#F9EBD7",
-                  fontFamily: "JetBrains Mono, monospace",
-                  fontSize: "0.85rem",
+                  borderRadius: "var(--radius)",
+                  bgcolor: "var(--bg)",
+                  fontFamily: "var(--font-data)",
+                  fontSize: "var(--text-title)",
                 },
               }}
             />
 
             {csvErrors.length > 0 && (
-              <Alert severity="error" sx={{ borderRadius: 0 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+              <Alert severity="error" sx={{ borderRadius: "var(--radius)" }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                   Validation Errors (Atomic Rollback Active):
                 </Typography>
                 {csvErrors.map((err, i) => (
@@ -3623,17 +3495,17 @@ export default function PortfolioManager() {
 
             {csvPreview.length > 0 && (
               <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: "#046A38" }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: "var(--space-1)", color: "var(--up)" }}>
                   Preview ({csvPreview.length} Valid Transactions):
                 </Typography>
-                <Table size="small" sx={{ bgcolor: "#F9EBD7" }}>
-                  <TableHead sx={{ bgcolor: "#E3D7C4" }}>
+                <Table size="small" sx={{ bgcolor: "var(--bg)" }}>
+                  <TableHead sx={{ bgcolor: "var(--line)" }}>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Symbol</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Quantity</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700 }}>Price</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Symbol</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>Quantity</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>Price</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -3641,7 +3513,7 @@ export default function PortfolioManager() {
                       <TableRow key={idx}>
                         <TableCell>{row.date}</TableCell>
                         <TableCell>{row.type}</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>{row.symbol || "—"}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{row.symbol || "—"}</TableCell>
                         <TableCell align="right">{row.quantity ?? "—"}</TableCell>
                         <TableCell align="right">{row.price ? formatCurrency(row.price) : "—"}</TableCell>
                       </TableRow>
@@ -3652,8 +3524,8 @@ export default function PortfolioManager() {
             )}
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ p: 2, bgcolor: "#E3D7C4" }}>
-          <Button onClick={() => setCsvImportDialogOpen(false)} sx={{ color: "#686B64", borderRadius: 0 }}>
+        <DialogActions sx={{ p: "var(--space-2)", bgcolor: "var(--line)" }}>
+          <Button onClick={() => setCsvImportDialogOpen(false)} sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             Cancel
           </Button>
           <Button
@@ -3664,11 +3536,10 @@ export default function PortfolioManager() {
               setCsvImportDialogOpen(false);
             }}
             sx={{
-              borderRadius: 0,
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
-              fontWeight: 700,
-              "&:hover": { bgcolor: "#03532c" },
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--up)", color: "var(--line)",
+              fontWeight: 600,
+              "&:hover": { bgcolor: "var(--up)" },
             }}
           >
             Commit {csvPreview.length} Transactions
@@ -3690,16 +3561,7 @@ export default function PortfolioManager() {
 /* ─── Metric Card Helper ─── */
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <Paper sx={{ p: 2.5, flex: "1 1 180px" }}>
-      <Typography variant="overline" color="text.secondary">
-        {label}
-      </Typography>
-      <Typography variant="h5" sx={{ fontWeight: 700 }}>
-        {value}
-      </Typography>
-    </Paper>
-  );
+  return <span className="summary-pair"><label>{label}</label><span>{value}</span></span>;
 }
 
 /* ─── Buy Stock Dialog with Stock Name Autocomplete ─── */
@@ -3769,9 +3631,9 @@ function AddStockDialog({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700 }}>Buy Stock</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>Buy Stock</DialogTitle>
       <DialogContent>
-        <Stack spacing={2.5} sx={{ mt: 1 }}>
+        <Stack spacing={2.5} sx={{ mt: "var(--space-1)" }}>
           <Autocomplete
             options={securities}
             getOptionLabel={(opt) => (typeof opt === "string" ? opt : `${opt.symbol} — ${opt.company_name}`)}
@@ -3788,7 +3650,7 @@ function AddStockDialog({
             renderOption={(props, opt) => (
               <Box component="li" {...props} key={opt.id}>
                 <Box>
-                  <Typography sx={{ fontWeight: 700 }}>{opt.symbol}</Typography>
+                  <Typography sx={{ fontWeight: 600 }}>{opt.symbol}</Typography>
                   <Typography variant="caption" color="text.secondary">
                     {opt.company_name} · {opt.industry}
                   </Typography>
@@ -3821,7 +3683,7 @@ function AddStockDialog({
                   · Live/Close Price: <strong>₹{Number(buyPrice).toFixed(2)}</strong>
                 </>
               )}
-              {liveQuoteFetching && <CircularProgress size={12} sx={{ ml: 1 }} />}
+              {liveQuoteFetching && <CircularProgress size={12} sx={{ ml: "var(--space-1)" }} />}
             </Alert>
           )}
 
@@ -3871,7 +3733,7 @@ function AddStockDialog({
           )}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: "var(--space-3)", pb: "var(--space-2)" }}>
         <Button onClick={onClose}>Cancel</Button>
         <Button
           onClick={handleSubmit}
@@ -3947,9 +3809,9 @@ function SellStockDialog({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700 }}>Sell Stock</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>Sell Stock</DialogTitle>
       <DialogContent>
-        <Stack spacing={2.5} sx={{ mt: 1 }}>
+        <Stack spacing={2.5} sx={{ mt: "var(--space-1)" }}>
           <FormControl fullWidth>
             <InputLabel>Select Holding</InputLabel>
             <Select
@@ -4002,32 +3864,32 @@ function SellStockDialog({
             <Paper
               elevation={0}
               sx={{
-                p: 2,
-                borderRadius: 0,
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
                 border: "none",
-                bgcolor: "#F9EBD7",
-                boxShadow: "0 2px 6px rgba(41,45,42,0.08)",
+                bgcolor: "var(--bg)",
+                boxShadow: "none",
               }}
             >
               <Stack spacing={0.75}>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography variant="body2" sx={{ color: "#686B64" }}>
+                  <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                     Total Estimated Proceeds
                   </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>
                     {formatCurrency(proceeds)}
                   </Typography>
                 </Stack>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography variant="body2" sx={{ color: "#686B64" }}>
+                  <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                     Realized P&L
                   </Typography>
                   <Typography
                     variant="body2"
                     sx={{
-                      fontWeight: 700,
-                      fontFamily: "JetBrains Mono, monospace",
-                      color: totalRealizedPnl >= 0 ? "#046A38" : "#B8321A",
+                      fontWeight: 600,
+                      fontFamily: "var(--font-data)",
+                      color: totalRealizedPnl >= 0 ? "var(--up)" : "var(--down)",
                     }}
                   >
                     {totalRealizedPnl >= 0 ? "+" : ""}
@@ -4039,7 +3901,7 @@ function SellStockDialog({
           )}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: "var(--space-3)", pb: "var(--space-2)" }}>
         <Button onClick={onClose}>Cancel</Button>
         <Button
           onClick={handleSubmit}
@@ -4109,9 +3971,9 @@ function EditHoldingDialog({
 
   return (
     <Dialog open={Boolean(holding)} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontWeight: 700 }}>Edit Holding</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 600 }}>Edit Holding</DialogTitle>
       <DialogContent>
-        <Stack spacing={2.5} sx={{ mt: 1 }}>
+        <Stack spacing={2.5} sx={{ mt: "var(--space-1)" }}>
           <TextField
             label="Stock Symbol"
             value={symbolInput}
@@ -4161,7 +4023,7 @@ function EditHoldingDialog({
           </Stack>
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ px: "var(--space-3)", pb: "var(--space-2)" }}>
         <Button onClick={onClose}>Cancel</Button>
         <Button onClick={handleSave} variant="contained">
           Save Changes
@@ -4201,7 +4063,7 @@ function PerformanceChart({ points }: { points: PortfolioPerformancePoint[] }) {
   const drawdownLine = points.map((p, i) => `${x(i)},${drawdownY(p.drawdown)}`).join(" ");
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: "var(--space-3)" }}>
       <Typography variant="h5">Historical portfolio performance</Typography>
       <Typography color="text.secondary" gutterBottom>
         Constant-weight daily-rebalanced index; starting value 100. Drawdown is measured from the running peak.
@@ -4218,33 +4080,33 @@ function PerformanceChart({ points }: { points: PortfolioPerformancePoint[] }) {
           const y = top + ratio * (firstBottom - top);
           return (
             <g key={ratio}>
-              <line x1={left} x2={width - right} y1={y} y2={y} stroke="rgba(41,45,42,0.12)" />
-              <text x={left - 8} y={y + 4} textAnchor="end" fontSize="12" fill="#686B64" fontFamily="JetBrains Mono, monospace">
+              <line x1={left} x2={width - right} y1={y} y2={y} stroke="var(--cyan)" />
+              <text x={left - 8} y={y + 4} textAnchor="end" fontSize="var(--text-tag)" fill="var(--gray)" fontFamily="var(--font-data)">
                 {v.toFixed(0)}
               </text>
             </g>
           );
         })}
-        <polyline points={indexLine} fill="none" stroke="#046A38" strokeWidth="3" />
-        <line x1={left} x2={width - right} y1={secondTop} y2={secondTop} stroke="rgba(41,45,42,0.12)" />
-        <line x1={left} x2={width - right} y1={bottom} y2={bottom} stroke="rgba(41,45,42,0.12)" />
-        <text x={left - 8} y={secondTop + 4} textAnchor="end" fontSize="12" fill="#686B64" fontFamily="JetBrains Mono, monospace">
+        <polyline points={indexLine} fill="none" stroke="var(--up)" strokeWidth="var(--border-width)" />
+        <line x1={left} x2={width - right} y1={secondTop} y2={secondTop} stroke="var(--cyan)" />
+        <line x1={left} x2={width - right} y1={bottom} y2={bottom} stroke="var(--cyan)" />
+        <text x={left - 8} y={secondTop + 4} textAnchor="end" fontSize="var(--text-tag)" fill="var(--gray)" fontFamily="var(--font-data)">
           0%
         </text>
-        <text x={left - 8} y={bottom + 4} textAnchor="end" fontSize="12" fill="#686B64" fontFamily="JetBrains Mono, monospace">
+        <text x={left - 8} y={bottom + 4} textAnchor="end" fontSize="var(--text-tag)" fill="var(--gray)" fontFamily="var(--font-data)">
           {formatPercent(minDrawdown * 100, 0)}
         </text>
-        <polyline points={drawdownLine} fill="none" stroke="#E34222" strokeWidth="2.5" />
-        <text x={left} y={height - 10} fontSize="12" fill="#686B64">
+        <polyline points={drawdownLine} fill="none" stroke="var(--down)" strokeWidth="var(--border-width)" />
+        <text x={left} y={height - 10} fontSize="var(--text-tag)" fill="var(--gray)">
           {points[0]?.trade_date}
         </text>
-        <text x={width - right} y={height - 10} textAnchor="end" fontSize="12" fill="#686B64">
+        <text x={width - right} y={height - 10} textAnchor="end" fontSize="var(--text-tag)" fill="var(--gray)">
           {points.at(-1)?.trade_date}
         </text>
-        <text x={left} y={top - 9} fontSize="12" fill="#046A38" fontWeight="bold">
+        <text x={left} y={top - 9} fontSize="var(--text-tag)" fill="var(--up)" fontWeight="400">
           Portfolio index
         </text>
-        <text x={left} y={secondTop - 9} fontSize="12" fill="#E34222" fontWeight="bold">
+        <text x={left} y={secondTop - 9} fontSize="var(--text-tag)" fill="var(--down)" fontWeight="400">
           Drawdown
         </text>
       </Box>
@@ -4254,28 +4116,28 @@ function PerformanceChart({ points }: { points: PortfolioPerformancePoint[] }) {
 
 function ExposurePanel({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   return (
-    <Paper sx={{ p: 3, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: "#292D2A" }}>
+    <Paper sx={{ p: "var(--space-3)", flex: 1, borderRadius: "var(--radius)", border: "none", bgcolor: "var(--bg)", boxShadow: "none" }}>
+      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, color: "var(--white)" }}>
         Industry exposure
       </Typography>
       <Stack spacing={2}>
         {analysis.concentration.industry_weights.map((item) => (
           <Box key={item.industry}>
             <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-              <Typography variant="body2" sx={{ color: "#292D2A" }}>{item.industry}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 700, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
+              <Typography variant="body2" sx={{ color: "var(--white)" }}>{item.industry}</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>
                 {formatPercent(item.weight * 100, 1)}
               </Typography>
             </Stack>
             <LinearProgress
               variant="determinate"
               value={item.weight * 100}
-              sx={{ height: 8, borderRadius: 0, mt: 0.5 }}
+              sx={{ height: 8, borderRadius: "var(--radius)", mt: "var(--space-1)" }}
             />
           </Box>
         ))}
       </Stack>
-      <Typography variant="body2" sx={{ mt: 2, color: "#686B64" }}>
+      <Typography variant="body2" sx={{ mt: "var(--space-2)", color: "var(--gray)" }}>
         Industry HHI {analysis.concentration.industry_hhi.toFixed(3)} · effective industries{" "}
         {analysis.concentration.effective_industries.toFixed(1)}
       </Typography>
@@ -4285,16 +4147,16 @@ function ExposurePanel({ analysis }: { analysis: PortfolioAnalysisResponse }) {
 
 function DiversificationPanel({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   return (
-    <Paper sx={{ p: 3, flex: 1, borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: "#292D2A" }}>
+    <Paper sx={{ p: "var(--space-3)", flex: 1, borderRadius: "var(--radius)", border: "none", bgcolor: "var(--bg)", boxShadow: "none" }}>
+      <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, color: "var(--white)" }}>
         Diversification
       </Typography>
       <Stack spacing={2}>
-        <Box><Typography variant="overline" sx={{ color: "#686B64" }}>Holdings</Typography><Typography variant="h4" sx={{ fontWeight: 700, color: "#292D2A" }}>{analysis.holdings.length}</Typography></Box>
-        <Box><Typography variant="overline" sx={{ color: "#686B64" }}>Effective holdings by weight</Typography><Typography variant="h4" sx={{ fontWeight: 700, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>{analysis.concentration.effective_holdings.toFixed(2)}</Typography></Box>
-        <Box><Typography variant="overline" sx={{ color: "#686B64" }}>Effective bets by risk contribution</Typography><Typography variant="h4" sx={{ fontWeight: 700, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>{analysis.diversification.effective_bets_risk.toFixed(2)}</Typography></Box>
-        <Box><Typography variant="overline" sx={{ color: "#686B64" }}>Effective bets by correlation eigenvalues</Typography><Typography variant="h4" sx={{ fontWeight: 700, color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>{analysis.diversification.effective_bets_correlation.toFixed(2)}</Typography></Box>
-        <Alert severity="info" icon={false} sx={{ borderRadius: 0, bgcolor: "#F9EBD7", color: "#292D2A" }}>
+        <Box><Typography variant="overline" sx={{ color: "var(--gray)" }}>Holdings</Typography><Typography variant="h4" sx={{ fontWeight: 600, color: "var(--white)" }}>{analysis.holdings.length}</Typography></Box>
+        <Box><Typography variant="overline" sx={{ color: "var(--gray)" }}>Effective holdings by weight</Typography><Typography variant="h4" sx={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>{analysis.concentration.effective_holdings.toFixed(2)}</Typography></Box>
+        <Box><Typography variant="overline" sx={{ color: "var(--gray)" }}>Effective bets by risk contribution</Typography><Typography variant="h4" sx={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>{analysis.diversification.effective_bets_risk.toFixed(2)}</Typography></Box>
+        <Box><Typography variant="overline" sx={{ color: "var(--gray)" }}>Effective bets by correlation eigenvalues</Typography><Typography variant="h4" sx={{ fontWeight: 600, color: "var(--white)", fontFamily: "var(--font-data)" }}>{analysis.diversification.effective_bets_correlation.toFixed(2)}</Typography></Box>
+        <Alert severity="info" icon={false} sx={{ borderRadius: "var(--radius)", bgcolor: "var(--bg)", color: "var(--white)" }}>
           {analysis.diversification.interpretation}
         </Alert>
       </Stack>
@@ -4305,44 +4167,44 @@ function DiversificationPanel({ analysis }: { analysis: PortfolioAnalysisRespons
 function RiskContributionTable({ holdings }: { holdings: PortfolioHoldingAnalytics[] }) {
   const ordered = [...holdings].sort((a, b) => b.risk_contribution - a.risk_contribution);
   return (
-    <Paper sx={{ p: 3, overflowX: "auto", borderRadius: 0, border: "none", bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-      <Typography variant="h5" sx={{ fontWeight: 700, color: "#292D2A" }}>Risk contribution by holding</Typography>
-      <Typography sx={{ color: "#686B64", mb: 2 }}>
+    <Paper sx={{ p: "var(--space-3)", overflowX: "auto", borderRadius: "var(--radius)", border: "none", bgcolor: "var(--bg)", boxShadow: "none" }}>
+      <Typography variant="h5" sx={{ fontWeight: 600, color: "var(--white)" }}>Risk contribution by holding</Typography>
+      <Typography sx={{ color: "var(--gray)", mb: "var(--space-2)" }}>
         Euler decomposition of annualized sample covariance; contributions sum to approximately 100%.
       </Typography>
       <Table size="small">
-        <TableHead sx={{ bgcolor: "#E3D7C4" }}>
+        <TableHead sx={{ bgcolor: "var(--line)" }}>
           <TableRow>
-            <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Holding</TableCell>
-            <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Weight</TableCell>
-            <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Asset volatility</TableCell>
-            <TableCell align="right" sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Risk contribution</TableCell>
-            <TableCell sx={{ fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Risk score</TableCell>
-            <TableCell sx={{ minWidth: 180, fontWeight: 700, color: "#292D2A", borderBottom: "none" }}>Share</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Holding</TableCell>
+            <TableCell align="right" sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Weight</TableCell>
+            <TableCell align="right" sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Asset volatility</TableCell>
+            <TableCell align="right" sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Risk contribution</TableCell>
+            <TableCell sx={{ fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Risk score</TableCell>
+            <TableCell sx={{ minWidth: 180, fontWeight: 600, color: "var(--white)", borderBottom: "none" }}>Share</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {ordered.map((h) => {
             const risk = riskScoreFromVolatility(h.annualized_volatility);
             return (
-              <TableRow key={h.symbol} hover sx={{ "&:hover": { bgcolor: "#E3D7C4 !important" } }}>
+              <TableRow key={h.symbol} hover sx={{ "&:hover": { bgcolor: "var(--line) !important" } }}>
                 <TableCell sx={{ borderBottom: "none" }}>
-                  <MuiLink component={Link} to={`/companies/${h.symbol}`} sx={{ fontWeight: 700, color: "#292D2A" }}>
+                  <MuiLink component={Link} to={`/companies/${h.symbol}`} sx={{ fontWeight: 600, color: "var(--white)" }}>
                     {h.symbol}
                   </MuiLink>
                 </TableCell>
-                <TableCell align="right" sx={{ color: "#292D2A", fontFamily: "JetBrains Mono, monospace", borderBottom: "none" }}>{formatPercent(h.weight * 100, 1)}</TableCell>
-                <TableCell align="right" sx={{ color: "#292D2A", fontFamily: "JetBrains Mono, monospace", borderBottom: "none" }}>{formatPercent(h.annualized_volatility * 100, 1)}</TableCell>
-                <TableCell align="right" sx={{ color: "#292D2A", fontFamily: "JetBrains Mono, monospace", borderBottom: "none" }}>{formatPercent(h.risk_contribution * 100, 1)}</TableCell>
+                <TableCell align="right" sx={{ color: "var(--white)", fontFamily: "var(--font-data)", borderBottom: "none" }}>{formatPercent(h.weight * 100, 1)}</TableCell>
+                <TableCell align="right" sx={{ color: "var(--white)", fontFamily: "var(--font-data)", borderBottom: "none" }}>{formatPercent(h.annualized_volatility * 100, 1)}</TableCell>
+                <TableCell align="right" sx={{ color: "var(--white)", fontFamily: "var(--font-data)", borderBottom: "none" }}>{formatPercent(h.risk_contribution * 100, 1)}</TableCell>
                 <TableCell sx={{ borderBottom: "none" }}>
                   <Chip
                     size="small"
                     label={risk.label}
                     sx={{
-                      borderRadius: 0,
-                      fontWeight: 700,
-                      bgcolor: risk.label === "Low" ? "#DCE9DE" : risk.label === "Moderate" ? "#E3D7C4" : "#F6D9CC",
-                      color: risk.label === "Low" ? "#046A38" : risk.label === "Moderate" ? "#8A5A00" : "#B8321A",
+                      borderRadius: "var(--radius)",
+                      fontWeight: 600,
+                      bgcolor: risk.label === "Low" ? "var(--line)" : risk.label === "Moderate" ? "var(--line)" : "var(--gray)",
+                      color: risk.label === "Low" ? "var(--up)" : risk.label === "Moderate" ? "var(--amber)" : "var(--down)",
                     }}
                   />
                 </TableCell>
@@ -4351,7 +4213,7 @@ function RiskContributionTable({ holdings }: { holdings: PortfolioHoldingAnalyti
                     color={h.risk_contribution > 0.35 ? "warning" : "primary"}
                     variant="determinate"
                     value={Math.min(Math.max(h.risk_contribution * 100, 0), 100)}
-                    sx={{ height: 8, borderRadius: 0 }}
+                    sx={{ height: 8, borderRadius: "var(--radius)" }}
                   />
                 </TableCell>
               </TableRow>
@@ -4365,7 +4227,7 @@ function RiskContributionTable({ holdings }: { holdings: PortfolioHoldingAnalyti
 
 function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: "var(--space-3)" }}>
       <Typography variant="h5">MST concentration and indirect connections</Typography>
       <Typography color="text.secondary" gutterBottom>
         Clusters retain MST edges with correlation ≥ {analysis.mst.cluster_correlation_floor.toFixed(2)}. Paths use the
@@ -4379,19 +4241,18 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
             ? "info"
             : "warning"
         }
-        sx={{ mt: 2 }}
+        sx={{ mt: "var(--space-2)" }}
       >
         MST stability: {analysis.mst.stability.confidence}. {analysis.mst.stability.reason}
       </Alert>
-      <PortfolioMstGraph mst={analysis.mst} holdings={analysis.holdings} />
-      <Stack direction={{ xs: "column", md: "row" }} spacing={3} sx={{ mt: 2 }}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={3} sx={{ mt: "var(--space-2)" }}>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h6">Portfolio clusters</Typography>
           <Stack spacing={1}>
             {analysis.mst.clusters.map((c) => (
-              <Box key={c.cluster_id} sx={{ py: 1.25, px: 1.5, bgcolor: "#E3D7C4", mb: 1, boxShadow: "0 2px 4px rgba(41,45,42,0.06)" }}>
+              <Box key={c.cluster_id} sx={{ py: "var(--space-1)", px: "var(--space-2)", bgcolor: "var(--line)", mb: "var(--space-1)", boxShadow: "none" }}>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <Typography sx={{ fontWeight: 700 }}>{c.cluster_id}</Typography>
+                  <Typography sx={{ fontWeight: 600 }}>{c.cluster_id}</Typography>
                   <Chip size="small" label={formatPercent(c.weight * 100, 1)} />
                 </Stack>
                 <Typography variant="body2">{c.holding_symbols.join(", ")}</Typography>
@@ -4411,10 +4272,10 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
             <Stack
               direction="row"
               key={`${e.symbol_a}-${e.symbol_b}`}
-              sx={{ justifyContent: "space-between", py: 1, px: 1.5, bgcolor: "#E3D7C4", mb: 0.75, boxShadow: "0 2px 4px rgba(41,45,42,0.06)" }}
+              sx={{ justifyContent: "space-between", py: "var(--space-1)", px: "var(--space-2)", bgcolor: "var(--line)", mb: "var(--space-1)", boxShadow: "none" }}
             >
               <Typography>
-                {e.symbol_a} ↔ {e.symbol_b}
+                {e.symbol_a} / {e.symbol_b}
               </Typography>
               <Chip
                 size="small"
@@ -4423,11 +4284,11 @@ function MstDiagnostics({ analysis }: { analysis: PortfolioAnalysisResponse }) {
               />
             </Stack>
           ))}
-          <Typography variant="h6" sx={{ mt: 2 }}>
+          <Typography variant="h6" sx={{ mt: "var(--space-2)" }}>
             Bridge stocks
           </Typography>
           {analysis.mst.bridge_stocks.slice(0, 6).map((b) => (
-            <Stack direction="row" key={b.symbol} sx={{ justifyContent: "space-between", py: 0.75 }}>
+            <Stack direction="row" key={b.symbol} sx={{ justifyContent: "space-between", py: "var(--space-1)" }}>
               <Typography>
                 {b.symbol}
                 {b.is_holding ? " (held)" : ""}
@@ -4459,12 +4320,12 @@ function StressPanel({
   const selectedTarget = targets.includes(target) ? target : targets[0] ?? "";
 
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: "var(--space-3)" }}>
       <Typography variant="h5">Hypothetical stress test</Typography>
       <Typography color="text.secondary" gutterBottom>
         Apply a holding shock with historical beta propagation, or a parallel shock to one represented industry.
       </Typography>
-      <Stack direction={{ xs: "column", md: "row" }} spacing={2} className="no-print" sx={{ mt: 2 }}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={2} className="no-print" sx={{ mt: "var(--space-2)" }}>
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel id="stress-kind">Shock type</InputLabel>
           <Select
@@ -4513,7 +4374,7 @@ function StressPanel({
         </Button>
       </Stack>
       {analysis.stress && (
-        <Stack spacing={2} sx={{ mt: 3 }}>
+        <Stack spacing={2} sx={{ mt: "var(--space-3)" }}>
           <Alert severity="warning">
             Estimated portfolio impact: <strong>{analysis.stress.portfolio_impact_percent.toFixed(2)}%</strong> from a{" "}
             {analysis.stress.shock_percent.toFixed(1)}% shock to {analysis.stress.target}. {analysis.stress.disclaimer}
@@ -4543,7 +4404,7 @@ function StressPanel({
               </TableBody>
             </Table>
           </Box>
-          <Box component="ul" sx={{ m: 0 }}>
+          <Box component="ul" sx={{ m: "var(--space-1)" }}>
             {analysis.stress.assumptions.map((a) => (
               <li key={a}>
                 <Typography variant="body2">{a}</Typography>
@@ -4558,7 +4419,7 @@ function StressPanel({
 
 function HoldingTable({ holdings }: { holdings: PortfolioHoldingAnalytics[] }) {
   return (
-    <Paper sx={{ p: 3, overflowX: "auto" }}>
+    <Paper sx={{ p: "var(--space-3)", overflowX: "auto" }}>
       <Typography variant="h5" gutterBottom>
         Holdings and current divergence
       </Typography>
@@ -4576,7 +4437,7 @@ function HoldingTable({ holdings }: { holdings: PortfolioHoldingAnalytics[] }) {
           {holdings.map((h) => (
             <TableRow key={h.symbol}>
               <TableCell>
-                <MuiLink component={Link} to={`/companies/${h.symbol}`} sx={{ fontWeight: 700 }}>
+                <MuiLink component={Link} to={`/companies/${h.symbol}`} sx={{ fontWeight: 600 }}>
                   {h.symbol}
                 </MuiLink>
               </TableCell>
@@ -4586,7 +4447,7 @@ function HoldingTable({ holdings }: { holdings: PortfolioHoldingAnalytics[] }) {
                 align="right"
                 sx={{
                   color: h.divergence_20d !== null && h.divergence_20d >= 0 ? "success.main" : "error.main",
-                  fontWeight: 700,
+                  fontWeight: 600,
                 }}
               >
                 {h.divergence_20d === null ? "—" : `${h.divergence_20d > 0 ? "+" : ""}${h.divergence_20d.toFixed(2)}σ`}
@@ -4612,13 +4473,13 @@ function HoldingTable({ holdings }: { holdings: PortfolioHoldingAnalytics[] }) {
 
 function MethodAndLimitations({ analysis }: { analysis: PortfolioAnalysisResponse }) {
   return (
-    <Paper sx={{ p: 3 }}>
+    <Paper sx={{ p: "var(--space-3)" }}>
       <Typography variant="h5">Method and limitations</Typography>
-      <Typography variant="body2" sx={{ mt: 1 }}>
+      <Typography variant="body2" sx={{ mt: "var(--space-1)" }}>
         {analysis.envelope.return_frequency}; {analysis.envelope.annualisation_factor}-day annualisation;{" "}
         {analysis.envelope.weighting_assumption}; {analysis.envelope.missing_data_rule}.
       </Typography>
-      <Box component="ul" sx={{ mb: 0 }}>
+      <Box component="ul" sx={{ mb: "var(--space-1)" }}>
         {analysis.limitations.map((l) => (
           <li key={l}>
             <Typography variant="body2">{l}</Typography>

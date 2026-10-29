@@ -257,14 +257,14 @@ export default function PortfolioSnapshotSection({
   ) => {
     if (horizonMismatch) {
       return (
-        <Typography component="span" sx={{ color: "#8A5A00", fontStyle: "italic", fontSize: "0.78rem" }}>
+        <Typography component="span" sx={{ color: "var(--amber)", fontStyle: "italic", fontSize: "var(--text-title)" }}>
           Not comparable (Horizon mismatch: {snapshotA?.calculationMeta.horizon}D vs {snapshotB?.calculationMeta.horizon}D)
         </Typography>
       );
     }
     if (valA === null || valA === undefined || valB === null || valB === undefined || isNaN(valA) || isNaN(valB)) {
       return (
-        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.78rem" }}>
+        <Typography component="span" sx={{ color: "var(--gray)", fontStyle: "italic", fontSize: "var(--text-title)" }}>
           Not comparable (Missing data)
         </Typography>
       );
@@ -276,10 +276,10 @@ export default function PortfolioSnapshotSection({
       <Typography
         component="span"
         sx={{
-          fontWeight: 700,
-          color: isZero ? "#686B64" : isBetter ? "#046A38" : "#B8321A",
-          fontSize: "0.82rem",
-          fontFamily: "JetBrains Mono",
+          fontWeight: 600,
+          color: isZero ? "var(--gray)" : isBetter ? "var(--up)" : "var(--down)",
+          fontSize: "var(--text-title)",
+          fontFamily: "var(--font-data)",
         }}
       >
         {diff >= 0 ? "+" : ""}{diff.toFixed(2)}{suffix}
@@ -290,7 +290,7 @@ export default function PortfolioSnapshotSection({
   const renderMetric = (val: number | null | undefined, suffix = "") => {
     if (val === null || val === undefined || isNaN(val)) {
       return (
-        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.8rem" }}>
+        <Typography component="span" sx={{ color: "var(--gray)", fontStyle: "italic", fontSize: "var(--text-title)" }}>
           Unavailable
         </Typography>
       );
@@ -299,17 +299,17 @@ export default function PortfolioSnapshotSection({
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
       {isFallback && (
         <Alert
           severity="warning"
           sx={{
-            borderRadius: 0,
-            bgcolor: "#F6D9CC",
-            color: "#B8321A",
+            borderRadius: "var(--radius)",
+            bgcolor: "var(--gray)",
+            color: "var(--down)",
             border: "none",
-            boxShadow: "0 4px 12px rgba(41,45,42,0.10)",
-            "& .MuiAlert-icon": { color: "#8A5A00" },
+            boxShadow: "none",
+            "& .MuiAlert-icon": { color: "var(--amber)" },
           }}
         >
           <strong>Session Memory Fallback Active:</strong> Browser IndexedDB is unavailable or storage failed. Snapshots are stored in temporary session memory only and will not persist across browser reload.
@@ -317,7 +317,7 @@ export default function PortfolioSnapshotSection({
       )}
 
       {loading && (
-        <Typography variant="body2" sx={{ color: "#686B64", fontStyle: "italic" }}>
+        <Typography variant="body2" sx={{ color: "var(--gray)", fontStyle: "italic" }}>
           Loading saved snapshots...
         </Typography>
       )}
@@ -326,28 +326,28 @@ export default function PortfolioSnapshotSection({
       <Paper
         elevation={0}
         sx={{
-          p: 1.5,
-          borderRadius: 0,
-          bgcolor: "#F9EBD7",
-          boxShadow: "0 4px 12px rgba(41,45,42,0.12)",
+          p: "var(--space-2)",
+          borderRadius: "var(--radius)",
+          bgcolor: "var(--bg)",
+          boxShadow: "none",
         }}
       >
         <Stack
           direction={{ xs: "column", sm: "row" }}
-          sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1.5 }}
+          sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: "var(--space-2)" }}
         >
           <Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: "0.95rem", color: "#292D2A" }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: "var(--text-title)", color: "var(--white)" }}>
                 Portfolio Snapshots & Audit Comparison
               </Typography>
               <Chip
                 size="small"
                 label={`${snapshots.length} ${snapshots.length === 1 ? "snapshot" : "snapshots"}`}
-                sx={{ bgcolor: "#E3D7C4", color: "#292D2A", fontWeight: 700, borderRadius: 0, height: 20, fontSize: "0.68rem" }}
+                sx={{ bgcolor: "var(--line)", color: "var(--white)", fontWeight: 600, borderRadius: "var(--radius)", height: 20, fontSize: "var(--text-title)" }}
               />
             </Stack>
-            <Typography variant="caption" sx={{ color: "#686B64", mt: 0.25, display: "block", fontSize: "0.74rem" }}>
+            <Typography variant="caption" sx={{ color: "var(--gray)", mt: "var(--space-1)", display: "block", fontSize: "var(--text-title)" }}>
               Capture immutable point-in-time portfolio allocations, risk metrics, and MST structures for historical comparison.
             </Typography>
           </Box>
@@ -357,16 +357,15 @@ export default function PortfolioSnapshotSection({
             size="small"
             onClick={handleOpenSave}
             sx={{
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
-              "&:hover": { bgcolor: "#03532c" },
+              bgcolor: "var(--up)", color: "var(--line)",
+              "&:hover": { bgcolor: "var(--up)" },
               textTransform: "none",
               fontWeight: 600,
-              borderRadius: 0,
-              boxShadow: "0 2px 6px rgba(41,45,42,0.10)",
-              px: 1.5,
-              py: 0.4,
-              fontSize: "0.76rem",
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              px: "var(--space-2)",
+              py: "var(--space-1)",
+              fontSize: "var(--text-title)",
             }}
           >
             + Save Snapshot Now
@@ -376,27 +375,27 @@ export default function PortfolioSnapshotSection({
 
       {/* Snapshots Roster & Comparison Picker */}
       {snapshots.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: "center", bgcolor: "#F9EBD7", borderRadius: 0, boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-          <Typography variant="body2" sx={{ color: "#686B64", mb: 1.5 }}>
+        <Paper sx={{ p: "var(--space-4)", textAlign: "center", bgcolor: "var(--bg)", borderRadius: "var(--radius)", boxShadow: "none" }}>
+          <Typography variant="body2" sx={{ color: "var(--gray)", mb: "var(--space-2)" }}>
             No portfolio snapshots saved yet. Save a snapshot to compare portfolio states over time as weights, volatility, and market conditions shift.
           </Typography>
           <Button
             variant="contained"
             onClick={handleOpenSave}
-            sx={{ textTransform: "none", fontSize: "0.85rem", bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
+            sx={{ textTransform: "none", fontSize: "var(--text-title)", bgcolor: "var(--up)", color: "var(--line)", borderRadius: "var(--radius)", boxShadow: "none" }}
           >
             Capture First Snapshot
           </Button>
         </Paper>
       ) : (
-        <Card elevation={0} sx={{ borderRadius: 0, bgcolor: "#F9EBD7", boxShadow: "0 6px 16px rgba(41,45,42,0.14)" }}>
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A", mb: 2 }}>
+        <Card elevation={0} sx={{ borderRadius: "var(--radius)", bgcolor: "var(--bg)", boxShadow: "none" }}>
+          <CardContent sx={{ p: "var(--space-3)" }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-2)" }}>
               Compare Any Two Snapshots
             </Typography>
 
             {/* Snapshot Selectors */}
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 3 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: "var(--space-3)" }}>
               <FormControl size="small" sx={{ flex: 1 }}>
                 <InputLabel id="snapshot-a-label">Baseline Snapshot (A)</InputLabel>
                 <Select
@@ -404,7 +403,7 @@ export default function PortfolioSnapshotSection({
                   label="Baseline Snapshot (A)"
                   value={compareIdA}
                   onChange={(e) => setCompareIdA(e.target.value)}
-                  sx={{ borderRadius: 0 }}
+                  sx={{ borderRadius: "var(--radius)" }}
                 >
                   {snapshots.map((s) => (
                     <MenuItem key={s.id} value={s.id}>
@@ -421,7 +420,7 @@ export default function PortfolioSnapshotSection({
                   label="Target Snapshot (B)"
                   value={compareIdB}
                   onChange={(e) => setCompareIdB(e.target.value)}
-                  sx={{ borderRadius: 0 }}
+                  sx={{ borderRadius: "var(--radius)" }}
                 >
                   {snapshots.map((s) => (
                     <MenuItem key={s.id} value={s.id}>
@@ -434,51 +433,51 @@ export default function PortfolioSnapshotSection({
 
             {/* Comparison Table */}
             {snapshotA && snapshotB && (
-              <Box sx={{ borderRadius: 0, overflow: "hidden", boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}>
+              <Box sx={{ borderRadius: "var(--radius)", overflow: "hidden", boxShadow: "none" }}>
                 <TableContainer>
                   <Table size="small">
-                    <TableHead sx={{ bgcolor: "#E3D7C4" }}>
+                    <TableHead sx={{ bgcolor: "var(--line)" }}>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A" }}>Metric</TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A" }}>
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)" }}>Metric</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)" }}>
                           {snapshotA.name}
-                          <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
+                          <Typography variant="caption" sx={{ display: "block", color: "var(--gray)" }}>
                             {new Date(snapshotA.createdAt).toLocaleDateString("en-IN")}
                           </Typography>
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A" }}>
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)" }}>
                           {snapshotB.name}
-                          <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
+                          <Typography variant="caption" sx={{ display: "block", color: "var(--gray)" }}>
                             {new Date(snapshotB.createdAt).toLocaleDateString("en-IN")}
                           </Typography>
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A" }}>Variance / Shift (B - A)</TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)" }}>Variance / Shift (B - A)</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {/* Calculation Horizon */}
-                      <TableRow sx={{ "&:hover": { bgcolor: "#E3D7C4" } }}>
-                        <TableCell sx={{ color: "#292D2A", fontWeight: 600 }}>Calculation Horizon</TableCell>
+                      <TableRow sx={{ "&:hover": { bgcolor: "var(--line)" } }}>
+                        <TableCell sx={{ color: "var(--white)", fontWeight: 600 }}>Calculation Horizon</TableCell>
                         <TableCell>{snapshotA.calculationMeta.horizon} Days</TableCell>
                         <TableCell>{snapshotB.calculationMeta.horizon} Days</TableCell>
                         <TableCell>
                           {snapshotA.calculationMeta.horizon === snapshotB.calculationMeta.horizon ? (
-                            <Chip size="small" label="Identical Horizon" sx={{ bgcolor: "#DCE9DE", color: "#046A38", height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }} />
+                            <Chip size="small" label="Identical Horizon" sx={{ bgcolor: "var(--line)", color: "var(--up)", height: 20, fontSize: "var(--text-title)", borderRadius: "var(--radius)", fontWeight: 600 }} />
                           ) : (
-                            <Chip size="small" label="Differing Horizon" sx={{ bgcolor: "#F6D9CC", color: "#B8321A", height: 20, fontSize: "0.7rem", borderRadius: 0, fontWeight: 600 }} />
+                            <Chip size="small" label="Differing Horizon" sx={{ bgcolor: "var(--gray)", color: "var(--down)", height: 20, fontSize: "var(--text-title)", borderRadius: "var(--radius)", fontWeight: 600 }} />
                           )}
                         </TableCell>
                       </TableRow>
 
                       {/* Portfolio Risk Score */}
-                      <TableRow sx={{ bgcolor: "#F9EBD7", "&:hover": { bgcolor: "#E3D7C4" } }}>
-                        <TableCell sx={{ color: "#292D2A", fontWeight: 600 }}>Portfolio Risk Score</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>
+                      <TableRow sx={{ bgcolor: "var(--bg)", "&:hover": { bgcolor: "var(--line)" } }}>
+                        <TableCell sx={{ color: "var(--white)", fontWeight: 600 }}>Portfolio Risk Score</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>
                           {snapshotA.riskMetrics.portfolioRiskScore !== null
                             ? `${renderMetric(snapshotA.riskMetrics.portfolioRiskScore)} (${snapshotA.riskMetrics.portfolioClassification || "Normal"})`
                             : renderMetric(null)}
                         </TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>
                           {snapshotB.riskMetrics.portfolioRiskScore !== null
                             ? `${renderMetric(snapshotB.riskMetrics.portfolioRiskScore)} (${snapshotB.riskMetrics.portfolioClassification || "Normal"})`
                             : renderMetric(null)}
@@ -489,10 +488,10 @@ export default function PortfolioSnapshotSection({
                       </TableRow>
 
                       {/* Annualized Volatility */}
-                      <TableRow sx={{ "&:hover": { bgcolor: "#E3D7C4" } }}>
-                        <TableCell sx={{ color: "#292D2A", fontWeight: 600 }}>Annualized Volatility</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotA.riskMetrics.annualizedVolatility ? snapshotA.riskMetrics.annualizedVolatility * 100 : null, "%")}</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotB.riskMetrics.annualizedVolatility ? snapshotB.riskMetrics.annualizedVolatility * 100 : null, "%")}</TableCell>
+                      <TableRow sx={{ "&:hover": { bgcolor: "var(--line)" } }}>
+                        <TableCell sx={{ color: "var(--white)", fontWeight: 600 }}>Annualized Volatility</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotA.riskMetrics.annualizedVolatility ? snapshotA.riskMetrics.annualizedVolatility * 100 : null, "%")}</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotB.riskMetrics.annualizedVolatility ? snapshotB.riskMetrics.annualizedVolatility * 100 : null, "%")}</TableCell>
                         <TableCell>
                           {renderDelta(
                             snapshotA.riskMetrics.annualizedVolatility ? snapshotA.riskMetrics.annualizedVolatility * 100 : null,
@@ -503,10 +502,10 @@ export default function PortfolioSnapshotSection({
                       </TableRow>
 
                       {/* Max Drawdown */}
-                      <TableRow sx={{ bgcolor: "#F9EBD7", "&:hover": { bgcolor: "#E3D7C4" } }}>
-                        <TableCell sx={{ color: "#292D2A", fontWeight: 600 }}>Max Drawdown</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotA.riskMetrics.maxDrawdown ? snapshotA.riskMetrics.maxDrawdown * 100 : null, "%")}</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotB.riskMetrics.maxDrawdown ? snapshotB.riskMetrics.maxDrawdown * 100 : null, "%")}</TableCell>
+                      <TableRow sx={{ bgcolor: "var(--bg)", "&:hover": { bgcolor: "var(--line)" } }}>
+                        <TableCell sx={{ color: "var(--white)", fontWeight: 600 }}>Max Drawdown</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotA.riskMetrics.maxDrawdown ? snapshotA.riskMetrics.maxDrawdown * 100 : null, "%")}</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotB.riskMetrics.maxDrawdown ? snapshotB.riskMetrics.maxDrawdown * 100 : null, "%")}</TableCell>
                         <TableCell>
                           {renderDelta(
                             snapshotA.riskMetrics.maxDrawdown ? snapshotA.riskMetrics.maxDrawdown * 100 : null,
@@ -517,34 +516,34 @@ export default function PortfolioSnapshotSection({
                       </TableRow>
 
                       {/* Holding HHI Concentration */}
-                      <TableRow sx={{ "&:hover": { bgcolor: "#E3D7C4" } }}>
-                        <TableCell sx={{ color: "#292D2A", fontWeight: 600 }}>Holding Concentration (HHI)</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotA.diversification.holdingHhi)}</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotB.diversification.holdingHhi)}</TableCell>
+                      <TableRow sx={{ "&:hover": { bgcolor: "var(--line)" } }}>
+                        <TableCell sx={{ color: "var(--white)", fontWeight: 600 }}>Holding Concentration (HHI)</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotA.diversification.holdingHhi)}</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotB.diversification.holdingHhi)}</TableCell>
                         <TableCell>{renderDelta(snapshotA.diversification.holdingHhi, snapshotB.diversification.holdingHhi, "", false)}</TableCell>
                       </TableRow>
 
                       {/* Effective Holdings */}
-                      <TableRow sx={{ bgcolor: "#F9EBD7", "&:hover": { bgcolor: "#E3D7C4" } }}>
-                        <TableCell sx={{ color: "#292D2A", fontWeight: 600 }}>Effective Independent Bets (Neff)</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotA.diversification.effectiveHoldings)}</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotB.diversification.effectiveHoldings)}</TableCell>
+                      <TableRow sx={{ bgcolor: "var(--bg)", "&:hover": { bgcolor: "var(--line)" } }}>
+                        <TableCell sx={{ color: "var(--white)", fontWeight: 600 }}>Effective Independent Bets (Neff)</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotA.diversification.effectiveHoldings)}</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotB.diversification.effectiveHoldings)}</TableCell>
                         <TableCell>{renderDelta(snapshotA.diversification.effectiveHoldings, snapshotB.diversification.effectiveHoldings, "", false)}</TableCell>
                       </TableRow>
 
                       {/* Holdings Count */}
-                      <TableRow sx={{ "&:hover": { bgcolor: "#E3D7C4" } }}>
-                        <TableCell sx={{ color: "#292D2A", fontWeight: 600 }}>Total Holdings Count</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{snapshotA.holdings.length} stocks</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{snapshotB.holdings.length} stocks</TableCell>
+                      <TableRow sx={{ "&:hover": { bgcolor: "var(--line)" } }}>
+                        <TableCell sx={{ color: "var(--white)", fontWeight: 600 }}>Total Holdings Count</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{snapshotA.holdings.length} stocks</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{snapshotB.holdings.length} stocks</TableCell>
                         <TableCell>{renderDelta(snapshotA.holdings.length, snapshotB.holdings.length, " stocks", false)}</TableCell>
                       </TableRow>
 
                       {/* MST Edges */}
-                      <TableRow sx={{ bgcolor: "#F9EBD7", "&:hover": { bgcolor: "#E3D7C4" } }}>
-                        <TableCell sx={{ color: "#292D2A", fontWeight: 600 }}>MST Graph Connected Edges</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotA.mstContext.edgeCount, " edges")}</TableCell>
-                        <TableCell sx={{ fontFamily: "JetBrains Mono" }}>{renderMetric(snapshotB.mstContext.edgeCount, " edges")}</TableCell>
+                      <TableRow sx={{ bgcolor: "var(--bg)", "&:hover": { bgcolor: "var(--line)" } }}>
+                        <TableCell sx={{ color: "var(--white)", fontWeight: 600 }}>MST Graph Connected Edges</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotA.mstContext.edgeCount, " edges")}</TableCell>
+                        <TableCell sx={{ fontFamily: "var(--font-data)" }}>{renderMetric(snapshotB.mstContext.edgeCount, " edges")}</TableCell>
                         <TableCell>{renderDelta(snapshotA.mstContext.edgeCount, snapshotB.mstContext.edgeCount, " edges", false)}</TableCell>
                       </TableRow>
                     </TableBody>
@@ -552,8 +551,8 @@ export default function PortfolioSnapshotSection({
                 </TableContainer>
 
                 {/* Holdings Weight Delta Table */}
-                <Box sx={{ p: 2.5, bgcolor: "#F9EBD7" }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1.5 }}>
+                <Box sx={{ p: "var(--space-3)", bgcolor: "var(--bg)" }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-2)" }}>
                     Asset Weight Changes Across Selected Snapshots
                   </Typography>
                   {(() => {
@@ -564,7 +563,7 @@ export default function PortfolioSnapshotSection({
                     const allSymbols = Array.from(symbolsSet).sort();
 
                     return (
-                      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+                      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: "var(--space-1)" }}>
                         {allSymbols.map((sym) => {
                           const wtA = snapshotA.holdings.find((h) => h.symbol === sym)?.weight ?? 0;
                           const wtB = snapshotB.holdings.find((h) => h.symbol === sym)?.weight ?? 0;
@@ -575,13 +574,13 @@ export default function PortfolioSnapshotSection({
                             <Chip
                               key={sym}
                               size="small"
-                              label={`${sym}: ${wtA.toFixed(1)}% → ${wtB.toFixed(1)}% (${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%)`}
+                              label={`${sym}: ${wtA.toFixed(1)}% / ${wtB.toFixed(1)}% (${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%)`}
                               sx={{
-                                fontSize: "0.75rem",
+                                fontSize: "var(--text-title)",
                                 fontWeight: 600,
-                                borderRadius: 0,
-                                bgcolor: isZero ? "#E3D7C4" : diff > 0 ? "#DCE9DE" : "#F6D9CC",
-                                color: isZero ? "#292D2A" : diff > 0 ? "#046A38" : "#B8321A",
+                                borderRadius: "var(--radius)",
+                                bgcolor: isZero ? "var(--line)" : diff > 0 ? "var(--line)" : "var(--gray)",
+                                color: isZero ? "var(--white)" : diff > 0 ? "var(--up)" : "var(--down)",
                               }}
                             />
                           );
@@ -592,18 +591,18 @@ export default function PortfolioSnapshotSection({
                 </Box>
 
                 {/* Evidence-Based Change Explanation Card */}
-                <Box sx={{ p: 2.5, bgcolor: "#E3D7C4", mt: 2 }}>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 750, color: "#292D2A" }}>
+                <Box sx={{ p: "var(--space-3)", bgcolor: "var(--line)", mt: "var(--space-2)" }}>
+                  <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: "var(--space-1)" }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)" }}>
                       Evidence-Based Attribution of Changes
                     </Typography>
                     <Chip
                       size="small"
                       label="Analytical Attribution"
-                      sx={{ bgcolor: "#F9EBD7", color: "#292D2A", fontSize: "0.68rem", fontWeight: 700, borderRadius: 0 }}
+                      sx={{ bgcolor: "var(--bg)", color: "var(--white)", fontSize: "var(--text-title)", fontWeight: 600, borderRadius: "var(--radius)" }}
                     />
                   </Stack>
-                  <Typography variant="body2" sx={{ color: "#686B64", mb: 2, fontSize: "0.84rem" }}>
+                  <Typography variant="body2" sx={{ color: "var(--gray)", mb: "var(--space-2)", fontSize: "var(--text-title)" }}>
                     Decomposing observed differences between <strong>{snapshotA.name}</strong> and <strong>{snapshotB.name}</strong> using verifiable holdings, market prices, coverage metrics, and model versioning. PRISM reports <em>"insufficient evidence"</em> when underlying data points are missing.
                   </Typography>
 
@@ -624,11 +623,11 @@ export default function PortfolioSnapshotSection({
                         .filter((item): item is { symbol: string; shift: number } => item !== null);
 
                       return (
-                        <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0 }}>
-                          <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "block" }}>
+                        <Box sx={{ p: "var(--space-2)", bgcolor: "var(--bg)", borderRadius: "var(--radius)" }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", display: "block" }}>
                             1. Holdings & Rebalancing Shifts:
                           </Typography>
-                          <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5 }}>
+                          <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)" }}>
                             {added.length > 0 && `Added positions: ${added.join(", ")}. `}
                             {exited.length > 0 && `Liquidated / exited positions: ${exited.join(", ")}. `}
                             {rebalanced.length > 0 &&
@@ -643,8 +642,8 @@ export default function PortfolioSnapshotSection({
                     })()}
 
                     {/* 2. Valuation & Capital */}
-                    <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "block" }}>
+                    <Box sx={{ p: "var(--space-2)", bgcolor: "var(--bg)", borderRadius: "var(--radius)" }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", display: "block" }}>
                         2. Valuation & Capital Shifts:
                       </Typography>
                       {(() => {
@@ -653,13 +652,13 @@ export default function PortfolioSnapshotSection({
                         if (investedA > 0 && investedB > 0) {
                           const pct = (((investedB - investedA) / investedA) * 100).toFixed(1);
                           return (
-                            <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5 }}>
+                            <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)" }}>
                               Total portfolio capital shifted from ₹{investedA.toLocaleString("en-IN", { maximumFractionDigits: 0 })} to ₹{investedB.toLocaleString("en-IN", { maximumFractionDigits: 0 })} ({investedB >= investedA ? "+" : ""}{pct}%).
                             </Typography>
                           );
                         }
                         return (
-                          <Typography variant="body2" sx={{ color: "#8A5A00", fontStyle: "italic", mt: 0.5 }}>
+                          <Typography variant="body2" sx={{ color: "var(--amber)", fontStyle: "italic", mt: "var(--space-1)" }}>
                             insufficient evidence to attribute valuation delta across historical captures.
                           </Typography>
                         );
@@ -667,49 +666,49 @@ export default function PortfolioSnapshotSection({
                     </Box>
 
                     {/* 3. Risk & Volatility */}
-                    <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "block" }}>
+                    <Box sx={{ p: "var(--space-2)", bgcolor: "var(--bg)", borderRadius: "var(--radius)" }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", display: "block" }}>
                         3. Risk Profile & Volatility Shifts:
                       </Typography>
                       {snapshotA.riskMetrics?.annualizedVolatility != null && snapshotB.riskMetrics?.annualizedVolatility != null ? (
-                        <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5 }}>
+                        <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)" }}>
                           Annualized volatility changed by {(snapshotB.riskMetrics.annualizedVolatility - snapshotA.riskMetrics.annualizedVolatility).toFixed(1)}% (from {snapshotA.riskMetrics.annualizedVolatility.toFixed(1)}% to {snapshotB.riskMetrics.annualizedVolatility.toFixed(1)}%). Effective independent holdings (Neff) moved from {snapshotA.diversification.effectiveHoldings?.toFixed(1) ?? "—"} to {snapshotB.diversification.effectiveHoldings?.toFixed(1) ?? "—"}.
                         </Typography>
                       ) : (
-                        <Typography variant="body2" sx={{ color: "#8A5A00", fontStyle: "italic", mt: 0.5 }}>
+                        <Typography variant="body2" sx={{ color: "var(--amber)", fontStyle: "italic", mt: "var(--space-1)" }}>
                           insufficient evidence to determine causality for risk metrics.
                         </Typography>
                       )}
                     </Box>
 
                     {/* 4. Methodology & Coverage */}
-                    <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 750, color: "#292D2A", display: "block" }}>
+                    <Box sx={{ p: "var(--space-2)", bgcolor: "var(--bg)", borderRadius: "var(--radius)" }}>
+                      <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", display: "block" }}>
                         4. Methodology & Data Coverage Audit:
                       </Typography>
-                      <Typography variant="body2" sx={{ color: "#292D2A", mt: 0.5 }}>
+                      <Typography variant="body2" sx={{ color: "var(--white)", mt: "var(--space-1)" }}>
                         Methodology version: {snapshotB.calculationMeta.methodologyVersion ?? "PRISM v2.1"} ({snapshotB.calculationMeta.horizon ?? 252}d empirical window, NIFTY 200 universe). Data coverage spans {snapshotA.holdings.length} symbols in Baseline vs {snapshotB.holdings.length} symbols in Comparison.
                       </Typography>
                     </Box>
 
                     {/* 5. Linked Journal Decisions */}
                     {decisionsSnapshotB.length > 0 && (
-                      <Box sx={{ p: 1.5, bgcolor: "#F9EBD7", borderRadius: 0 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 750, color: "#046A38", display: "block", mb: 0.5 }}>
+                      <Box sx={{ p: "var(--space-2)", bgcolor: "var(--bg)", borderRadius: "var(--radius)" }}>
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--up)", display: "block", mb: "var(--space-1)" }}>
                           Linked Investment Decisions ({decisionsSnapshotB.length}):
                         </Typography>
                         <Stack spacing={1}>
                           {decisionsSnapshotB.map((dec) => (
-                            <Box key={dec.id} sx={{ p: 1, bgcolor: "#E3D7C4" }}>
+                            <Box key={dec.id} sx={{ p: "var(--space-1)", bgcolor: "var(--line)" }}>
                               <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "baseline" }}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)" }}>
                                   {dec.decisionType} · {dec.symbol}
                                 </Typography>
-                                <Typography variant="caption" sx={{ color: "#686B64", fontFamily: "JetBrains Mono" }}>
+                                <Typography variant="caption" sx={{ color: "var(--gray)", fontFamily: "var(--font-data)" }}>
                                   {new Date(dec.createdAt).toLocaleDateString("en-IN")}
                                 </Typography>
                               </Stack>
-                              <Typography variant="body2" sx={{ fontSize: "0.80rem", color: "#292D2A", mt: 0.25 }}>
+                              <Typography variant="body2" sx={{ fontSize: "var(--text-title)", color: "var(--white)", mt: "var(--space-1)" }}>
                                 {dec.rationale}
                               </Typography>
                             </Box>
@@ -734,23 +733,23 @@ export default function PortfolioSnapshotSection({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
-              color: "#292D2A",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
+              color: "var(--white)",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1, color: "#292D2A" }}>
+        <DialogTitle sx={{ fontWeight: 600, pb: "var(--space-1)", color: "var(--white)" }}>
           Save Portfolio Snapshot
-          <Typography variant="caption" sx={{ display: "block", color: "#686B64" }}>
+          <Typography variant="caption" sx={{ display: "block", color: "var(--gray)" }}>
             Captures current holdings ({holdings.length} stocks), risk score, volatility, HHI, and MST topology.
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
+        <DialogContent sx={{ pt: "var(--space-1)" }}>
           {saveError && (
-            <Alert severity="error" sx={{ mb: 2, borderRadius: 0 }} onClose={() => setSaveError(null)}>
+            <Alert severity="error" sx={{ mb: "var(--space-2)", borderRadius: "var(--radius)" }} onClose={() => setSaveError(null)}>
               {saveError}
             </Alert>
           )}
@@ -775,46 +774,45 @@ export default function PortfolioSnapshotSection({
               fullWidth
             />
 
-            <Paper sx={{ p: 2, bgcolor: "#F9EBD7", borderRadius: 0, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 1 }}>
+            <Paper sx={{ p: "var(--space-2)", bgcolor: "var(--bg)", borderRadius: "var(--radius)", boxShadow: "none" }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", display: "block", mb: "var(--space-1)" }}>
                 Parameters Being Captured:
               </Typography>
-              <Stack spacing={0.5} sx={{ fontSize: "0.8rem", color: "#292D2A" }}>
+              <Stack spacing={0.5} sx={{ fontSize: "var(--text-title)", color: "var(--white)" }}>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <span style={{ color: "#686B64" }}>Total Capital:</span>
-                  <span style={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>₹{totalInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                  <span style={{ color: "var(--gray)" }}>Total Capital:</span>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>₹{totalInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
                 </Stack>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <span style={{ color: "#686B64" }}>Positions:</span>
-                  <span style={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>{holdings.length} stocks</span>
+                  <span style={{ color: "var(--gray)" }}>Positions:</span>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>{holdings.length} stocks</span>
                 </Stack>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <span style={{ color: "#686B64" }}>Risk Score:</span>
-                  <span style={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                  <span style={{ color: "var(--gray)" }}>Risk Score:</span>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                     {comprehensiveRisk?.portfolio_profile?.portfolio_risk_score ?? monitoring?.portfolio_risk_score ?? "Unavailable"}
                   </span>
                 </Stack>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <span style={{ color: "#686B64" }}>Horizon:</span>
-                  <span style={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>{analysis?.envelope?.requested_observations ?? 250} Days</span>
+                  <span style={{ color: "var(--gray)" }}>Horizon:</span>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>{analysis?.envelope?.requested_observations ?? 250} Days</span>
                 </Stack>
               </Stack>
             </Paper>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setSaveModalOpen(false)} sx={{ color: "#686B64", borderRadius: 0 }}>
+        <DialogActions sx={{ px: "var(--space-3)", py: "var(--space-2)" }}>
+          <Button onClick={() => setSaveModalOpen(false)} sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={handleSaveSnapshot}
             sx={{
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
-              borderRadius: 0,
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-              "&:hover": { bgcolor: "#03532c" },
+              bgcolor: "var(--up)", color: "var(--line)",
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--up)" },
             }}
           >
             Save Snapshot
@@ -831,34 +829,34 @@ export default function PortfolioSnapshotSection({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
-              color: "#292D2A",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
+              color: "var(--white)",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, color: "#292D2A" }}>Delete Snapshot?</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 600, color: "var(--white)" }}>Delete Snapshot?</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ color: "#686B64" }}>
+          <Typography variant="body2" sx={{ color: "var(--gray)" }}>
             Are you sure you want to delete this historical snapshot? This action is permanent.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 2.5, pb: 2 }}>
-          <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: "#686B64", borderRadius: 0 }}>
+        <DialogActions sx={{ px: "var(--space-3)", pb: "var(--space-2)" }}>
+          <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
             sx={{
-              bgcolor: "#E34222",
-              color: "#F9EBD7",
-              fontWeight: 700,
-              borderRadius: 0,
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-              "&:hover": { bgcolor: "#b8321a" },
+              bgcolor: "var(--down)",
+              color: "var(--white)",
+              fontWeight: 600,
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--down)" },
             }}
           >
             Delete

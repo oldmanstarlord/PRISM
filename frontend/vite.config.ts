@@ -10,6 +10,7 @@ export default defineConfig({
     },
   },
   test: {
+    css: { include: /terminal\.css/ },
     environment: "jsdom",
     setupFiles: [],
     exclude: ["e2e/**", "node_modules/**", "dist/**"],

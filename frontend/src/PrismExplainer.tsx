@@ -89,53 +89,53 @@ export function SectorDivergenceExplainer({
     <Card
       elevation={0}
       sx={{
-        borderRadius: 0,
+        borderRadius: "var(--radius)",
         border: "none",
-        bgcolor: "#F9EBD7",
-        boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+        bgcolor: "var(--bg)",
+        boxShadow: "none",
       }}
     >
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
         <Stack spacing={2}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
-            sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1 }}
+            sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: "var(--space-1)" }}
           >
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--white)" }}>
                 Why is {symbol} Diverging?
               </Typography>
               <Chip
                 size="small"
                 label={`${band.toUpperCase()} (${absScore.toFixed(2)}σ)`}
                 sx={{
-                  borderRadius: 0,
-                  fontWeight: 700,
+                  borderRadius: "var(--radius)",
+                  fontWeight: 600,
                   bgcolor:
                     band === "extreme" || band === "strong"
                       ? isPositive
-                        ? "#DCE9DE"
-                        : "#F6D9CC"
+                        ? "var(--line)"
+                        : "var(--gray)"
                       : band === "moderate"
-                        ? "#E3D7C4"
-                        : "#F9EBD7",
+                        ? "var(--line)"
+                        : "var(--bg)",
                   color:
                     band === "extreme" || band === "strong"
                       ? isPositive
-                        ? "#046A38"
-                        : "#B8321A"
+                        ? "var(--up)"
+                        : "var(--down)"
                       : band === "moderate"
-                        ? "#8A5A00"
-                        : "#292D2A",
+                        ? "var(--amber)"
+                        : "var(--white)",
                 }}
               />
             </Stack>
-            <Typography variant="caption" sx={{ color: "#686B64", fontWeight: 600 }}>
+            <Typography variant="caption" sx={{ color: "var(--gray)", fontWeight: 600 }}>
               Active Horizon: {horizon} Trading Day{horizon > 1 ? "s" : ""}
             </Typography>
           </Stack>
 
-          <Typography variant="body2" sx={{ color: "#292D2A", lineHeight: 1.65 }}>
+          <Typography variant="body2" sx={{ color: "var(--white)", lineHeight: "var(--leading)" }}>
             {divergenceNarrative}
           </Typography>
 
@@ -143,50 +143,50 @@ export function SectorDivergenceExplainer({
             <Paper
               elevation={0}
               sx={{
-                p: 1.5,
-                borderRadius: 0,
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
                 border: "none",
-                bgcolor: "#F9EBD7",
-                boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                bgcolor: "var(--bg)",
+                boxShadow: "none",
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 2,
+                gap: "var(--space-2)",
                 alignItems: "center",
               }}
             >
-              <Typography variant="body2" sx={{ color: "#292D2A" }}>
+              <Typography variant="body2" sx={{ color: "var(--white)" }}>
                 Actual {symbol} Return:{" "}
                 <strong
                   style={{
-                    color: stockReturn >= 0 ? "#046A38" : "#B8321A",
-                    fontFamily: "JetBrains Mono, monospace",
+                    color: stockReturn >= 0 ? "var(--up)" : "var(--down)",
+                    fontFamily: "var(--font-data)",
                   }}
                 >
                   {stockReturn >= 0 ? "+" : ""}
                   {stockReturn.toFixed(2)}%
                 </strong>
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64" }}>
+              <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                 vs
               </Typography>
-              <Typography variant="body2" sx={{ color: "#292D2A" }}>
+              <Typography variant="body2" sx={{ color: "var(--white)" }}>
                 Peer Median ({peerCount} peers):{" "}
                 <strong
                   style={{
-                    color: benchmarkReturn >= 0 ? "#046A38" : "#B8321A",
-                    fontFamily: "JetBrains Mono, monospace",
+                    color: benchmarkReturn >= 0 ? "var(--up)" : "var(--down)",
+                    fontFamily: "var(--font-data)",
                   }}
                 >
                   {benchmarkReturn >= 0 ? "+" : ""}
                   {benchmarkReturn.toFixed(2)}%
                 </strong>
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64" }}>
+              <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                 Residual Alpha:{" "}
                 <strong
                   style={{
-                    color: stockReturn - benchmarkReturn >= 0 ? "#046A38" : "#B8321A",
-                    fontFamily: "JetBrains Mono, monospace",
+                    color: stockReturn - benchmarkReturn >= 0 ? "var(--up)" : "var(--down)",
+                    fontFamily: "var(--font-data)",
                   }}
                 >
                   {stockReturn - benchmarkReturn >= 0 ? "+" : ""}
@@ -201,18 +201,18 @@ export function SectorDivergenceExplainer({
               <Paper
                 elevation={0}
                 sx={{
-                  p: 1.75,
+                  p: "var(--space-2)",
                   height: "100%",
-                  borderRadius: 0,
+                  borderRadius: "var(--radius)",
                   border: "none",
-                  bgcolor: "#F9EBD7",
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                  bgcolor: "var(--bg)",
+                  boxShadow: "none",
                 }}
               >
-                <Typography variant="subtitle2" sx={{ color: "#046A38", fontWeight: 700, mb: 0.5 }}>
+                <Typography variant="subtitle2" sx={{ color: "var(--up)", fontWeight: 600, mb: "var(--space-1)" }}>
                   Statistical Context
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#686B64" }}>
+                <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                   {statisticalRarity}
                 </Typography>
               </Paper>
@@ -221,18 +221,18 @@ export function SectorDivergenceExplainer({
               <Paper
                 elevation={0}
                 sx={{
-                  p: 1.75,
+                  p: "var(--space-2)",
                   height: "100%",
-                  borderRadius: 0,
+                  borderRadius: "var(--radius)",
                   border: "none",
-                  bgcolor: "#F9EBD7",
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                  bgcolor: "var(--bg)",
+                  boxShadow: "none",
                 }}
               >
-                <Typography variant="subtitle2" sx={{ color: "#292D2A", fontWeight: 700, mb: 0.5 }}>
+                <Typography variant="subtitle2" sx={{ color: "var(--white)", fontWeight: 600, mb: "var(--space-1)" }}>
                   Horizon Dynamics ({horizon}D)
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#686B64" }}>
+                <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                   {horizonNarrative}
                 </Typography>
               </Paper>
@@ -307,39 +307,39 @@ export function PortfolioRiskExplainer({
     <Card
       elevation={0}
       sx={{
-        borderRadius: 0,
+        borderRadius: "var(--radius)",
         border: "none",
-        bgcolor: "#F9EBD7",
-        boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+        bgcolor: "var(--bg)",
+        boxShadow: "none",
       }}
     >
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
         <Stack spacing={2}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
-            sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: 1 }}
+            sx={{ justifyContent: "space-between", alignItems: { sm: "center" }, gap: "var(--space-1)" }}
           >
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--white)" }}>
                 Why is your Portfolio Risk Score rated &ldquo;{riskLabel}&rdquo;?
               </Typography>
               <Chip
                 label={`Score ${riskScore}/4 · ${riskLabel}`}
                 sx={{
-                  borderRadius: 0,
-                  fontWeight: 700,
+                  borderRadius: "var(--radius)",
+                  fontWeight: 600,
                   bgcolor:
                     riskScore === 1
-                      ? "#DCE9DE"
+                      ? "var(--line)"
                       : riskScore === 2
-                        ? "#E3D7C4"
-                        : "#F6D9CC",
+                        ? "var(--line)"
+                        : "var(--gray)",
                   color:
                     riskScore === 1
-                      ? "#046A38"
+                      ? "var(--up)"
                       : riskScore === 2
-                        ? "#8A5A00"
-                        : "#B8321A",
+                        ? "var(--amber)"
+                        : "var(--down)",
                 }}
                 size="small"
               />
@@ -348,15 +348,15 @@ export function PortfolioRiskExplainer({
               size="small"
               label={`Risk Trend: ${historicalTrend}`}
               sx={{
-                borderRadius: 0,
-                fontWeight: 700,
-                bgcolor: historicalTrend === "Elevating" ? "#F6D9CC" : "#DCE9DE",
-                color: historicalTrend === "Elevating" ? "#B8321A" : "#046A38",
+                borderRadius: "var(--radius)",
+                fontWeight: 600,
+                bgcolor: historicalTrend === "Elevating" ? "var(--gray)" : "var(--line)",
+                color: historicalTrend === "Elevating" ? "var(--down)" : "var(--up)",
               }}
             />
           </Stack>
 
-          <Typography variant="body2" sx={{ color: "#292D2A", lineHeight: 1.65 }}>
+          <Typography variant="body2" sx={{ color: "var(--white)", lineHeight: "var(--leading)" }}>
             {scoreReason}
           </Typography>
 
@@ -366,28 +366,28 @@ export function PortfolioRiskExplainer({
               <Paper
                 elevation={0}
                 sx={{
-                  p: 2,
+                  p: "var(--space-2)",
                   height: "100%",
-                  borderRadius: 0,
+                  borderRadius: "var(--radius)",
                   border: "none",
-                  bgcolor: "#F9EBD7",
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                  bgcolor: "var(--bg)",
+                  boxShadow: "none",
                 }}
               >
-                <Typography variant="subtitle2" sx={{ color: "#292D2A", fontWeight: 700, mb: 0.5 }}>
+                <Typography variant="subtitle2" sx={{ color: "var(--white)", fontWeight: 600, mb: "var(--space-1)" }}>
                   Primary Risk Anchor
                 </Typography>
                 {topRiskContributor ? (
-                  <Typography variant="body2" sx={{ color: "#686B64" }}>
-                    <strong style={{ color: "#292D2A" }}>{topRiskContributor.symbol}</strong> ({topRiskContributor.sector || "Holding"}) contributes{" "}
-                    <strong style={{ color: "#292D2A", fontFamily: "JetBrains Mono, monospace" }}>
+                  <Typography variant="body2" sx={{ color: "var(--gray)" }}>
+                    <strong style={{ color: "var(--white)" }}>{topRiskContributor.symbol}</strong> ({topRiskContributor.sector || "Holding"}) contributes{" "}
+                    <strong style={{ color: "var(--white)", fontFamily: "var(--font-data)" }}>
                       {(topRiskContributor.riskContribution * 100).toFixed(1)}%
                     </strong>{" "}
                     of total portfolio variance while representing{" "}
-                    <span style={{ fontFamily: "JetBrains Mono, monospace" }}>{(topRiskContributor.weight * 100).toFixed(1)}%</span> of capital.
+                    <span style={{ fontFamily: "var(--font-data)" }}>{(topRiskContributor.weight * 100).toFixed(1)}%</span> of capital.
                   </Typography>
                 ) : (
-                  <Typography variant="body2" sx={{ color: "#686B64" }}>
+                  <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                     Risk is evenly distributed across your constituent assets without severe single-stock concentration.
                   </Typography>
                 )}
@@ -399,18 +399,18 @@ export function PortfolioRiskExplainer({
               <Paper
                 elevation={0}
                 sx={{
-                  p: 2,
+                  p: "var(--space-2)",
                   height: "100%",
-                  borderRadius: 0,
+                  borderRadius: "var(--radius)",
                   border: "none",
-                  bgcolor: "#F9EBD7",
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                  bgcolor: "var(--bg)",
+                  boxShadow: "none",
                 }}
               >
-                <Typography variant="subtitle2" sx={{ color: "#046A38", fontWeight: 700, mb: 0.5 }}>
+                <Typography variant="subtitle2" sx={{ color: "var(--up)", fontWeight: 600, mb: "var(--space-1)" }}>
                   Effective Independent Bets
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#686B64" }}>
+                <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                   {diversificationBenefit}
                 </Typography>
               </Paper>
@@ -421,19 +421,19 @@ export function PortfolioRiskExplainer({
               <Paper
                 elevation={0}
                 sx={{
-                  p: 2,
+                  p: "var(--space-2)",
                   height: "100%",
-                  borderRadius: 0,
+                  borderRadius: "var(--radius)",
                   border: "none",
-                  bgcolor: "#F9EBD7",
-                  boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
+                  bgcolor: "var(--bg)",
+                  boxShadow: "none",
                 }}
               >
-                <Typography variant="subtitle2" sx={{ color: "#8A5A00", fontWeight: 700, mb: 0.5 }}>
+                <Typography variant="subtitle2" sx={{ color: "var(--amber)", fontWeight: 600, mb: "var(--space-1)" }}>
                   Sector Concentration
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#686B64" }}>
-                  Spread across <strong style={{ color: "#292D2A" }}>{effectiveIndustries.toFixed(1)} effective industries</strong>. Having exposure in
+                <Typography variant="body2" sx={{ color: "var(--gray)" }}>
+                  Spread across <strong style={{ color: "var(--white)" }}>{effectiveIndustries.toFixed(1)} effective industries</strong>. Having exposure in
                   both cyclicals (Auto, Construction) and defensives (FMCG, Pharma) cushions banking/tech drawdowns.
                 </Typography>
               </Paper>
@@ -708,30 +708,30 @@ export function CorrelationMstExplainer({
 
     const hasCrossSector = neighbors.some((n) => n.isCrossSector);
     let roleLabel = "Peripheral Leaf Node";
-    let roleColor = "#3F5B7A";
-    let roleBg = "#DCE9DE";
+    let roleColor = "var(--cyan)";
+    let roleBg = "var(--line)";
     if (degree >= 5) {
       roleLabel = `Systemic Market Hub (${degree} Connections)`;
-      roleColor = "#046A38";
-      roleBg = "#DCE9DE";
+      roleColor = "var(--up)";
+      roleBg = "var(--line)";
     } else if (degree >= 2 && hasCrossSector) {
       roleLabel = `Cross-Sector Transmission Bridge (${degree} Connections)`;
-      roleColor = "#8A5A00";
-      roleBg = "#F9EBD7";
+      roleColor = "var(--amber)";
+      roleBg = "var(--bg)";
     } else if (degree >= 2) {
       roleLabel = `Sector Cluster Core (${degree} Connections)`;
-      roleColor = "#1F6F78";
-      roleBg = "#DCE9DE";
+      roleColor = "var(--cyan)";
+      roleBg = "var(--line)";
     }
 
     return (
       <Card
         elevation={0}
         sx={{
-          borderRadius: 0,
+          borderRadius: "var(--radius)",
           border: "none",
-          bgcolor: "#F9EBD7",
-          boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+          bgcolor: "var(--bg)",
+          boxShadow: "none",
         }}
       >
         <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
@@ -739,26 +739,26 @@ export function CorrelationMstExplainer({
             {/* Header & Active Selection Strip */}
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, gap: 1.5 }}
+              sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, gap: "var(--space-2)" }}
             >
               <Box>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", mb: 0.5 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", mb: "var(--space-1)" }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--white)" }}>
                     {macro.icon} {symbol}: Empirical Network Position & Drivers
                   </Typography>
                   <Chip
                     size="small"
                     label={roleLabel}
                     sx={{
-                      borderRadius: 0,
-                      fontWeight: 700,
+                      borderRadius: "var(--radius)",
+                      fontWeight: 600,
                       bgcolor: roleBg,
                       color: roleColor,
-                      fontSize: "0.75rem",
+                      fontSize: "var(--text-title)",
                     }}
                   />
                 </Stack>
-                <Typography variant="body2" sx={{ color: "#686B64" }}>
+                <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                   Real 120-day return co-movement and topology for <strong>{symbol}</strong> in the NIFTY 200 empirical tree.
                 </Typography>
               </Box>
@@ -770,12 +770,12 @@ export function CorrelationMstExplainer({
                     variant="outlined"
                     onClick={onClearSelection}
                     sx={{
-                      borderRadius: 0,
+                      borderRadius: "var(--radius)",
                       textTransform: "none",
-                      color: "#292D2A",
-                      borderColor: "rgba(41,45,42,0.25)",
-                      fontSize: "0.76rem",
-                      "&:hover": { borderColor: "#292D2A", bgcolor: "rgba(41,45,42,0.04)" },
+                      color: "var(--white)",
+                      borderColor: "var(--gray)",
+                      fontSize: "var(--text-title)",
+                      "&:hover": { borderColor: "var(--white)", bgcolor: "var(--gray)" },
                     }}
                   >
                     Clear Filter
@@ -787,15 +787,14 @@ export function CorrelationMstExplainer({
                   size="small"
                   variant="contained"
                   sx={{
-                    borderRadius: 0,
+                    borderRadius: "var(--radius)",
                     textTransform: "none",
-                    fontSize: "0.76rem",
-                    bgcolor: "#046A38",
-                    color: "#F9EBD7",
-                    "&:hover": { bgcolor: "#034d28" },
+                    fontSize: "var(--text-title)",
+                    bgcolor: "var(--up)", color: "var(--line)",
+                    "&:hover": { bgcolor: "var(--up)" },
                   }}
                 >
-                  Open {symbol} Detail →
+                  Open {symbol} Detail /
                 </Button>
               </Stack>
             </Stack>
@@ -804,43 +803,43 @@ export function CorrelationMstExplainer({
             <Paper
               elevation={0}
               sx={{
-                p: 1.5,
-                bgcolor: "#E3D7C4",
-                borderRadius: 0,
+                p: "var(--space-2)",
+                bgcolor: "var(--line)",
+                borderRadius: "var(--radius)",
                 display: "grid",
                 gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, 1fr)" },
-                gap: 1.5,
+                gap: "var(--space-2)",
               }}
             >
               <Box>
-                <Typography variant="caption" sx={{ color: "#686B64", textTransform: "uppercase", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", textTransform: "uppercase", fontWeight: 600 }}>
                   Stock Symbol
                 </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)" }}>
                   {symbol}
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: "#686B64", textTransform: "uppercase", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", textTransform: "uppercase", fontWeight: 600 }}>
                   Sector / Industry
                 </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)" }}>
                   {industry}
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: "#686B64", textTransform: "uppercase", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", textTransform: "uppercase", fontWeight: 600 }}>
                   MST Degree
                 </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#046A38" }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--up)" }}>
                   {degree} direct link{degree === 1 ? "" : "s"}
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: "#686B64", textTransform: "uppercase", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", textTransform: "uppercase", fontWeight: 600 }}>
                   Observations
                 </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)" }}>
                   {selectedItem.observations_used ?? 120} days
                 </Typography>
               </Box>
@@ -848,17 +847,17 @@ export function CorrelationMstExplainer({
 
             {/* Real Connected MST Neighbors Table */}
             <Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A", mb: 1 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-1)" }}>
                 Direct Spanning Tree Neighbors ({neighbors.length})
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64", mb: 1.5 }}>
+              <Typography variant="body2" sx={{ color: "var(--gray)", mb: "var(--space-2)" }}>
                 These are the only {neighbors.length} stock{neighbors.length === 1 ? "" : "s"} in the entire market with
                 direct minimum-distance spanning edges to <strong>{symbol}</strong>. Shocks travel directly across these links.
               </Typography>
 
               {neighbors.length === 0 ? (
-                <Paper sx={{ p: 2, bgcolor: "#E3D7C4", borderRadius: 0, textAlign: "center" }}>
-                  <Typography variant="body2" sx={{ color: "#686B64" }}>
+                <Paper sx={{ p: "var(--space-2)", bgcolor: "var(--line)", borderRadius: "var(--radius)", textAlign: "center" }}>
+                  <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                     No direct edges recorded in the active calculation window.
                   </Typography>
                 </Paper>
@@ -867,30 +866,30 @@ export function CorrelationMstExplainer({
                   component={Paper}
                   elevation={0}
                   sx={{
-                    borderRadius: 0,
-                    bgcolor: "#F9EBD7",
-                    border: "1px solid rgba(41,45,42,0.12)",
+                    borderRadius: "var(--radius)",
+                    bgcolor: "var(--bg)",
+                    border: "var(--border-width) solid var(--cyan)",
                   }}
                 >
                   <Table size="small">
-                    <TableHead sx={{ bgcolor: "#E3D7C4" }}>
+                    <TableHead sx={{ bgcolor: "var(--line)" }}>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }}>
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)", fontSize: "var(--text-title)" }}>
                           Connected Stock
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }}>
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)", fontSize: "var(--text-title)" }}>
                           Industry
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }} align="right">
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)", fontSize: "var(--text-title)" }} align="right">
                           Correlation (ρ)
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }} align="right">
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)", fontSize: "var(--text-title)" }} align="right">
                           Mantegna Distance (d)
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }} align="center">
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)", fontSize: "var(--text-title)" }} align="center">
                           Edge Rank
                         </TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: "#292D2A", fontSize: "0.75rem" }}>
+                        <TableCell sx={{ fontWeight: 600, color: "var(--white)", fontSize: "var(--text-title)" }}>
                           Link Nature
                         </TableCell>
                       </TableRow>
@@ -898,18 +897,18 @@ export function CorrelationMstExplainer({
                     <TableBody>
                       {neighbors.map((neighbor) => (
                         <TableRow key={neighbor.symbol} hover sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
-                          <TableCell sx={{ py: 1 }}>
+                          <TableCell sx={{ py: "var(--space-1)" }}>
                             {onSelectSymbol ? (
                               <Button
                                 size="small"
                                 onClick={() => onSelectSymbol(neighbor.symbol)}
                                 sx={{
-                                  p: 0,
+                                  p: "var(--space-1)",
                                   minWidth: 0,
-                                  fontWeight: 700,
-                                  color: "#046A38",
+                                  fontWeight: 600,
+                                  color: "var(--up)",
                                   textTransform: "none",
-                                  fontSize: "0.82rem",
+                                  fontSize: "var(--text-title)",
                                   "&:hover": { textDecoration: "underline", bgcolor: "transparent" },
                                 }}
                               >
@@ -919,14 +918,14 @@ export function CorrelationMstExplainer({
                               <strong>{neighbor.symbol}</strong>
                             )}
                           </TableCell>
-                          <TableCell sx={{ fontSize: "0.8rem", color: "#686B64" }}>{neighbor.industry}</TableCell>
-                          <TableCell sx={{ fontSize: "0.8rem", fontWeight: 700, color: "#046A38" }} align="right">
+                          <TableCell sx={{ fontSize: "var(--text-title)", color: "var(--gray)" }}>{neighbor.industry}</TableCell>
+                          <TableCell sx={{ fontSize: "var(--text-title)", fontWeight: 600, color: "var(--up)" }} align="right">
                             +{neighbor.correlation.toFixed(3)}
                           </TableCell>
-                          <TableCell sx={{ fontSize: "0.8rem", color: "#292D2A" }} align="right">
+                          <TableCell sx={{ fontSize: "var(--text-title)", color: "var(--white)" }} align="right">
                             {neighbor.distance.toFixed(3)}
                           </TableCell>
-                          <TableCell sx={{ fontSize: "0.75rem", color: "#686B64" }} align="center">
+                          <TableCell sx={{ fontSize: "var(--text-title)", color: "var(--gray)" }} align="center">
                             #{neighbor.edge_rank}
                           </TableCell>
                           <TableCell>
@@ -934,11 +933,11 @@ export function CorrelationMstExplainer({
                               size="small"
                               label={neighbor.isCrossSector ? "Cross-Sector Conduit" : "Intra-Sector Peer"}
                               sx={{
-                                borderRadius: 0,
-                                fontSize: "0.7rem",
+                                borderRadius: "var(--radius)",
+                                fontSize: "var(--text-title)",
                                 fontWeight: 600,
-                                bgcolor: neighbor.isCrossSector ? "#F6D9CC" : "#DCE9DE",
-                                color: neighbor.isCrossSector ? "#B8321A" : "#046A38",
+                                bgcolor: neighbor.isCrossSector ? "var(--gray)" : "var(--line)",
+                                color: neighbor.isCrossSector ? "var(--down)" : "var(--up)",
                               }}
                             />
                           </TableCell>
@@ -954,34 +953,34 @@ export function CorrelationMstExplainer({
             <Paper
               elevation={0}
               sx={{
-                p: 2,
-                borderRadius: 0,
-                bgcolor: "#F9EBD7",
-                border: "1px solid rgba(41,45,42,0.12)",
-                boxShadow: "0 3px 8px rgba(41,45,42,0.06)",
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
+                bgcolor: "var(--bg)",
+                border: "var(--border-width) solid var(--cyan)",
+                boxShadow: "none",
               }}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A", mb: 0.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-1)" }}>
                 Fundamental Macro Drivers: {macro.headline}
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64", mb: 1.5 }}>
+              <Typography variant="body2" sx={{ color: "var(--gray)", mb: "var(--space-2)" }}>
                 Why does <strong>{symbol}</strong> co-move with its empirical neighbors? Its return correlation is structurally driven by:
               </Typography>
-              <Stack spacing={1} sx={{ pl: 1, mb: 1.5 }}>
+              <Stack spacing={1} sx={{ pl: "var(--space-1)", mb: "var(--space-2)" }}>
                 {macro.macroDrivers.map((driver, idx) => (
                   <Stack key={idx} direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
-                    <Typography sx={{ color: "#046A38", fontWeight: 700, fontSize: "0.85rem", lineHeight: 1.5 }}>
+                    <Typography sx={{ color: "var(--up)", fontWeight: 600, fontSize: "var(--text-title)", lineHeight: "var(--leading)" }}>
                       •
                     </Typography>
-                    <Typography variant="body2" sx={{ color: "#292D2A", lineHeight: 1.55 }}>
+                    <Typography variant="body2" sx={{ color: "var(--white)", lineHeight: "var(--leading)" }}>
                       {driver}
                     </Typography>
                   </Stack>
                 ))}
               </Stack>
-              <Divider sx={{ my: 1.5, borderColor: "rgba(41,45,42,0.10)" }} />
-              <Typography variant="body2" sx={{ color: "#686B64", lineHeight: 1.55 }}>
-                <strong style={{ color: "#292D2A" }}>Network Stress Transmission:</strong> {macro.shockTransmission}
+              <Divider sx={{ my: "var(--space-2)", borderColor: "var(--gray)" }} />
+              <Typography variant="body2" sx={{ color: "var(--gray)", lineHeight: "var(--leading)" }}>
+                <strong style={{ color: "var(--white)" }}>Network Stress Transmission:</strong> {macro.shockTransmission}
               </Typography>
             </Paper>
           </Stack>
@@ -1008,10 +1007,10 @@ export function CorrelationMstExplainer({
       <Card
         elevation={0}
         sx={{
-          borderRadius: 0,
+          borderRadius: "var(--radius)",
           border: "none",
-          bgcolor: "#F9EBD7",
-          boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+          bgcolor: "var(--bg)",
+          boxShadow: "none",
         }}
       >
         <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
@@ -1019,26 +1018,26 @@ export function CorrelationMstExplainer({
             {/* Header & Badges */}
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, gap: 1.5 }}
+              sx={{ justifyContent: "space-between", alignItems: { sm: "flex-start" }, gap: "var(--space-2)" }}
             >
               <Box>
-                <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", mb: 0.5 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
-                    Link Dynamics: {symA} ↔ {symB}
+                <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap", mb: "var(--space-1)" }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--white)" }}>
+                    Link Dynamics: {symA} / {symB}
                   </Typography>
                   <Chip
                     size="small"
                     label={isSameSector ? "Intra-Sector Empirical Anchor" : "Cross-Sector Structural Bridge"}
                     sx={{
-                      borderRadius: 0,
-                      fontWeight: 700,
-                      bgcolor: isSameSector ? "#DCE9DE" : "#F6D9CC",
-                      color: isSameSector ? "#046A38" : "#B8321A",
-                      fontSize: "0.75rem",
+                      borderRadius: "var(--radius)",
+                      fontWeight: 600,
+                      bgcolor: isSameSector ? "var(--line)" : "var(--gray)",
+                      color: isSameSector ? "var(--up)" : "var(--down)",
+                      fontSize: "var(--text-title)",
                     }}
                   />
                 </Stack>
-                <Typography variant="body2" sx={{ color: "#686B64" }}>
+                <Typography variant="body2" sx={{ color: "var(--gray)" }}>
                   Empirical Minimum Spanning Tree backbone link connecting {symA} ({indA}) and {symB} ({indB}).
                 </Typography>
               </Box>
@@ -1049,13 +1048,13 @@ export function CorrelationMstExplainer({
                   variant="outlined"
                   onClick={onClearSelection}
                   sx={{
-                    borderRadius: 0,
+                    borderRadius: "var(--radius)",
                     textTransform: "none",
-                    color: "#292D2A",
-                    borderColor: "rgba(41,45,42,0.25)",
-                    fontSize: "0.76rem",
+                    color: "var(--white)",
+                    borderColor: "var(--gray)",
+                    fontSize: "var(--text-title)",
                     flexShrink: 0,
-                    "&:hover": { borderColor: "#292D2A", bgcolor: "rgba(41,45,42,0.04)" },
+                    "&:hover": { borderColor: "var(--white)", bgcolor: "var(--gray)" },
                   }}
                 >
                   Clear Filter
@@ -1067,43 +1066,43 @@ export function CorrelationMstExplainer({
             <Paper
               elevation={0}
               sx={{
-                p: 1.5,
-                bgcolor: "#E3D7C4",
-                borderRadius: 0,
+                p: "var(--space-2)",
+                bgcolor: "var(--line)",
+                borderRadius: "var(--radius)",
                 display: "grid",
                 gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4, 1fr)" },
-                gap: 1.5,
+                gap: "var(--space-2)",
               }}
             >
               <Box>
-                <Typography variant="caption" sx={{ color: "#686B64", textTransform: "uppercase", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", textTransform: "uppercase", fontWeight: 600 }}>
                   Pearson Correlation
                 </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#046A38" }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--up)" }}>
                   ρ = +{corr.toFixed(3)}
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: "#686B64", textTransform: "uppercase", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", textTransform: "uppercase", fontWeight: 600 }}>
                   Mantegna Distance
                 </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)" }}>
                   d = {dist.toFixed(3)}
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: "#686B64", textTransform: "uppercase", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", textTransform: "uppercase", fontWeight: 600 }}>
                   Market Edge Rank
                 </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)" }}>
                   Rank #{rank} in tree
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: "#686B64", textTransform: "uppercase", fontWeight: 700 }}>
+                <Typography variant="caption" sx={{ color: "var(--gray)", textTransform: "uppercase", fontWeight: 600 }}>
                   Paired Returns
                 </Typography>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)" }}>
                   {selectedItem.paired_observations ?? 120} trading days
                 </Typography>
               </Box>
@@ -1113,16 +1112,16 @@ export function CorrelationMstExplainer({
             <Paper
               elevation={0}
               sx={{
-                p: 2,
-                borderRadius: 0,
-                bgcolor: "#F9EBD7",
-                border: "1px solid rgba(41,45,42,0.12)",
+                p: "var(--space-2)",
+                borderRadius: "var(--radius)",
+                bgcolor: "var(--bg)",
+                border: "var(--border-width) solid var(--cyan)",
               }}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#292D2A", mb: 0.75 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-1)" }}>
                 Why Did Kruskal&apos;s Algorithm Select This Exact Edge?
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64", lineHeight: 1.65 }}>
+              <Typography variant="body2" sx={{ color: "var(--gray)", lineHeight: "var(--leading)" }}>
                 Out of all 19,701 possible pairwise relationships in the NIFTY 200 universe, Kruskal&apos;s algorithm selected this
                 link with a Mantegna distance of <strong>d = {dist.toFixed(3)}</strong> (correlation <strong>ρ = {corr.toFixed(3)}</strong>).
                 In an acyclic spanning tree, this edge is indispensable: cutting it would mathematically partition their respective subtrees.
@@ -1133,7 +1132,7 @@ export function CorrelationMstExplainer({
                 )}
               </Typography>
 
-              <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
+              <Stack direction="row" spacing={1.5} sx={{ mt: "var(--space-2)" }}>
                 {onSelectSymbol && (
                   <>
                     <Button
@@ -1141,30 +1140,30 @@ export function CorrelationMstExplainer({
                       variant="outlined"
                       onClick={() => onSelectSymbol(symA)}
                       sx={{
-                        borderRadius: 0,
+                        borderRadius: "var(--radius)",
                         textTransform: "none",
-                        color: "#046A38",
-                        borderColor: "#046A38",
-                        fontSize: "0.78rem",
-                        "&:hover": { bgcolor: "rgba(4,106,56,0.06)", borderColor: "#034d28" },
+                        color: "var(--up)",
+                        borderColor: "var(--up)",
+                        fontSize: "var(--text-title)",
+                        "&:hover": { bgcolor: "var(--up)", borderColor: "var(--up)" },
                       }}
                     >
-                      Focus {symA} ({indA}) →
+                      Focus {symA} ({indA}) /
                     </Button>
                     <Button
                       size="small"
                       variant="outlined"
                       onClick={() => onSelectSymbol(symB)}
                       sx={{
-                        borderRadius: 0,
+                        borderRadius: "var(--radius)",
                         textTransform: "none",
-                        color: "#046A38",
-                        borderColor: "#046A38",
-                        fontSize: "0.78rem",
-                        "&:hover": { bgcolor: "rgba(4,106,56,0.06)", borderColor: "#034d28" },
+                        color: "var(--up)",
+                        borderColor: "var(--up)",
+                        fontSize: "var(--text-title)",
+                        "&:hover": { bgcolor: "var(--up)", borderColor: "var(--up)" },
                       }}
                     >
-                      Focus {symB} ({indB}) →
+                      Focus {symB} ({indB}) /
                     </Button>
                   </>
                 )}
@@ -1181,20 +1180,20 @@ export function CorrelationMstExplainer({
     <Card
       elevation={0}
       sx={{
-        borderRadius: 0,
+        borderRadius: "var(--radius)",
         border: "none",
-        bgcolor: "#F9EBD7",
-        boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+        bgcolor: "var(--bg)",
+        boxShadow: "none",
       }}
     >
       <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
         <Stack spacing={2.5}>
           {/* Main Title & Guiding Note */}
           <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: "#292D2A" }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, color: "var(--white)" }}>
               Why Do These Stocks Correlate? Structural Macro Drivers
             </Typography>
-            <Typography variant="body2" sx={{ color: "#686B64", mt: 0.5 }}>
+            <Typography variant="body2" sx={{ color: "var(--gray)", mt: "var(--space-1)" }}>
               Correlation is not accidental—it reflects shared exposure to regulatory policies, currency fluctuations,
               interest rate cycles, and global supply chains.
             </Typography>
@@ -1204,13 +1203,13 @@ export function CorrelationMstExplainer({
           <Paper
             elevation={0}
             sx={{
-              p: 1.75,
-              borderRadius: 0,
-              bgcolor: "#DCE9DE",
-              borderLeft: "4px solid #046A38",
+              p: "var(--space-2)",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--line)",
+              borderLeft: "var(--border-width) solid var(--up)",
             }}
           >
-            <Typography variant="body2" sx={{ color: "#046A38", fontWeight: 600 }}>
+            <Typography variant="body2" sx={{ color: "var(--up)", fontWeight: 600 }}>
               <strong>Interactive Tree:</strong> Click any stock node or connection line above, or search for a symbol,
               to inspect its real-time correlation drivers, connected neighbors, and transmission pathways.
             </Typography>
@@ -1219,13 +1218,13 @@ export function CorrelationMstExplainer({
           {/* Real Empirical Market Hubs (Computed dynamically from MST API) */}
           {topHubs.length > 0 && (
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1, textTransform: "uppercase", fontSize: "0.76rem" }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-1)", textTransform: "uppercase", fontSize: "var(--text-title)" }}>
                 Top Empirical Market Hubs (Highest Spanning Tree Degree)
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64", mb: 1.5, fontSize: "0.82rem" }}>
+              <Typography variant="body2" sx={{ color: "var(--gray)", mb: "var(--space-2)", fontSize: "var(--text-title)" }}>
                 These stocks act as structural backbone anchors in the empirical tree, connecting multiple branches and transmitting systemic market shocks:
               </Typography>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: "var(--space-1)" }}>
                 {topHubs.map((hub) => (
                   <Button
                     key={hub.symbol}
@@ -1233,14 +1232,14 @@ export function CorrelationMstExplainer({
                     variant="outlined"
                     onClick={() => onSelectSymbol?.(hub.symbol)}
                     sx={{
-                      borderRadius: 0,
+                      borderRadius: "var(--radius)",
                       textTransform: "none",
-                      fontSize: "0.78rem",
+                      fontSize: "var(--text-title)",
                       fontWeight: 600,
-                      color: "#292D2A",
-                      borderColor: "rgba(41,45,42,0.22)",
-                      bgcolor: "#E3D7C4",
-                      "&:hover": { borderColor: "#046A38", bgcolor: "#d5c7b2" },
+                      color: "var(--white)",
+                      borderColor: "var(--gray)",
+                      bgcolor: "var(--line)",
+                      "&:hover": { borderColor: "var(--up)", bgcolor: "var(--amber)" },
                     }}
                   >
                     <strong>{hub.symbol}</strong> ({hub.degree} links · {hub.industry})
@@ -1253,13 +1252,13 @@ export function CorrelationMstExplainer({
           {/* Real Top Correlation Links (Computed dynamically from MST API) */}
           {topCorrelations.length > 0 && (
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1, textTransform: "uppercase", fontSize: "0.76rem" }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-1)", textTransform: "uppercase", fontSize: "var(--text-title)" }}>
                 Strongest Co-Movement Links in the Market
               </Typography>
-              <Typography variant="body2" sx={{ color: "#686B64", mb: 1.5, fontSize: "0.82rem" }}>
+              <Typography variant="body2" sx={{ color: "var(--gray)", mb: "var(--space-2)", fontSize: "var(--text-title)" }}>
                 These pairs exhibit the lowest statistical distance in the entire NIFTY 200 universe (highest return synchronization):
               </Typography>
-              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: "var(--space-1)" }}>
                 {topCorrelations.map((pair) => (
                   <Button
                     key={`${pair.symbol_a}-${pair.symbol_b}`}
@@ -1267,17 +1266,17 @@ export function CorrelationMstExplainer({
                     variant="outlined"
                     onClick={() => onSelectEdge?.(pair.symbol_a, pair.symbol_b)}
                     sx={{
-                      borderRadius: 0,
+                      borderRadius: "var(--radius)",
                       textTransform: "none",
-                      fontSize: "0.78rem",
+                      fontSize: "var(--text-title)",
                       fontWeight: 600,
-                      color: "#046A38",
-                      borderColor: "rgba(4,106,56,0.30)",
-                      bgcolor: "#DCE9DE",
-                      "&:hover": { borderColor: "#046A38", bgcolor: "#cde0d0" },
+                      color: "var(--up)",
+                      borderColor: "var(--up)",
+                      bgcolor: "var(--line)",
+                      "&:hover": { borderColor: "var(--up)", bgcolor: "var(--white)" },
                     }}
                   >
-                    {pair.symbol_a} ↔ {pair.symbol_b} (ρ = +{pair.correlation.toFixed(2)})
+                    {pair.symbol_a} / {pair.symbol_b} (ρ = +{pair.correlation.toFixed(2)})
                   </Button>
                 ))}
               </Stack>
@@ -1286,7 +1285,7 @@ export function CorrelationMstExplainer({
 
           {/* Sector Macroeconomic Driver Encyclopedia */}
           <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A", mb: 1, textTransform: "uppercase", fontSize: "0.76rem" }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)", mb: "var(--space-1)", textTransform: "uppercase", fontSize: "var(--text-title)" }}>
               Macroeconomic Sensitivity Profiles by Sector
             </Typography>
             <Stack spacing={1}>
@@ -1308,39 +1307,39 @@ export function CorrelationMstExplainer({
                     onChange={(_, isExp) => setExpandedSector(isExp ? sectorName : false)}
                     elevation={0}
                     sx={{
-                      borderRadius: 0,
+                      borderRadius: "var(--radius)",
                       border: "none",
-                      bgcolor: "#F9EBD7",
-                      boxShadow: "0 2px 6px rgba(41,45,42,0.08)",
+                      bgcolor: "var(--bg)",
+                      boxShadow: "none",
                       "&:before": { display: "none" },
                     }}
                   >
                     <AccordionSummary>
-                      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", width: "100%", pr: 2 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                      <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", width: "100%", pr: "var(--space-2)" }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)" }}>
                           {sectorName}
                         </Typography>
                         <Chip
                           size="small"
                           label={profile.headline}
                           sx={{
-                            borderRadius: 0,
+                            borderRadius: "var(--radius)",
                             fontWeight: 600,
-                            fontSize: "0.72rem",
-                            bgcolor: "#E3D7C4",
-                            color: "#292D2A",
+                            fontSize: "var(--text-title)",
+                            bgcolor: "var(--line)",
+                            color: "var(--white)",
                           }}
                         />
                       </Stack>
                     </AccordionSummary>
-                    <AccordionDetails sx={{ pt: 0 }}>
+                    <AccordionDetails sx={{ pt: "var(--space-1)" }}>
                       <Stack spacing={1}>
                         {profile.macroDrivers.map((d, i) => (
-                          <Typography key={i} variant="body2" sx={{ color: "#686B64", lineHeight: 1.55 }}>
+                          <Typography key={i} variant="body2" sx={{ color: "var(--gray)", lineHeight: "var(--leading)" }}>
                             • {d}
                           </Typography>
                         ))}
-                        <Typography variant="body2" sx={{ color: "#046A38", fontWeight: 600, mt: 0.5 }}>
+                        <Typography variant="body2" sx={{ color: "var(--up)", fontWeight: 600, mt: "var(--space-1)" }}>
                           Transmission Dynamics: {profile.shockTransmission}
                         </Typography>
                       </Stack>

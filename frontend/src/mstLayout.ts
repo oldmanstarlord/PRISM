@@ -1,39 +1,21 @@
+import { SERIES, resolveTerminalColor } from "./terminalTokens";
 import type { CoseLayoutOptions, ElementDefinition } from "cytoscape";
 import type { MstResponse } from "./types";
 
-const compare = (left: string, right: string) => left < right ? -1 : left > right ? 1 : 0;
+const clusterColors = SERIES;
+const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
 
-export function mstElements(data: MstResponse, colors: Record<string, string>): ElementDefinition[] {
-  const nodes = [...data.nodes].sort((a, b) => compare(a.symbol, b.symbol) || compare(a.id, b.id));
-  const edges = [...data.edges].sort((a, b) =>
-    a.edge_rank - b.edge_rank || compare(a.source, b.source) || compare(a.target, b.target),
-  );
-  const degree = Object.fromEntries(nodes.map(node => [node.id, 0]));
-  for (const edge of edges) {
-    degree[edge.source] += 1;
-    degree[edge.target] += 1;
-  }
-
-  return [
-    ...nodes.map((node, index) => {
-      // CoSE uses random forces for coincident nodes even with randomize:false.
-      // A stable, asymmetric spiral keeps every starting position distinct.
-      const angle = index * Math.PI * (3 - Math.sqrt(5));
-      const radius = 60 * Math.sqrt(index + 1);
-      return {
-        data: { ...node, degree: degree[node.id], color: colors[node.industry] },
-        position: { x: radius * Math.cos(angle), y: radius * Math.sin(angle) },
-      };
-    }),
-    ...edges.map(edge => ({ data: { id: `${edge.source}-${edge.target}`, ...edge } })),
-  ];
+export function industryColors(industries: string[]) {
+  return Object.fromEntries([...new Set(industries)].sort().map(
+    (industry, index) => [industry, clusterColors[index % clusterColors.length]],
+  ));
 }
 
 export const mstLayout: CoseLayoutOptions = {
   name: "cose",
   animate: false,
   randomize: false,
-  // Calculate in fixed model coordinates; viewport size only changes the fit.
+  // Keep model coordinates stable across viewport sizes.
   boundingBox: { x1: 0, y1: 0, w: 1600, h: 1600 },
   nodeRepulsion: () => 7000,
   idealEdgeLength: () => 85,
@@ -42,3 +24,28 @@ export const mstLayout: CoseLayoutOptions = {
   padding: 55,
   componentSpacing: 100,
 };
+
+export function mstElements(data: Pick<MstResponse, "nodes" | "edges">): ElementDefinition[] {
+  // CoSE uses random collision forces for coincident nodes even with randomize:false.
+  // Start at distinct, reproducible points and keep iteration order stable on reload.
+  const nodes = [...data.nodes].sort((a, b) => compare(a.symbol, b.symbol) || compare(a.id, b.id));
+  const edges = [...data.edges].sort((a, b) => compare(a.source, b.source) || compare(a.target, b.target));
+  const colors = industryColors(nodes.map((node) => node.industry));
+  const degree = new Map(nodes.map((node) => [node.id, 0]));
+  for (const edge of edges) {
+    degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
+    degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+  }
+
+  return [
+    ...nodes.map((node, index) => {
+      const angle = index * Math.PI * (3 - Math.sqrt(5));
+      const radius = 85 * Math.sqrt(index + 1);
+      return {
+        data: { ...node, degree: degree.get(node.id), color: resolveTerminalColor(colors[node.industry]) },
+        position: { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius },
+      };
+    }),
+    ...edges.map((edge) => ({ data: { id: `${edge.source}-${edge.target}`, ...edge } })),
+  ];
+}

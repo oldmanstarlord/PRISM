@@ -188,7 +188,7 @@ export default function StockDecisionJournal({
   const renderMetricValue = (val: number | null | undefined, suffix = "") => {
     if (val === null || val === undefined || isNaN(val)) {
       return (
-        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.8rem" }}>
+        <Typography component="span" sx={{ color: "var(--gray)", fontStyle: "italic", fontSize: "var(--text-title)" }}>
           Unavailable
         </Typography>
       );
@@ -199,7 +199,7 @@ export default function StockDecisionJournal({
   const renderStringValue = (val: string | null | undefined) => {
     if (!val || !val.trim()) {
       return (
-        <Typography component="span" sx={{ color: "#686B64", fontStyle: "italic", fontSize: "0.8rem" }}>
+        <Typography component="span" sx={{ color: "var(--gray)", fontStyle: "italic", fontSize: "var(--text-title)" }}>
           Unavailable
         </Typography>
       );
@@ -213,9 +213,9 @@ export default function StockDecisionJournal({
       elevation={0}
       sx={{
         p: { xs: 2, sm: 2.5 },
-        bgcolor: "#F9EBD7",
-        borderRadius: 0,
-        boxShadow: "0 6px 16px rgba(41,45,42,0.14)",
+        bgcolor: "var(--bg)",
+        borderRadius: "var(--radius)",
+        boxShadow: "none",
       }}
     >
       {/* Header */}
@@ -229,18 +229,18 @@ export default function StockDecisionJournal({
         onClick={() => setExpanded(!expanded)}
       >
         <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1.05rem", color: "#292D2A" }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: "var(--text-title)", color: "var(--white)" }}>
              Investment Decision Journal
           </Typography>
           <Chip
             size="small"
             label={`${decisions.length} ${decisions.length === 1 ? "decision" : "decisions"}`}
             sx={{
-              bgcolor: decisions.length > 0 ? "#DCE9DE" : "#E3D7C4",
-              color: decisions.length > 0 ? "#046A38" : "#292D2A",
-              fontWeight: 700,
-              fontSize: "0.75rem",
-              borderRadius: 0,
+              bgcolor: decisions.length > 0 ? "var(--line)" : "var(--line)",
+              color: decisions.length > 0 ? "var(--up)" : "var(--white)",
+              fontWeight: 600,
+              fontSize: "var(--text-title)",
+              borderRadius: "var(--radius)",
             }}
           />
         </Stack>
@@ -255,51 +255,50 @@ export default function StockDecisionJournal({
               handleOpenCreate();
             }}
             sx={{
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
-              fontSize: "0.8rem",
-              py: 0.5,
-              px: 1.5,
-              borderRadius: 0,
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-              "&:hover": { bgcolor: "#03532c" },
+              bgcolor: "var(--up)", color: "var(--line)",
+              fontSize: "var(--text-title)",
+              py: "var(--space-1)",
+              px: "var(--space-2)",
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--up)" },
             }}
           >
             + Record Decision
           </Button>
-          <IconButton size="small" sx={{ color: "#686B64", borderRadius: 0 }}>
+          <IconButton aria-label={expanded ? "Hide decision history" : "Show decision history"} aria-expanded={expanded} size="small" sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             {expanded ? "▲" : "▼"}
           </IconButton>
         </Stack>
       </Stack>
 
       <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <Box sx={{ mt: 2.5 }}>
+        <Box sx={{ mt: "var(--space-3)" }}>
           {loading ? (
-            <Typography variant="body2" sx={{ color: "#686B64", py: 2 }}>
+            <Typography variant="body2" sx={{ color: "var(--gray)", py: "var(--space-2)" }}>
               Loading decision journal...
             </Typography>
           ) : decisions.length === 0 ? (
             <Box
               sx={{
-                p: 3,
+                p: "var(--space-3)",
                 textAlign: "center",
-                bgcolor: "#F9EBD7",
-                borderRadius: 0,
-                boxShadow: "0 2px 6px rgba(41,45,42,0.08)",
+                bgcolor: "var(--bg)",
+                borderRadius: "var(--radius)",
+                boxShadow: "none",
               }}
             >
-              <Typography variant="body2" sx={{ color: "#686B64", mb: 1 }}>
+              <Typography variant="body2" sx={{ color: "var(--gray)", mb: "var(--space-1)" }}>
                 No investment decisions logged for {normSymbol} yet.
               </Typography>
-              <Typography variant="caption" sx={{ color: "#686B64", display: "block", mb: 1.5 }}>
+              <Typography variant="caption" sx={{ color: "var(--gray)", display: "block", mb: "var(--space-2)" }}>
                 Recording a decision captures the current risk score, divergence, and portfolio weight at that point in time for future review.
               </Typography>
               <Button
                 size="small"
                 variant="contained"
                 onClick={handleOpenCreate}
-                sx={{ fontSize: "0.8rem", bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
+                sx={{ fontSize: "var(--text-title)", bgcolor: "var(--up)", color: "var(--line)", borderRadius: "var(--radius)", boxShadow: "none" }}
               >
                 Log First Decision
               </Button>
@@ -312,53 +311,53 @@ export default function StockDecisionJournal({
                   placeholder={`Search decisions & rationale for ${normSymbol}...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  sx={{ "& .MuiInputBase-input": { fontSize: "0.85rem" } }}
+                  sx={{ "& .MuiInputBase-input": { fontSize: "var(--text-title)" } }}
                 />
               )}
 
               {filteredDecisions.length === 0 ? (
-                <Typography variant="body2" sx={{ color: "#686B64", py: 2, textAlign: "center" }}>
+                <Typography variant="body2" sx={{ color: "var(--gray)", py: "var(--space-2)", textAlign: "center" }}>
                   No decisions match "{effectiveQuery}".
                 </Typography>
               ) : (
                 filteredDecisions.map((decision) => {
                   const typeColors = {
-                    Buy: { bg: "#DCE9DE", text: "#046A38" },
-                    Sell: { bg: "#F6D9CC", text: "#B8321A" },
-                    Hold: { bg: "#E3D7C4", text: "#292D2A" },
-                    Review: { bg: "#F9EBD7", text: "#8A5A00" },
-                  }[decision.decisionType] || { bg: "#E3D7C4", text: "#292D2A" };
+                    Buy: { bg: "var(--line)", text: "var(--up)" },
+                    Sell: { bg: "var(--gray)", text: "var(--down)" },
+                    Hold: { bg: "var(--line)", text: "var(--white)" },
+                    Review: { bg: "var(--bg)", text: "var(--amber)" },
+                  }[decision.decisionType] || { bg: "var(--line)", text: "var(--white)" };
 
                   return (
                     <Paper
                       key={decision.id}
                       elevation={0}
                       sx={{
-                        p: 2,
-                        bgcolor: "#F9EBD7",
-                        borderRadius: 0,
-                        boxShadow: "0 3px 8px rgba(41,45,42,0.08)",
+                        p: "var(--space-2)",
+                        bgcolor: "var(--bg)",
+                        borderRadius: "var(--radius)",
+                        boxShadow: "none",
                       }}
                     >
                       {/* Top Bar: Type, Date, Tags, Delete */}
                       <Stack
                         direction="row"
-                        sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: 1.5 }}
+                        sx={{ justifyContent: "space-between", alignItems: "flex-start", mb: "var(--space-2)" }}
                       >
                         <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
                           <Chip
                             size="small"
                             label={decision.decisionType.toUpperCase()}
                             sx={{
-                              fontWeight: 700,
-                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              fontSize: "var(--text-title)",
                               height: 24,
-                              borderRadius: 0,
+                              borderRadius: "var(--radius)",
                               bgcolor: typeColors.bg,
                               color: typeColors.text,
                             }}
                           />
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "var(--white)" }}>
                             {decision.decisionDate}
                           </Typography>
                           {decision.tags.map((tag) => (
@@ -366,7 +365,7 @@ export default function StockDecisionJournal({
                               key={tag}
                               label={tag}
                               size="small"
-                              sx={{ fontSize: "0.7rem", height: 20, borderRadius: 0, bgcolor: "#E3D7C4", color: "#292D2A" }}
+                              sx={{ fontSize: "var(--text-title)", height: 20, borderRadius: "var(--radius)", bgcolor: "var(--line)", color: "var(--white)" }}
                             />
                           ))}
                         </Stack>
@@ -375,7 +374,7 @@ export default function StockDecisionJournal({
                           <IconButton
                             size="small"
                             onClick={() => setDeleteConfirmId(decision.id)}
-                            sx={{ color: "#686B64", borderRadius: 0, "&:hover": { color: "#B8321A" }, fontSize: "0.75rem", fontWeight: 600 }}
+                            sx={{ color: "var(--gray)", borderRadius: "var(--radius)", "&:hover": { color: "var(--down)" }, fontSize: "var(--text-title)", fontWeight: 600 }}
                           >
                             Delete
                           </IconButton>
@@ -387,10 +386,10 @@ export default function StockDecisionJournal({
                         variant="body2"
                         sx={{
                           whiteSpace: "pre-wrap",
-                          color: "#292D2A",
-                          lineHeight: 1.6,
-                          fontSize: "0.9rem",
-                          mb: 2,
+                          color: "var(--white)",
+                          lineHeight: "var(--leading)",
+                          fontSize: "var(--text-title)",
+                          mb: "var(--space-2)",
                         }}
                       >
                         {decision.rationale}
@@ -399,29 +398,29 @@ export default function StockDecisionJournal({
                       {/* Point-in-time Snapshot vs Current Metrics Comparison Table */}
                       <Box
                         sx={{
-                          bgcolor: "#F9EBD7",
-                          borderRadius: 0,
+                          bgcolor: "var(--bg)",
+                          borderRadius: "var(--radius)",
                           overflow: "hidden",
-                          boxShadow: "0 2px 6px rgba(41,45,42,0.08)",
+                          boxShadow: "none",
                         }}
                       >
-                        <Box sx={{ px: 1.5, py: 0.8, bgcolor: "#E3D7C4" }}>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A" }}>
+                        <Box sx={{ px: "var(--space-2)", py: "var(--space-1)", bgcolor: "var(--line)" }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)" }}>
                             Metrics Comparison: Snapshot at Decision vs. Current
                           </Typography>
                         </Box>
-                        <Table size="small" sx={{ "& .MuiTableCell-root": { py: 0.8, px: 1.5, fontSize: "0.8rem", color: "#292D2A" } }}>
+                        <Table size="small" sx={{ "& .MuiTableCell-root": { py: "var(--space-1)", px: "var(--space-2)", fontSize: "var(--text-title)", color: "var(--white)" } }}>
                           <TableHead>
-                            <TableRow sx={{ bgcolor: "#F9EBD7" }}>
-                              <TableCell sx={{ fontWeight: 700, color: "#292D2A" }}>Metric</TableCell>
-                              <TableCell sx={{ fontWeight: 700, color: "#292D2A" }}>At Decision ({decision.decisionDate})</TableCell>
-                              <TableCell sx={{ fontWeight: 700, color: "#292D2A" }}>Current Condition</TableCell>
+                            <TableRow sx={{ bgcolor: "var(--bg)" }}>
+                              <TableCell sx={{ fontWeight: 600, color: "var(--white)" }}>Metric</TableCell>
+                              <TableCell sx={{ fontWeight: 600, color: "var(--white)" }}>At Decision ({decision.decisionDate})</TableCell>
+                              <TableCell sx={{ fontWeight: 600, color: "var(--white)" }}>Current Condition</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            <TableRow sx={{ "&:hover": { bgcolor: "#E3D7C4" } }}>
-                              <TableCell sx={{ color: "#686B64", fontWeight: 600 }}>Risk Score</TableCell>
-                              <TableCell sx={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                            <TableRow sx={{ "&:hover": { bgcolor: "var(--line)" } }}>
+                              <TableCell sx={{ color: "var(--gray)", fontWeight: 600 }}>Risk Score</TableCell>
+                              <TableCell sx={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                                 {decision.snapshot.riskScore !== null ? (
                                   <>
                                     {decision.snapshot.riskScore}{" "}
@@ -431,7 +430,7 @@ export default function StockDecisionJournal({
                                   renderMetricValue(null)
                                 )}
                               </TableCell>
-                              <TableCell sx={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                              <TableCell sx={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                                 {currentMetrics?.riskScore !== null && currentMetrics?.riskScore !== undefined ? (
                                   <>
                                     {currentMetrics.riskScore}{" "}
@@ -443,14 +442,14 @@ export default function StockDecisionJournal({
                               </TableCell>
                             </TableRow>
 
-                            <TableRow sx={{ bgcolor: "#F9EBD7", "&:hover": { bgcolor: "#E3D7C4" } }}>
-                              <TableCell sx={{ color: "#686B64", fontWeight: 600 }}>Sector Divergence</TableCell>
-                              <TableCell sx={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                            <TableRow sx={{ bgcolor: "var(--bg)", "&:hover": { bgcolor: "var(--line)" } }}>
+                              <TableCell sx={{ color: "var(--gray)", fontWeight: 600 }}>Sector Divergence</TableCell>
+                              <TableCell sx={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                                 {decision.snapshot.sectorDivergenceScore !== null ? (
                                   <>
                                     {renderMetricValue(decision.snapshot.sectorDivergenceScore, "σ")}
                                     {decision.snapshot.sectorDivergenceHorizon && (
-                                      <Typography component="span" variant="caption" sx={{ ml: 0.5, color: "#686B64" }}>
+                                      <Typography component="span" variant="caption" sx={{ ml: "var(--space-1)", color: "var(--gray)" }}>
                                         ({decision.snapshot.sectorDivergenceHorizon}D)
                                       </Typography>
                                     )}
@@ -459,12 +458,12 @@ export default function StockDecisionJournal({
                                   renderMetricValue(null)
                                 )}
                               </TableCell>
-                              <TableCell sx={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                              <TableCell sx={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                                 {currentMetrics?.sectorDivergenceScore !== null && currentMetrics?.sectorDivergenceScore !== undefined ? (
                                   <>
                                     {renderMetricValue(currentMetrics.sectorDivergenceScore, "σ")}
                                     {currentMetrics.sectorDivergenceHorizon && (
-                                      <Typography component="span" variant="caption" sx={{ ml: 0.5, color: "#686B64" }}>
+                                      <Typography component="span" variant="caption" sx={{ ml: "var(--space-1)", color: "var(--gray)" }}>
                                         ({currentMetrics.sectorDivergenceHorizon}D)
                                       </Typography>
                                     )}
@@ -475,18 +474,18 @@ export default function StockDecisionJournal({
                               </TableCell>
                             </TableRow>
 
-                            <TableRow sx={{ "&:hover": { bgcolor: "#E3D7C4" } }}>
-                              <TableCell sx={{ color: "#686B64", fontWeight: 600 }}>Portfolio Weight</TableCell>
-                              <TableCell sx={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                            <TableRow sx={{ "&:hover": { bgcolor: "var(--line)" } }}>
+                              <TableCell sx={{ color: "var(--gray)", fontWeight: 600 }}>Portfolio Weight</TableCell>
+                              <TableCell sx={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                                 {renderMetricValue(decision.snapshot.portfolioWeight, "%")}
                               </TableCell>
-                              <TableCell sx={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                              <TableCell sx={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                                 {renderMetricValue(currentMetrics?.portfolioWeight, "%")}
                               </TableCell>
                             </TableRow>
 
-                            <TableRow sx={{ bgcolor: "#F9EBD7", "&:hover": { bgcolor: "#E3D7C4" } }}>
-                              <TableCell sx={{ color: "#686B64", fontWeight: 600 }}>MST Cluster Context</TableCell>
+                            <TableRow sx={{ bgcolor: "var(--bg)", "&:hover": { bgcolor: "var(--line)" } }}>
+                              <TableCell sx={{ color: "var(--gray)", fontWeight: 600 }}>MST Cluster Context</TableCell>
                               <TableCell sx={{ fontWeight: 600 }}>
                                 {renderStringValue(decision.snapshot.mstCluster)}
                               </TableCell>
@@ -515,23 +514,23 @@ export default function StockDecisionJournal({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
-              color: "#292D2A",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
+              color: "var(--white)",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 1, color: "#292D2A" }}>
+        <DialogTitle sx={{ fontWeight: 600, pb: "var(--space-1)", color: "var(--white)" }}>
           Record Investment Decision: {normSymbol}
-          <Typography variant="caption" sx={{ display: "block", color: "#686B64", fontWeight: 400 }}>
+          <Typography variant="caption" sx={{ display: "block", color: "var(--gray)", fontWeight: 400 }}>
             Captures current market metrics alongside your thesis. This entry is separate from portfolio trades and will not alter your holdings.
           </Typography>
         </DialogTitle>
-        <DialogContent sx={{ pt: 1 }}>
+        <DialogContent sx={{ pt: "var(--space-1)" }}>
           {errorMsg && (
-            <Alert severity="error" sx={{ mb: 2, borderRadius: 0 }} onClose={() => setErrorMsg(null)}>
+            <Alert severity="error" sx={{ mb: "var(--space-2)", borderRadius: "var(--radius)" }} onClose={() => setErrorMsg(null)}>
               {errorMsg}
             </Alert>
           )}
@@ -546,7 +545,7 @@ export default function StockDecisionJournal({
                   label="Decision Type"
                   value={decisionType}
                   onChange={(e) => setDecisionType(e.target.value as DecisionType)}
-                  sx={{ borderRadius: 0 }}
+                  sx={{ borderRadius: "var(--radius)" }}
                 >
                   <MenuItem value="Buy"> Buy</MenuItem>
                   <MenuItem value="Hold"> Hold</MenuItem>
@@ -574,12 +573,12 @@ export default function StockDecisionJournal({
               placeholder="Detail your reasons for this decision (e.g. valuation multiple discount, divergence exhaustion, balance sheet strength)..."
               value={rationale}
               onChange={(e) => setRationale(e.target.value)}
-              sx={{ "& .MuiInputBase-input": { fontSize: "0.9rem", lineHeight: 1.6 } }}
+              sx={{ "& .MuiInputBase-input": { fontSize: "var(--text-title)", lineHeight: "var(--leading)" } }}
             />
 
             {/* Optional Tags */}
             <Box>
-              <Typography variant="caption" sx={{ color: "#292D2A", fontWeight: 700, display: "block", mb: 0.5 }}>
+              <Typography variant="caption" sx={{ color: "var(--white)", fontWeight: 600, display: "block", mb: "var(--space-1)" }}>
                 Decision Tags (Optional)
               </Typography>
               <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
@@ -601,52 +600,52 @@ export default function StockDecisionJournal({
                   variant="contained"
                   onClick={handleAddTag}
                   disabled={!customTagInput.trim()}
-                  sx={{ bgcolor: "#046A38", color: "#F9EBD7", borderRadius: 0, boxShadow: "0 3px 8px rgba(41,45,42,0.10)" }}
+                  sx={{ bgcolor: "var(--up)", color: "var(--line)", borderRadius: "var(--radius)", boxShadow: "none" }}
                 >
                   Add
                 </Button>
               </Stack>
               {tags.length > 0 && (
-                <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: 0.5, mt: 1 }}>
+                <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: "var(--space-1)", mt: "var(--space-1)" }}>
                   {tags.map((t) => (
-                    <Chip key={t} label={t} size="small" onDelete={() => handleRemoveTag(t)} sx={{ height: 24, borderRadius: 0, bgcolor: "#E3D7C4", color: "#292D2A" }} />
+                    <Chip key={t} label={t} size="small" onDelete={() => handleRemoveTag(t)} sx={{ height: 24, borderRadius: "var(--radius)", bgcolor: "var(--line)", color: "var(--white)" }} />
                   ))}
                 </Stack>
               )}
             </Box>
 
             {/* Live Snapshot Preview */}
-            <Paper sx={{ p: 2, bgcolor: "#F9EBD7", borderRadius: 0, boxShadow: "0 2px 6px rgba(41,45,42,0.08)" }}>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: "#292D2A", display: "block", mb: 1 }}>
+            <Paper sx={{ p: "var(--space-2)", bgcolor: "var(--bg)", borderRadius: "var(--radius)", boxShadow: "none" }}>
+              <Typography variant="caption" sx={{ fontWeight: 600, color: "var(--white)", display: "block", mb: "var(--space-1)" }}>
                 Snapshot Being Captured Right Now:
               </Typography>
-              <Stack spacing={0.5} sx={{ fontSize: "0.8rem", color: "#292D2A" }}>
+              <Stack spacing={0.5} sx={{ fontSize: "var(--text-title)", color: "var(--white)" }}>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <span style={{ color: "#686B64" }}>Risk Score:</span>
-                  <span style={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                  <span style={{ color: "var(--gray)" }}>Risk Score:</span>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                     {currentMetrics?.riskScore !== null && currentMetrics?.riskScore !== undefined
                       ? `${currentMetrics.riskScore} (${currentMetrics.riskLabel || "Standard"})`
                       : "Unavailable (stored as null)"}
                   </span>
                 </Stack>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <span style={{ color: "#686B64" }}>Sector Divergence:</span>
-                  <span style={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                  <span style={{ color: "var(--gray)" }}>Sector Divergence:</span>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                     {currentMetrics?.sectorDivergenceScore !== null && currentMetrics?.sectorDivergenceScore !== undefined
                       ? `${currentMetrics.sectorDivergenceScore > 0 ? "+" : ""}${currentMetrics.sectorDivergenceScore.toFixed(2)}σ`
                       : "Unavailable (stored as null)"}
                   </span>
                 </Stack>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <span style={{ color: "#686B64" }}>Portfolio Weight:</span>
-                  <span style={{ fontWeight: 600, fontFamily: "JetBrains Mono" }}>
+                  <span style={{ color: "var(--gray)" }}>Portfolio Weight:</span>
+                  <span style={{ fontWeight: 600, fontFamily: "var(--font-data)" }}>
                     {currentMetrics?.portfolioWeight !== null && currentMetrics?.portfolioWeight !== undefined
                       ? `${currentMetrics.portfolioWeight.toFixed(2)}%`
                       : "Unavailable (stored as null)"}
                   </span>
                 </Stack>
                 <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-                  <span style={{ color: "#686B64" }}>MST Cluster:</span>
+                  <span style={{ color: "var(--gray)" }}>MST Cluster:</span>
                   <span style={{ fontWeight: 600 }}>
                     {currentMetrics?.mstCluster || "Unavailable (stored as null)"}
                   </span>
@@ -655,19 +654,18 @@ export default function StockDecisionJournal({
             </Paper>
           </Stack>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDialogOpen(false)} sx={{ color: "#686B64", borderRadius: 0 }}>
+        <DialogActions sx={{ px: "var(--space-3)", py: "var(--space-2)" }}>
+          <Button onClick={() => setDialogOpen(false)} sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={handleSaveDecision}
             sx={{
-              bgcolor: "#046A38",
-              color: "#F9EBD7",
-              borderRadius: 0,
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-              "&:hover": { bgcolor: "#03532c" },
+              bgcolor: "var(--up)", color: "var(--line)",
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--up)" },
             }}
           >
             Record Decision
@@ -684,34 +682,34 @@ export default function StockDecisionJournal({
         slotProps={{
           paper: {
             sx: {
-              borderRadius: 0,
-              bgcolor: "#F9EBD7",
-              boxShadow: "0 18px 44px rgba(41,45,42,0.24)",
-              color: "#292D2A",
+              borderRadius: "var(--radius)",
+              bgcolor: "var(--bg)",
+              boxShadow: "none",
+              color: "var(--white)",
             },
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, color: "#292D2A" }}>Delete Decision Record?</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 600, color: "var(--white)" }}>Delete Decision Record?</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ color: "#686B64" }}>
+          <Typography variant="body2" sx={{ color: "var(--gray)" }}>
             Are you sure you want to remove this journal decision entry? This action cannot be undone.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 2.5, pb: 2 }}>
-          <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: "#686B64", borderRadius: 0 }}>
+        <DialogActions sx={{ px: "var(--space-3)", pb: "var(--space-2)" }}>
+          <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: "var(--gray)", borderRadius: "var(--radius)" }}>
             Cancel
           </Button>
           <Button
             variant="contained"
             onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
             sx={{
-              bgcolor: "#E34222",
-              color: "#F9EBD7",
-              fontWeight: 700,
-              borderRadius: 0,
-              boxShadow: "0 3px 8px rgba(41,45,42,0.10)",
-              "&:hover": { bgcolor: "#b8321a" },
+              bgcolor: "var(--down)",
+              color: "var(--white)",
+              fontWeight: 600,
+              borderRadius: "var(--radius)",
+              boxShadow: "none",
+              "&:hover": { bgcolor: "var(--down)" },
             }}
           >
             Delete
