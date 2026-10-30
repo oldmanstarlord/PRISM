@@ -6,11 +6,7 @@
  */
 
 import { apiBase, fetchJson, postJson } from "./api";
-import { currentSession, accountStorageKey } from "./accountSession";
-
-async function getAuthToken(): Promise<string | null> {
-  return (await currentSession())?.access_token ?? null;
-}
+import { accountStorageKey } from "./accountSession";
 
 export interface ResearchNote {
   id: string;
@@ -473,8 +469,7 @@ export async function getNotesBySymbol(symbol: string): Promise<ResearchNote[]> 
 }
 
 export async function getAllNotes(): Promise<ResearchNote[]> {
-  const token = await getAuthToken();
-  if (token) {
+  {
     try {
       const controller = new AbortController();
       const serverNotes = await fetchJson<
@@ -554,8 +549,7 @@ export async function saveNote(
     tags: Array.from(new Set(input.tags.map((t) => t.trim()).filter(Boolean))),
   };
 
-  const token = await getAuthToken();
-  if (token) {
+  {
     try {
       const controller = new AbortController();
       const serverNote = await postJson<{
@@ -604,12 +598,11 @@ export async function saveNote(
 }
 
 export async function deleteNote(id: string): Promise<void> {
-  const token = await getAuthToken();
-  if (token) {
+  {
     try {
       await fetch(`${apiBase}/journal/notes/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {},
       });
     } catch (err) {
       console.warn("Failed to delete note from server:", err);
@@ -679,8 +672,7 @@ export async function getDecisionsBySymbol(symbol: string): Promise<InvestmentDe
 }
 
 export async function getAllDecisions(): Promise<InvestmentDecision[]> {
-  const token = await getAuthToken();
-  if (token) {
+  {
     try {
       const controller = new AbortController();
       const serverDecisions = await fetchJson<
@@ -808,8 +800,7 @@ export async function saveDecision(
     snapshotId: input.snapshotId || existingSnapshotId || undefined,
   };
 
-  const token = await getAuthToken();
-  if (token) {
+  {
     try {
       const controller = new AbortController();
       const serverDec = await postJson<{
@@ -871,12 +862,11 @@ export async function getDecisionsForSnapshot(snapshotId: string): Promise<Inves
 }
 
 export async function deleteDecision(id: string): Promise<void> {
-  const token = await getAuthToken();
-  if (token) {
+  {
     try {
       await fetch(`${apiBase}/journal/decisions/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {},
       });
     } catch (err) {
       console.warn("Failed to delete decision from server:", err);
@@ -903,8 +893,6 @@ export async function deleteDecision(id: string): Promise<void> {
 }
 
 export async function syncLocalJournalToServer(): Promise<{ notesSynced: number; decisionsSynced: number } | null> {
-  const token = await getAuthToken();
-  if (!token) return null;
 
   try {
     const localNotes = await getAllNotes();

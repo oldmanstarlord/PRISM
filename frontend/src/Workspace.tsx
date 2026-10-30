@@ -7,7 +7,6 @@ import {
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { fetchJson } from "./api";
-import { signOut } from "./accountSession";
 import type { BenchmarkQuote } from "./types";
 type Tab = { path: string; url: string; title: string };
 const pages = [
@@ -200,13 +199,6 @@ export default function Workspace({
         />
         <button className="terminal-button go-key" type="submit">
           GO
-        </button>
-        <button
-          className="terminal-button"
-          type="button"
-          onClick={() => void signOut()}
-        >
-          Log out
         </button>
         <button
           className="terminal-button"

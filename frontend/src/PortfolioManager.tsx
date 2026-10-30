@@ -36,8 +36,7 @@ import { Link } from "react-router-dom";
 
 import AppShell from "./AppShell";
 import { fetchJson, fetchPortfolioDecisionAnalysis, postJson } from "./api";
-import { useAuth } from "./authState";
-import { accountStorageKey, signOut } from "./accountSession";
+import { accountStorageKey } from "./accountSession";
 import {
   DiversificationSection,
   PortfolioRiskSection,
@@ -558,7 +557,6 @@ export default function PortfolioManager() {
   const [sellDialogOpen, setSellDialogOpen] = useState(false);
   const [editHolding, setEditHolding] = useState<PortfolioHolding | null>(null);
   const [snackbar, setSnackbar] = useState<string | null>(null);
-  const { session } = useAuth();
   const [serverPortfolioId, setServerPortfolioId] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<"idle" | "loading" | "saved" | "error">("idle");
   const [isPersistingTx, setIsPersistingTx] = useState(false);
@@ -775,14 +773,8 @@ export default function PortfolioManager() {
 
   const portfolioSnapshot = useEffectEvent(() => ({ holdings, securities }));
 
-  /* ─── Server-Side Persistence & Multi-User Isolation ─── */
+  /* ─── Shared portfolio persistence ─── */
   useEffect(() => {
-    if (!session?.access_token) {
-      setServerPortfolioId(null);
-      setSyncStatus("idle");
-      return;
-    }
-
     let isMounted = true;
     setSyncStatus("loading");
 
@@ -790,9 +782,15 @@ export default function PortfolioManager() {
       try {
         const controller = new AbortController();
         const ensurePayload = {
-          name: "Primary Portfolio",
+          name: "Aarav's Portfolio",
           input_mode: "quantities",
-          initial_holdings: [],
+          initial_holdings: [
+            { symbol: "HDFCBANK", quantity: 100, buy_price: 1650 },
+            { symbol: "ITC", quantity: 200, buy_price: 420 },
+            { symbol: "HINDUNILVR", quantity: 40, buy_price: 2400 },
+            { symbol: "TCS", quantity: 25, buy_price: 3800 },
+            { symbol: "SUNPHARMA", quantity: 50, buy_price: 1700 },
+          ].map((holding) => ({ ...holding, buy_date: "2026-01-05" })),
         };
 
         const portfolioDetail = await postJson<{
@@ -862,7 +860,7 @@ export default function PortfolioManager() {
     return () => {
       isMounted = false;
     };
-  }, [session?.access_token, refreshNotesCountMap]);
+  }, [refreshNotesCountMap]);
 
   /* Fetch NIFTY 200 universe for autocomplete */
   useEffect(() => {
@@ -1463,7 +1461,7 @@ export default function PortfolioManager() {
               <Typography variant="h1">
                 My portfolio
               </Typography>
-              {session?.user ? (
+              {serverPortfolioId ? (
                 <Chip
                   size="small"
                   label={
@@ -1471,7 +1469,7 @@ export default function PortfolioManager() {
                       ? "Saving..."
                       : syncStatus === "error"
                       ? "Could not save"
-                      : "Saved to account"
+                      : "Saved to shared portfolio"
                   }
                   color={syncStatus === "error" ? "error" : "success"}
                   variant="outlined"
@@ -1493,8 +1491,6 @@ export default function PortfolioManager() {
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: "var(--space-1)" }}>
-            <Typography variant="body2" color="text.secondary">{session?.user.email}</Typography>
-            <Button onClick={() => void signOut()}>Log out</Button>
             <Button
               variant="contained"
               onClick={() => setAddDialogOpen(true)}

@@ -1,4 +1,4 @@
-"""Supabase access-token verification for protected API routes."""
+"""Shared portfolio identity; legacy token verification for provisioning scripts only."""
 
 from dataclasses import dataclass
 from typing import Annotated, Any
@@ -7,11 +7,9 @@ from uuid import UUID
 import httpx
 from fastapi import Depends, HTTPException
 from fastapi import status as http_status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.app.core.config import settings
 
-bearer_scheme = HTTPBearer(auto_error=False)
 
 
 @dataclass(frozen=True)
@@ -65,16 +63,23 @@ def verify_access_token(token: str) -> AuthenticatedUser:
     return AuthenticatedUser(id=user_id, email=email if isinstance(email, str) else None)
 
 
-def require_user(
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-) -> AuthenticatedUser:
-    if credentials is None or credentials.scheme.lower() != "bearer":
-        raise HTTPException(
-            status_code=http_status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-            headers={"WWW-Authenticate": "Bearer"},
+def require_user() -> AuthenticatedUser:
+    """Resolve the shared Aarav portfolio owner; this deployment has no login."""
+    from sqlalchemy import select
+    from backend.app.db.models import Portfolio
+    from backend.app.db.session import SessionLocal
+
+    with SessionLocal() as session:
+        owner = session.scalar(
+            select(Portfolio.owner_id)
+            .where(Portfolio.name == "Aarav's Portfolio", Portfolio.owner_id.is_not(None))
+            .order_by(Portfolio.updated_at.desc())
+            .limit(1)
         )
-    return verify_access_token(credentials.credentials)
+    return AuthenticatedUser(
+        id=owner or UUID("00000000-0000-0000-0000-000000000101"),
+        email=None,
+    )
 
 
 CurrentUser = Annotated[AuthenticatedUser, Depends(require_user)]

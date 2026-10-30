@@ -112,10 +112,6 @@ class Settings(BaseSettings):
                 "PRISM_TRUSTED_HOSTS must contain explicit hosts; wildcard is forbidden"
             )
         if self.environment.lower() == "production":
-            if self.local_auth_enabled:
-                raise ValueError("Local authentication bypass cannot be enabled in production")
-            if not self.supabase_url or not self.supabase_publishable_key:
-                raise ValueError("Production requires Supabase authentication configuration")
             if any("localhost" in origin or "127.0.0.1" in origin for origin in self.cors_origins):
                 raise ValueError("Production CORS origins cannot target localhost")
         return self

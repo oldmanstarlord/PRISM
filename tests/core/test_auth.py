@@ -3,7 +3,6 @@ from uuid import UUID
 import httpx
 import pytest
 from fastapi import HTTPException
-from fastapi.security import HTTPAuthorizationCredentials
 
 from backend.app.core import auth
 
@@ -40,29 +39,17 @@ def test_verify_access_token_rejects_invalid_token(monkeypatch: pytest.MonkeyPat
     assert error.value.status_code == 401
 
 
-def test_require_user_requires_login_in_local_development(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(auth.settings, "environment", "development")
-    monkeypatch.setattr(auth.settings, "local_auth_enabled", True)
-
-    with pytest.raises(HTTPException) as error:
-        auth.require_user(None)
-    assert error.value.status_code == 401
-
-
-def test_require_user_does_not_bypass_invalid_bearer_token(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(auth.settings, "environment", "development")
-    monkeypatch.setattr(auth.settings, "local_auth_enabled", True)
-    monkeypatch.setattr(
-        auth,
-        "verify_access_token",
-        lambda _token: (_ for _ in ()).throw(HTTPException(status_code=401)),
-    )
-
-    with pytest.raises(HTTPException) as error:
-        auth.require_user(HTTPAuthorizationCredentials(scheme="Bearer", credentials="invalid"))
-
-    assert error.value.status_code == 401
+@pytest.mark.parametrize("owner", [None, UUID("12345678-1234-5678-1234-567812345678")])
+def test_shared_portfolio_requires_no_token_and_preserves_owner(monkeypatch, owner):
+    from contextlib import nullcontext
+    from unittest.mock import Mock
+    from backend.app.db import session as db_session
+    session = Mock()
+    session.scalar.return_value = owner
+    monkeypatch.setattr(db_session, "SessionLocal", lambda: nullcontext(session))
+    user = auth.require_user()
+    assert user.id == (owner or UUID("00000000-0000-0000-0000-000000000101"))
+    assert user.email is None
+    query = str(session.scalar.call_args.args[0])
+    assert "portfolio.name" in query
+    assert "owner_id IS NOT NULL" in query

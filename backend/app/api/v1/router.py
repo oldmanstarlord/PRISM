@@ -9,7 +9,6 @@ from sqlalchemy import desc, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from backend.app.core.login_router import router as login_router
 from backend.app.correlation_mst.service import latest_completed_mst_query
 from backend.app.db.models import (
     MstEdge,
@@ -41,7 +40,6 @@ from backend.app.sector_divergence.service import (
 )
 
 router = APIRouter()
-router.include_router(login_router)
 router.include_router(fundamentals_router)
 router.include_router(portfolio_router)
 router.include_router(portfolio_analytics_router)

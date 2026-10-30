@@ -5,10 +5,7 @@ RUN npm install --global pnpm@10.16.1
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ENV VITE_API_URL=/api/v1
-ENV VITE_LOCAL_AUTH_ENABLED=false
 RUN pnpm build
 
 FROM ghcr.io/astral-sh/uv:0.12.23 AS uv

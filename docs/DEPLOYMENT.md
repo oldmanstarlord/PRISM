@@ -1,3 +1,19 @@
+## Shared portfolio deployment (current)
+
+The app opens without authentication. All visitors use and can edit Aarav's shared
+portfolio. The API resolves its owner from the existing portfolio named
+`Aarav's Portfolio`, preserving its transactions and expanded holdings. If absent,
+the portfolio screen seeds his original HDFCBANK, ITC, HINDUNILVR, TCS and SUNPHARMA
+holdings under the fixed presentation owner. Existing portfolios are never reseeded.
+
+Vercel needs only `VITE_API_URL=https://YOUR-BACKEND.onrender.com/api/v1`.
+Render needs `PRISM_DATABASE_URL`, `PRISM_ENVIRONMENT=production`, and
+`PRISM_CORS_ORIGINS=["https://YOUR-FRONTEND.vercel.app"]`.
+`PRISM_FIRECRAWL_API_KEY` is optional. Supabase Auth keys are no longer required.
+Keep the existing PostgreSQL database: portfolio data still lives there.
+
+The older authentication deployment instructions below describe the previous release.
+
 # Deployment
 
 ## Render

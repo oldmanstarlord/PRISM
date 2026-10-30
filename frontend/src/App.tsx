@@ -5,10 +5,7 @@ import {
   Navigate,
   Route,
   Routes,
-  useLocation,
 } from "react-router-dom";
-import { useAuth } from "./authState";
-import LoginPage from "./LoginPage";
 
 import Workspace from "./Workspace";
 import CompanyDetail from "./CompanyDetail";
@@ -27,22 +24,17 @@ const PageLoader = (
 export default function App() {
   return (
     <BrowserRouter>
-      <AccountRoutes />
+      <WorkspaceRoutes />
     </BrowserRouter>
   );
 }
 
-function AccountRoutes() {
-  const { session, loading } = useAuth();
-  const location = useLocation();
-  if (loading) return PageLoader;
-  if (location.pathname === "/login") return <LoginPage />;
-  if (!session) return <Navigate to="/login" replace />;
+function WorkspaceRoutes() {
   return (
     <Workspace
-      key={session.user.id}
       renderPage={(url) => (
         <Routes location={url}>
+          <Route path="/login" element={<Navigate to="/portfolio" replace />} />
           <Route path="/" element={<Dashboard />} />
           <Route
             path="/news"
@@ -65,7 +57,7 @@ function AccountRoutes() {
             path="/portfolio"
             element={
               <Suspense fallback={PageLoader}>
-                <PortfolioManager key={session.user.id} />
+                <PortfolioManager />
               </Suspense>
             }
           />

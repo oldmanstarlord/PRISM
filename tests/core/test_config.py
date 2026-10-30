@@ -68,24 +68,20 @@ def test_production_rejects_wildcard_and_local_cors() -> None:
     with pytest.raises(ValueError, match="explicit origins"):
         Settings(database_url="postgresql://u:p@db.example.com/prism", cors_origins=["*"])
 
-    with pytest.raises(ValueError, match="Supabase authentication"):
+    settings = Settings(
+        database_url="postgresql://u:p@db.example.com/prism",
+        environment="production",
+        cors_origins=["https://prism.example.com"],
+        trusted_hosts=["prism.example.com"],
+    )
+    assert settings.environment == "production"
+
+
+def test_production_still_rejects_local_cors() -> None:
+    with pytest.raises(ValueError, match="cannot target localhost"):
         Settings(
             database_url="postgresql://u:p@db.example.com/prism",
             environment="production",
-            local_auth_enabled=False,
-            cors_origins=["https://prism.example.com"],
-            trusted_hosts=["prism.example.com"],
-        )
-
-
-def test_production_rejects_local_auth_bypass() -> None:
-    with pytest.raises(ValueError, match="Local authentication bypass"):
-        Settings(
-            database_url="postgresql://u:p@db.example.com/prism",
-            environment="production",
-            local_auth_enabled=True,
-            supabase_url="https://example.supabase.co",
-            supabase_publishable_key="public-key",
-            cors_origins=["https://prism.example.com"],
+            cors_origins=["http://localhost:5173"],
             trusted_hosts=["prism.example.com"],
         )
