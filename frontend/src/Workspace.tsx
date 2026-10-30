@@ -7,6 +7,7 @@ import {
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { fetchJson } from "./api";
+import AccountControl from "./AccountControl";
 import type { BenchmarkQuote } from "./types";
 type Tab = { path: string; url: string; title: string };
 const pages = [
@@ -208,6 +209,7 @@ export default function Workspace({
         >
           {collapsed ? "[+]" : "[-]"}
         </button>
+        <AccountControl />
       </form>
       <div className="market-strip">
         <span>

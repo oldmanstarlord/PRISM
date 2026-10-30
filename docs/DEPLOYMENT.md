@@ -32,6 +32,64 @@ URL in Supabase too. Keep only one instance/worker because schedulers and rate l
 are process-local and caches are on a single disk. Persistent disks prevent zero-downtime
 deploys; allow for a restart window.
 
+## Separate Vercel frontend and native Render backend
+
+Deploy the same release to both services. A push to another repository or branch
+does not update the repository and branch configured in Vercel or Render.
+
+In Vercel, select `frontend` as the Root Directory, Vite as the framework, and `dist`
+as the output directory. Configure these production environment variables and redeploy:
+
+```text
+VITE_API_URL=https://YOUR-BACKEND.onrender.com/api/v1
+VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_SUPABASE_KEY
+```
+
+In the native Render Python service, use the repository root and configure:
+
+```text
+PRISM_CORS_ORIGINS=["https://YOUR-FRONTEND.vercel.app"]
+PRISM_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+PRISM_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_SUPABASE_KEY
+PRISM_NEWS_AUTO_REFRESH=true
+HF_HOME=/opt/render/project/src/data/huggingface
+```
+
+Keep `PRISM_DATABASE_URL` and `PRISM_FIRECRAWL_API_KEY` configured on Render.
+Both services must use the same Supabase project. In Supabase Authentication's URL
+Configuration, set the Site URL and allowed redirect URLs to the frontend HTTPS URL.
+Users can then use **Sign in** in the app header for account sync and protected
+portfolio news analysis; guests can still use local holdings and public research.
+
+For news sentiment, the pinned FinBERT weights must be downloaded during the build.
+Setting `HF_HOME` alone does not download them. Use this Render Build Command:
+
+```sh
+uv sync --locked --no-dev && uv run --no-sync python -m jobs.setup_news_model
+```
+
+Successful build logs include `FinBERT cached at` and two sentiment inference results.
+Run database migrations with `uv run --no-sync alembic upgrade head` before starting
+a new release. Use this Start Command:
+
+```sh
+uv run --no-sync uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+```
+
+The API scheduler starts news collection when auto-refresh is enabled and the model
+is ready; a separate background `jobs.collect_news` start command is unnecessary.
+Check `/api/v1/news`: `status.model_ready` must be `true`, and then check
+`last_success_at`, `error`, and `warnings` for collection results. HTTP 200 alone
+does not mean news collection succeeded. If inference is killed for insufficient
+memory, increase the service's memory; do not bypass sentiment setup or authentication.
+Files created at runtime on a service without a persistent disk are lost on redeploy.
+
+Yahoo `Invalid Crumb`/`Unauthorized` messages describe an upstream quote-provider
+failure, separate from PRISM authentication and FinBERT setup. A successful PRISM
+quotes response can contain a fallback: check its freshness/source metadata before
+presenting it as live data.
+
 ## Docker Compose
 
 Requires Docker Engine/Desktop with Compose v2 and an external PostgreSQL/Supabase project.

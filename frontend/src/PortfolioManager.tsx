@@ -546,6 +546,7 @@ export default function PortfolioManager() {
   const [analysis, setAnalysis] = useState<PortfolioAnalysisResponse | null>(null);
   const [comprehensiveRisk, setComprehensiveRisk] = useState<ComprehensiveRiskResponse | null>(null);
   const [structuralMonitoring, setStructuralMonitoring] = useState<StructuralMonitoringSnapshot | null>(null);
+  const [newsError, setNewsError] = useState<string | null>(null);
   const [newsSummary, setNewsSummary] = useState<PortfolioNewsSummary | null>(null);
   const [decisionResponse, setDecisionResponse] = useState<PortfolioDecisionResponse | null>(null);
   const [decisionLoading, setDecisionLoading] = useState(false);
@@ -1134,7 +1135,7 @@ export default function PortfolioManager() {
         thresholds: loadAlertThresholds(),
       };
 
-      const [resPreview, resComp, resMonitoring, resNews] = await Promise.all([
+      const [resPreview, resComp, resMonitoring] = await Promise.all([
         holdingWeightsForAnalytics.length > 0
           ? retainPartialResult(
               "portfolio preview",
@@ -1157,14 +1158,6 @@ export default function PortfolioManager() {
           "structural monitoring",
           postJson<StructuralMonitoringSnapshot>(
             "/portfolio-analysis/structural-monitoring",
-            compPayload,
-            controller.signal,
-          ),
-        ),
-        retainPartialResult(
-          "news signals",
-          postJson<PortfolioNewsSummary>(
-            "/portfolio-analysis/news-signals",
             compPayload,
             controller.signal,
           ),
@@ -1217,7 +1210,6 @@ export default function PortfolioManager() {
         }
       }
       if (resMonitoring) setStructuralMonitoring(resMonitoring);
-      if (resNews) setNewsSummary(resNews);
       if (failures.length) {
         setError(`Analysis incomplete — ${failures.join(" | ")}`);
       }
@@ -1227,6 +1219,31 @@ export default function PortfolioManager() {
       setAnalysisLoading(false);
     }
   }, [holdings, holdingWeightsForAnalytics, serverPortfolioId]);
+
+  // Protected news requests require a restored session and rerun after sign-in.
+  useEffect(() => {
+    setNewsSummary(null);
+    setNewsError(null);
+    if (!session?.access_token || !holdings.length) return;
+    const controller = new AbortController();
+    void postJson<PortfolioNewsSummary>("/portfolio-analysis/news-signals", {
+      holdings: holdings.map(h => ({
+        symbol: h.symbol,
+        companyName: h.companyName,
+        sector: h.sector || "General",
+        quantity: h.quantity,
+        buyPrice: h.buyPrice,
+        buyDate: h.buyDate,
+        exchange: h.exchange,
+      })),
+      thresholds: loadAlertThresholds(),
+    }, controller.signal).then(result => {
+      if (!controller.signal.aborted) setNewsSummary(result);
+    }).catch(error => {
+      if (!controller.signal.aborted) setNewsError(error instanceof Error ? error.message : "Portfolio news unavailable");
+    });
+    return () => controller.abort();
+  }, [session?.access_token, holdings]);
 
   // Automatically compute structural monitoring and risk metrics if holdings exist
   useEffect(() => {
@@ -1601,6 +1618,7 @@ export default function PortfolioManager() {
         </Box>
 
         {error && <Alert severity="error">{error}</Alert>}
+        {newsError && <Alert severity="warning">Portfolio news: {newsError}</Alert>}
 
         <Box className="no-print portfolio-review-nav">
           <GuidedSteps label="Portfolio review" steps={portfolioGroups.map(group => ({ label: group.label }))} activeStep={activeGroup} onChange={index => selectView(portfolioGroups[index].tabs[0].id)} />

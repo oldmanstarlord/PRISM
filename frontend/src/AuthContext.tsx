@@ -10,15 +10,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!supabase) return;
-    void supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    let active = true;
+    let receivedEvent = false;
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      receivedEvent = true;
+      if (!active) return;
       setSession(nextSession);
       setLoading(false);
     });
-    return () => data.subscription.unsubscribe();
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (active && !receivedEvent) {
+          setSession(data.session);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (active && !receivedEvent) {
+          setSession(null);
+          setLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo(() => ({ session, loading }), [session, loading]);
