@@ -1,5 +1,7 @@
 # PRISM
 
+PRISM is an explainable portfolio-risk and market-intelligence platform for the NIFTY 200 universe.
+
 Portfolio Risk & Intelligence System for Markets. React/TypeScript UI, FastAPI API,
 PostgreSQL storage, and Supabase authentication. Research software; not investment advice.
 
@@ -13,6 +15,9 @@ Requires Python 3.12, Node 24, pnpm 10.16.1 and a PostgreSQL/Supabase project.
 
 Never commit `.env` files. Publishable Supabase keys are public browser configuration;
 service-role keys and database passwords must stay server-side.
+
+For routine data updates, use `uv run python -m jobs.run_daily_pipeline`.
+See [operations](OPERATIONS.md) for ingestion, backup, restore, and failure recovery.
 
 ## Deploy
 
