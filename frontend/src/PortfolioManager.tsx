@@ -37,6 +37,7 @@ import { Link } from "react-router-dom";
 import AppShell from "./AppShell";
 import { fetchJson, fetchPortfolioDecisionAnalysis, postJson } from "./api";
 import { useAuth } from "./authState";
+import { accountStorageKey, signOut } from "./accountSession";
 import {
   DiversificationSection,
   PortfolioRiskSection,
@@ -316,7 +317,7 @@ const TX_STORAGE_KEY = "prism_portfolio_transactions";
 
 function loadHoldings(): PortfolioHolding[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(accountStorageKey(STORAGE_KEY));
     if (raw) {
       const parsed = JSON.parse(raw) as PortfolioHolding[];
       if (Array.isArray(parsed)) return parsed;
@@ -328,13 +329,13 @@ function loadHoldings(): PortfolioHolding[] {
 }
 
 function saveHoldings(holdings: PortfolioHolding[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(holdings));
+  localStorage.setItem(accountStorageKey(STORAGE_KEY), JSON.stringify(holdings));
   window.dispatchEvent(new Event("prism:holdings"));
 }
 
 function loadTransactions(): TransactionRecord[] {
   try {
-    const raw = localStorage.getItem(TX_STORAGE_KEY);
+    const raw = localStorage.getItem(accountStorageKey(TX_STORAGE_KEY));
     if (raw) {
       const parsed = JSON.parse(raw) as TransactionRecord[];
       if (Array.isArray(parsed)) return parsed;
@@ -346,7 +347,7 @@ function loadTransactions(): TransactionRecord[] {
 }
 
 function saveTransactions(txns: TransactionRecord[]) {
-  localStorage.setItem(TX_STORAGE_KEY, JSON.stringify(txns));
+  localStorage.setItem(accountStorageKey(TX_STORAGE_KEY), JSON.stringify(txns));
 }
 
 function generateId() {
@@ -563,7 +564,7 @@ export default function PortfolioManager() {
   const [isPersistingTx, setIsPersistingTx] = useState(false);
   const [activeTab, setActiveTab] = useState<PortfolioTab>(() => {
     try {
-      const saved = localStorage.getItem("prism_portfolio_active_tab");
+      const saved = localStorage.getItem(accountStorageKey("prism_portfolio_active_tab"));
       if (
         saved &&
         [
@@ -595,7 +596,7 @@ export default function PortfolioManager() {
   };
   useEffect(() => {
     try {
-      localStorage.setItem("prism_portfolio_active_tab", activeTab);
+      localStorage.setItem(accountStorageKey("prism_portfolio_active_tab"), activeTab);
     } catch {
       // ignore
     }
@@ -791,12 +792,7 @@ export default function PortfolioManager() {
         const ensurePayload = {
           name: "Primary Portfolio",
           input_mode: "quantities",
-          initial_holdings: portfolioSnapshot().holdings.map((h) => ({
-            symbol: h.symbol,
-            quantity: h.quantity,
-            buy_price: h.buyPrice,
-            buy_date: h.buyDate,
-          })),
+          initial_holdings: [],
         };
 
         const portfolioDetail = await postJson<{
@@ -845,10 +841,10 @@ export default function PortfolioManager() {
           }));
           setTransactions(mappedTxs);
           const derived = deriveHoldingsFromLedger(mappedTxs, portfolioSnapshot().securities);
-          if (derived.holdings.length > 0) {
-            setHoldings(derived.holdings);
-          }
+          setHoldings(derived.holdings);
         }
+
+        if (!serverTxs?.length) { setHoldings([]); setTransactions([]); }
 
         void syncLocalJournalToServer().then(() => {
           if (isMounted) void refreshNotesCountMap();
@@ -1497,6 +1493,8 @@ export default function PortfolioManager() {
           </Box>
 
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap", gap: "var(--space-1)" }}>
+            <Typography variant="body2" color="text.secondary">{session?.user.email}</Typography>
+            <Button onClick={() => void signOut()}>Log out</Button>
             <Button
               variant="contained"
               onClick={() => setAddDialogOpen(true)}
@@ -1531,39 +1529,6 @@ export default function PortfolioManager() {
 
         <Box className="portfolio-action-band">
         <ReviewDetails title="More portfolio actions"><Stack direction="row" sx={{ gap: "var(--space-2)", flexWrap: "wrap", alignItems: "center" }}>
-            {import.meta.env.DEV && <ReviewDetails title="Demo data">
-            <Tooltip title="DEMO fixture: load a synthetic 18-stock portfolio for local interface testing only">
-              <Button
-                size="small"
-                onClick={() => {
-                  void import("./demoPortfolioData").then(
-                    ({ DEFAULT_CURATED_HOLDINGS, DEFAULT_CURATED_TRANSACTIONS }) => {
-                      setHoldings(DEFAULT_CURATED_HOLDINGS);
-                      setTransactions(DEFAULT_CURATED_TRANSACTIONS);
-                      saveHoldings(DEFAULT_CURATED_HOLDINGS);
-                      saveTransactions(DEFAULT_CURATED_TRANSACTIONS);
-                      setAnalysis(null);
-                      setStructuralMonitoring(null);
-                      setComprehensiveRisk(null);
-                      setSnackbar("Loaded DEMO fixture portfolio; not production data");
-                      void refreshQuotes(DEFAULT_CURATED_HOLDINGS.map((h) => h.symbol), true);
-                    },
-                  );
-                }}
-                sx={{
-                  borderRadius: "var(--radius)",
-                  border: "none",
-                  bgcolor: "var(--line)",
-                  color: "var(--white)",
-                  fontWeight: 600,
-                  boxShadow: "none",
-                  "&:hover": { bgcolor: "var(--up)", color: "var(--line)" },
-                }}
-              >
-                DEMO Portfolio
-              </Button>
-            </Tooltip>
-            </ReviewDetails>}
             <Tooltip title="Refresh market prices">
               <span>
                 <Button

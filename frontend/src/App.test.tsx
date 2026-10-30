@@ -3,14 +3,24 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
+import { AuthContext } from "./authState";
 
 describe("App", () => {
-  it("shows the project identity and disclaimer", () => {
-    globalThis.fetch = vi.fn(() => new Promise(() => undefined)) as typeof fetch;
-    render(<App />);
+  it("requires sign-in before opening the workspace", () => {
+    globalThis.fetch = vi.fn(
+      () => new Promise(() => undefined),
+    ) as typeof fetch;
+    render(
+      <AuthContext.Provider value={{ session: null, loading: false }}>
+        <App />
+      </AuthContext.Provider>,
+    );
 
-    expect(screen.getByRole("link", { name: "PRISM" })).toBeInTheDocument();
-    expect(screen.getByText(/NO INVESTMENT ADVICE/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /explore the market/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Sign in" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Password/)).toBeInTheDocument();
+    expect(screen.queryByText("My portfolio")).not.toBeInTheDocument();
   });
 });

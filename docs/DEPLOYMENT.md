@@ -18,6 +18,12 @@
 4. In Supabase Authentication, set the Site URL and allowed redirect URLs to your
    Render HTTPS URL. Test sign-in, refresh, portfolio save and logout.
 
+For the three presentation accounts and their existing portfolios, follow
+[Supabase account provisioning](PRESENTATION_LOGIN.md#supabase-auth-local-and-render)
+once before presenting. Local fixed accounts are not automatically Supabase users.
+Keep `VITE_LOCAL_AUTH_ENABLED=false` for the production frontend build. The server-only
+administrative key used for provisioning is not needed by Render or the browser.
+
 The service uses one paid Standard instance and a 10 GB persistent disk. Review Render's
 current pricing before creating it. Machine learning dependencies and inference are
 memory intensive; monitor usage and increase resources if your selected models need more.

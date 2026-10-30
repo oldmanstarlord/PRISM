@@ -1,3 +1,4 @@
+import { accountStorageKey } from "./accountSession";
 import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
@@ -135,7 +136,7 @@ export default function CompanyDetail() {
   let portfolioWeight: number | null = null;
   try {
     const holdings = JSON.parse(
-      localStorage.getItem("prism_portfolio_holdings") ?? "[]",
+      localStorage.getItem(accountStorageKey("prism_portfolio_holdings")) ?? "[]",
     ) as { symbol: string; quantity: number; buyPrice: number }[];
     const total = holdings.reduce(
       (sum, holding) => sum + holding.quantity * holding.buyPrice,

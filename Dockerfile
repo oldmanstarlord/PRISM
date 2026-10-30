@@ -8,6 +8,7 @@ COPY frontend/ ./
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ENV VITE_API_URL=/api/v1
+ENV VITE_LOCAL_AUTH_ENABLED=false
 RUN pnpm build
 
 FROM ghcr.io/astral-sh/uv:0.12.23 AS uv

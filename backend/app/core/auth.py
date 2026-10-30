@@ -12,7 +12,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from backend.app.core.config import settings
 
 bearer_scheme = HTTPBearer(auto_error=False)
-LOCAL_DEVELOPMENT_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
 @dataclass(frozen=True)
@@ -23,6 +22,11 @@ class AuthenticatedUser:
 
 def verify_access_token(token: str) -> AuthenticatedUser:
     """Verify a Supabase JWT through the Auth server, including legacy HS256 projects."""
+    if token.startswith("local."):
+        from backend.app.core.local_accounts import verify
+
+        user_id, email = verify(token)
+        return AuthenticatedUser(id=user_id, email=email)
     if not settings.supabase_url or not settings.supabase_publishable_key:
         raise HTTPException(
             status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -65,11 +69,6 @@ def require_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> AuthenticatedUser:
     if credentials is None or credentials.scheme.lower() != "bearer":
-        if settings.local_auth_enabled and settings.environment.lower() == "development":
-            return AuthenticatedUser(
-                id=LOCAL_DEVELOPMENT_USER_ID,
-                email="local-development@prism.invalid",
-            )
         raise HTTPException(
             status_code=http_status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",

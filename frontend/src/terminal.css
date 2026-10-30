@@ -120,7 +120,7 @@ a {
 }
 .command-bar {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   gap: var(--space-1);
   align-items: center;
   border-bottom: var(--border-width) solid var(--line-strong);

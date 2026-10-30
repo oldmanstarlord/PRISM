@@ -178,6 +178,7 @@ export default function StartupIntro({ children }: { children: ReactNode }) {
               } catch {
                 // Entering the app still works when browser storage is disabled.
               }
+              window.history.replaceState(null, "", "/login");
               setPhase("app");
             }}
             tabIndex={phase === "welcome" ? 0 : -1}

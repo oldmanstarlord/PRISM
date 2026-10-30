@@ -6,6 +6,7 @@ import { CssBaseline, ThemeProvider } from "@mui/material";
 import App from "./App";
 import StartupIntro from "./StartupIntro";
 import { theme } from "./theme";
+import { AuthProvider } from "./AuthContext";
 
 const queryClient = new QueryClient();
 
@@ -14,9 +15,11 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <StartupIntro>
-          <App />
-        </StartupIntro>
+        <AuthProvider>
+          <StartupIntro>
+            <App />
+          </StartupIntro>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </StrictMode>,

@@ -1,3 +1,4 @@
+import { accountStorageKey } from "./accountSession";
 import { useSyncExternalStore } from "react";
 import { TerminalPanel, SummaryStrip } from "./Terminal";
 
@@ -11,7 +12,7 @@ function subscribe(callback: () => void) {
 }
 function snapshot() {
   try {
-    return localStorage.getItem("prism_portfolio_holdings") ?? "[]";
+    return localStorage.getItem(accountStorageKey("prism_portfolio_holdings")) ?? "[]";
   } catch {
     return "[]";
   }

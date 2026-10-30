@@ -6,16 +6,10 @@
  */
 
 import { apiBase, fetchJson, postJson } from "./api";
-import { supabase } from "./supabase";
+import { currentSession, accountStorageKey } from "./accountSession";
 
 async function getAuthToken(): Promise<string | null> {
-  if (!supabase) return null;
-  try {
-    const { data } = await supabase.auth.getSession();
-    return data.session?.access_token ?? null;
-  } catch {
-    return null;
-  }
+  return (await currentSession())?.access_token ?? null;
 }
 
 export interface ResearchNote {
@@ -158,7 +152,13 @@ class MemoryStorage {
   }
 }
 
-const memoryStore = new MemoryStorage();
+const accountMemoryStores = new Map<string, MemoryStorage>();
+function memoryStore(): MemoryStorage {
+  const key = accountStorageKey(DB_NAME);
+  let store = accountMemoryStores.get(key);
+  if (!store) { store = new MemoryStorage(); accountMemoryStores.set(key, store); }
+  return store;
+}
 
 let memoryFallbackActive = false;
 const fallbackListeners = new Set<(active: boolean) => void>();
@@ -200,7 +200,7 @@ function openDatabase(): Promise<IDBDatabase> {
       return reject(new Error("IndexedDB not supported in current environment"));
     }
 
-    const request = window.indexedDB.open(DB_NAME, DB_VERSION);
+    const request = window.indexedDB.open(accountStorageKey(DB_NAME), DB_VERSION);
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
@@ -443,7 +443,7 @@ export function validatePortfolioSnapshot(raw: unknown): PortfolioSnapshot | nul
 export async function getNotesBySymbol(symbol: string): Promise<ResearchNote[]> {
   const norm = symbol.trim().toUpperCase();
   if (!isIndexedDBSupported()) {
-    const list = Array.from(memoryStore.notes.values()).filter((n) => n.symbol === norm);
+    const list = Array.from(memoryStore().notes.values()).filter((n) => n.symbol === norm);
     return list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
@@ -467,7 +467,7 @@ export async function getNotesBySymbol(symbol: string): Promise<ResearchNote[]> 
       request.onerror = () => reject(request.error);
     });
   } catch {
-    const list = Array.from(memoryStore.notes.values()).filter((n) => n.symbol === norm);
+    const list = Array.from(memoryStore().notes.values()).filter((n) => n.symbol === norm);
     return list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 }
@@ -502,7 +502,7 @@ export async function getAllNotes(): Promise<ResearchNote[]> {
   }
 
   if (!isIndexedDBSupported()) {
-    return Array.from(memoryStore.notes.values());
+    return Array.from(memoryStore().notes.values());
   }
 
   try {
@@ -523,7 +523,7 @@ export async function getAllNotes(): Promise<ResearchNote[]> {
       request.onerror = () => reject(request.error);
     });
   } catch {
-    return Array.from(memoryStore.notes.values());
+    return Array.from(memoryStore().notes.values());
   }
 }
 
@@ -538,7 +538,7 @@ export async function saveNote(
   if (input.id) {
     const existing = isIndexedDBSupported()
       ? (await getAllNotes()).find((n) => n.id === input.id)
-      : memoryStore.notes.get(input.id);
+      : memoryStore().notes.get(input.id);
     if (existing) {
       createdAt = existing.createdAt;
     }
@@ -584,7 +584,7 @@ export async function saveNote(
   }
 
   if (!isIndexedDBSupported()) {
-    memoryStore.notes.set(note.id, note);
+    memoryStore().notes.set(note.id, note);
     return note;
   }
 
@@ -598,7 +598,7 @@ export async function saveNote(
       req.onerror = () => reject(req.error);
     });
   } catch {
-    memoryStore.notes.set(note.id, note);
+    memoryStore().notes.set(note.id, note);
     return note;
   }
 }
@@ -617,7 +617,7 @@ export async function deleteNote(id: string): Promise<void> {
   }
 
   if (!isIndexedDBSupported()) {
-    memoryStore.notes.delete(id);
+    memoryStore().notes.delete(id);
     return;
   }
 
@@ -631,7 +631,7 @@ export async function deleteNote(id: string): Promise<void> {
       req.onerror = () => reject(req.error);
     });
   } catch {
-    memoryStore.notes.delete(id);
+    memoryStore().notes.delete(id);
   }
 }
 
@@ -649,7 +649,7 @@ export async function getNotesCountMap(): Promise<Record<string, number>> {
 export async function getDecisionsBySymbol(symbol: string): Promise<InvestmentDecision[]> {
   const norm = symbol.trim().toUpperCase();
   if (!isIndexedDBSupported()) {
-    const list = Array.from(memoryStore.decisions.values()).filter((d) => d.symbol === norm);
+    const list = Array.from(memoryStore().decisions.values()).filter((d) => d.symbol === norm);
     return list.sort((a, b) => new Date(b.decisionDate).getTime() - new Date(a.decisionDate).getTime());
   }
 
@@ -673,7 +673,7 @@ export async function getDecisionsBySymbol(symbol: string): Promise<InvestmentDe
       request.onerror = () => reject(request.error);
     });
   } catch {
-    const list = Array.from(memoryStore.decisions.values()).filter((d) => d.symbol === norm);
+    const list = Array.from(memoryStore().decisions.values()).filter((d) => d.symbol === norm);
     return list.sort((a, b) => new Date(b.decisionDate).getTime() - new Date(a.decisionDate).getTime());
   }
 }
@@ -724,7 +724,7 @@ export async function getAllDecisions(): Promise<InvestmentDecision[]> {
   }
 
   if (!isIndexedDBSupported()) {
-    return Array.from(memoryStore.decisions.values());
+    return Array.from(memoryStore().decisions.values());
   }
 
   try {
@@ -745,7 +745,7 @@ export async function getAllDecisions(): Promise<InvestmentDecision[]> {
       request.onerror = () => reject(request.error);
     });
   } catch {
-    return Array.from(memoryStore.decisions.values());
+    return Array.from(memoryStore().decisions.values());
   }
 }
 
@@ -779,7 +779,7 @@ export async function saveDecision(
   if (input.id) {
     const existing = isIndexedDBSupported()
       ? (await getAllDecisions()).find((d) => d.id === input.id)
-      : memoryStore.decisions.get(input.id);
+      : memoryStore().decisions.get(input.id);
     if (existing) {
       createdAt = existing.createdAt;
       existingSnapshotId = existing.snapshotId;
@@ -846,7 +846,7 @@ export async function saveDecision(
   }
 
   if (!isIndexedDBSupported()) {
-    memoryStore.decisions.set(decision.id, decision);
+    memoryStore().decisions.set(decision.id, decision);
     return decision;
   }
 
@@ -860,7 +860,7 @@ export async function saveDecision(
       req.onerror = () => reject(req.error);
     });
   } catch {
-    memoryStore.decisions.set(decision.id, decision);
+    memoryStore().decisions.set(decision.id, decision);
     return decision;
   }
 }
@@ -884,7 +884,7 @@ export async function deleteDecision(id: string): Promise<void> {
   }
 
   if (!isIndexedDBSupported()) {
-    memoryStore.decisions.delete(id);
+    memoryStore().decisions.delete(id);
     return;
   }
 
@@ -898,7 +898,7 @@ export async function deleteDecision(id: string): Promise<void> {
       req.onerror = () => reject(req.error);
     });
   } catch {
-    memoryStore.decisions.delete(id);
+    memoryStore().decisions.delete(id);
   }
 }
 
@@ -945,7 +945,7 @@ export async function syncLocalJournalToServer(): Promise<{ notesSynced: number;
 
 export async function getAllPortfolioSnapshots(): Promise<PortfolioSnapshot[]> {
   if (!isIndexedDBSupported()) {
-    const list = Array.from(memoryStore.snapshots.values());
+    const list = Array.from(memoryStore().snapshots.values());
     return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
@@ -968,7 +968,7 @@ export async function getAllPortfolioSnapshots(): Promise<PortfolioSnapshot[]> {
       request.onerror = () => reject(request.error);
     });
   } catch {
-    const list = Array.from(memoryStore.snapshots.values());
+    const list = Array.from(memoryStore().snapshots.values());
     return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 }
@@ -1003,11 +1003,11 @@ export async function savePortfolioSnapshot(
   const frozenSnapshot: PortfolioSnapshot = Object.freeze(structuredClone(snapshot));
 
   if (!isIndexedDBSupported()) {
-    if (memoryStore.snapshots.has(frozenSnapshot.id)) {
+    if (memoryStore().snapshots.has(frozenSnapshot.id)) {
       throw new Error(`Snapshot with id "${frozenSnapshot.id}" already exists. Snapshots are immutable and create-only.`);
     }
     notifyPersistenceFallback();
-    memoryStore.snapshots.set(frozenSnapshot.id, frozenSnapshot);
+    memoryStore().snapshots.set(frozenSnapshot.id, frozenSnapshot);
     return frozenSnapshot;
   }
 
@@ -1036,20 +1036,20 @@ export async function savePortfolioSnapshot(
       }
     }
     notifyPersistenceFallback();
-    if (memoryStore.snapshots.has(frozenSnapshot.id)) {
+    if (memoryStore().snapshots.has(frozenSnapshot.id)) {
       throw new Error(
         `Snapshot with id "${frozenSnapshot.id}" already exists. Snapshots are immutable and create-only.`,
         { cause: err }
       );
     }
-    memoryStore.snapshots.set(frozenSnapshot.id, frozenSnapshot);
+    memoryStore().snapshots.set(frozenSnapshot.id, frozenSnapshot);
     return frozenSnapshot;
   }
 }
 
 export async function deletePortfolioSnapshot(id: string): Promise<void> {
   if (!isIndexedDBSupported()) {
-    memoryStore.snapshots.delete(id);
+    memoryStore().snapshots.delete(id);
     return;
   }
 
@@ -1063,7 +1063,7 @@ export async function deletePortfolioSnapshot(id: string): Promise<void> {
       req.onerror = () => reject(req.error);
     });
   } catch {
-    memoryStore.snapshots.delete(id);
+    memoryStore().snapshots.delete(id);
   }
 }
 
@@ -1145,5 +1145,5 @@ export async function importJournalBackup(
 /* ─── Test Helpers ─── */
 
 export function _resetMemoryStoreForTests(): void {
-  memoryStore.clear();
+  memoryStore().clear();
 }

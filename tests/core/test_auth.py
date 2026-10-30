@@ -40,16 +40,15 @@ def test_verify_access_token_rejects_invalid_token(monkeypatch: pytest.MonkeyPat
     assert error.value.status_code == 401
 
 
-def test_require_user_uses_fixed_identity_in_local_development(
+def test_require_user_requires_login_in_local_development(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(auth.settings, "environment", "development")
     monkeypatch.setattr(auth.settings, "local_auth_enabled", True)
 
-    user = auth.require_user(None)
-
-    assert user.id == auth.LOCAL_DEVELOPMENT_USER_ID
-    assert user.email == "local-development@prism.invalid"
+    with pytest.raises(HTTPException) as error:
+        auth.require_user(None)
+    assert error.value.status_code == 401
 
 
 def test_require_user_does_not_bypass_invalid_bearer_token(

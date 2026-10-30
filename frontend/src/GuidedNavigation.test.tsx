@@ -1,3 +1,4 @@
+import { accountStorageKey } from "./accountSession";
 import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
@@ -104,14 +105,14 @@ it("starts an empty portfolio with a clear action and keeps all risk and researc
     expect(screen.getByRole("button", { name })).toBeVisible();
   expect(screen.getByRole("button", { name: "Portfolio network" })).toHaveAttribute("aria-current", "page");
   expect(screen.getByRole("heading", { name: "Portfolio network" })).toBeVisible();
-  expect(localStorage.getItem("prism_portfolio_active_tab")).toBe("network");
+  expect(localStorage.getItem(accountStorageKey("prism_portfolio_active_tab"))).toBe("network");
   fireEvent.click(screen.getByRole("button", { name: "Stress testing" }));
   expect(screen.getByRole("heading", { name: "Stress testing" })).toBeVisible();
   expect(screen.getByRole("button", { name: "Stress testing" })).toHaveAttribute("aria-current", "page");
-  expect(localStorage.getItem("prism_portfolio_active_tab")).toBe("stress");
+  expect(localStorage.getItem(accountStorageKey("prism_portfolio_active_tab"))).toBe("stress");
   fireEvent.click(screen.getByRole("button", { name: "1. Holdings" }));
   fireEvent.click(screen.getByRole("button", { name: "Activity" }));
-  expect(localStorage.getItem("prism_portfolio_active_tab")).toBe(
+  expect(localStorage.getItem(accountStorageKey("prism_portfolio_active_tab"))).toBe(
     "transactions",
   );
 });

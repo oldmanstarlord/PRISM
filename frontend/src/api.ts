@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { currentSession } from "./accountSession";
 
 export const apiBase = import.meta.env.VITE_API_URL ?? "/api/v1";
 
@@ -18,11 +18,9 @@ async function apiFetch(url: string, init: RequestInit): Promise<Response> {
 
 async function sessionHeaders(headers?: HeadersInit): Promise<Headers> {
   const result = new Headers(headers);
-  if (supabase) {
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.access_token) {
-      result.set("Authorization", `Bearer ${data.session.access_token}`);
-    }
+  const session = await currentSession();
+  if (session?.access_token) {
+    result.set("Authorization", `Bearer ${session.access_token}`);
   }
   return result;
 }
