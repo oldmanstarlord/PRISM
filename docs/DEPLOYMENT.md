@@ -46,6 +46,18 @@ VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_SUPABASE_KEY
 ```
 
+`frontend/vercel.json` declares the Vite build and rewrites each React Router page
+to `index.html`. This lets direct links and refreshes on `/portfolio`, `/news`,
+`/mst`, `/portfolio-demo`, and `/companies/:symbol` load the app. Keep the Vercel
+Root Directory set to `frontend` so Vercel reads this configuration. Add a matching
+rewrite when adding a new browser route; assets and `/api/*` are not rewritten.
+The API URL above must point to the Render backend.
+
+After deploying, open a portfolio/company link directly in a new tab and refresh it.
+Both requests must return the app HTML with HTTP 200, while the URL and company
+query parameters remain intact. This setting follows Vercel's
+[Vite SPA routing guidance](https://vercel.com/docs/frameworks/frontend/vite#using-vite-to-make-spas).
+
 In the native Render Python service, use the repository root and configure:
 
 ```text
